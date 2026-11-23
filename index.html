@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>考卷排版工作台（網路版）</title>
+<title>考卷排版工作台</title>
 <script>window.MathJax={loader:{load:['[tex]/enclose','[tex]/mathtools']},tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']],processEnvironments:true,packages:{'[+]':['enclose','mathtools']},macros:{vv:['\\overset{\\rightharpoonup}{#1}',1]}},svg:{fontCache:'none'},options:{skipHtmlTags:['script','noscript','style','textarea','pre','input']},startup:{typeset:false}};</script>
 <script async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js" onload="window.__mjReady&&window.__mjReady()"></script>
 <style>
@@ -204,6 +204,7 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
   <button class="btn small" id="btnImport" type="button" title="開啟之前存的考卷檔">開啟舊檔</button>
   <button class="btn small" id="btnImportTex" type="button" title="匯入其他老師用 LaTeX 打的題目（.tex 或 .zip），自動分到各題型">匯入 LaTeX</button>
   <button class="btn small danger" id="btnReset" type="button">載入範例</button>
+  <span id="saveStatus" aria-live="polite" style="font-size:12px;margin-left:10px;padding:3px 10px;border-radius:999px;background:#EAF0FA;color:#5B6577;white-space:nowrap"></span>
   <input type="file" id="fileImport" accept=".json,.zip,application/json,application/zip" hidden>
   <input type="file" id="fileTex" accept=".tex,.txt,.zip" multiple hidden>
 </div>
@@ -270,7 +271,7 @@ function twoClick(btn,fn,label){
 let mjQ=Promise.resolve();
 const PAGEFMT=[['p','第 1 頁'],['pt','第 1 頁，共 3 頁'],['sl','1 / 3'],['dash','- 1 -'],['num','1'],['none','不顯示頁碼']];
 function pageText(fmt,i,n){return ({p:`第 ${i} 頁`,pt:`第 ${i} 頁，共 ${n} 頁`,sl:`${i} / ${n}`,dash:`- ${i} -`,num:String(i),none:''})[fmt]??`第 ${i} 頁`;}
-const OFFLINE=/*__OFFLINE__*/false;
+const OFFLINE=true;
 function typeset(el){
   mjQ=mjQ.then(()=>{if(window.MathJax&&MathJax.startup&&MathJax.typesetPromise)return MathJax.startup.promise.then(()=>MathJax.typesetPromise([el]));}).catch(()=>{}).then(()=>{try{fixOpts(el);}catch(e){}try{placeFigs(el);}catch(e){}});
 }
@@ -422,12 +423,36 @@ function migrate(st){
   let mx=0;st.sections.forEach(s=>{mx=Math.max(mx,s.id||0);s.qs.forEach(q=>mx=Math.max(mx,q.id||0));});
   st.nextId=Math.max(st.nextId||1,mx+1);st.v=1;return st;
 }
+/* ===== 存檔狀態：自動暫存、尚未下載存檔的提醒 ===== */
+const LS_EXP='exam-last-export',LS_CHG='exam-last-change';
+let lastChange=0,lastExport=0,lastAuto=0,autoOk=true,booted=false;
+try{lastExport=+localStorage.getItem(LS_EXP)||0;lastChange=+localStorage.getItem(LS_CHG)||0;}catch(e){}
+function isDirty(){return lastChange>lastExport;}
+function relTime(t){const m=Math.floor((Date.now()-t)/60000);if(m<1)return '剛剛';if(m<60)return m+' 分鐘前';const h=Math.floor(m/60);if(h<24)return h+' 小時前';return Math.floor(h/24)+' 天前';}
+function updateSaveStatus(){
+  const el=document.getElementById('saveStatus');if(!el)return;
+  const auto=lastAuto&&autoOk?'已自動暫存':(autoOk?'':'無法自動暫存');
+  let txt,bg,fg;
+  if(isDirty()){txt='⚠ 有尚未下載存檔的修改'+(lastExport?'（上次下載：'+relTime(lastExport)+'）':'')+(auto?' · '+auto:'');bg='#FFF4DB';fg='#9A6700';}
+  else if(lastExport){txt='✓ 已下載存檔（'+relTime(lastExport)+'）';bg='#E6F4EC';fg='#157347';}
+  else{txt='尚未下載存檔'+(auto?' · '+auto:'');bg='#EAF0FA';fg='#5B6577';}
+  if(!autoOk){txt+=' · 瀏覽器無法暫存，請務必下載存檔';bg='#FDECEA';fg='#B42318';}
+  el.textContent=txt;el.style.background=bg;el.style.color=fg;
+}
+function markExported(){
+  lastExport=Date.now();lastChange=lastExport;
+  try{localStorage.setItem(LS_EXP,String(lastExport));localStorage.setItem(LS_CHG,String(lastChange));}catch(e){}
+  updateSaveStatus();
+}
+window.addEventListener('beforeunload',e=>{if(isDirty()){e.preventDefault();e.returnValue='';return '';}});
 let saveT=0;
 function save(){
+  if(booted){lastChange=Date.now();updateSaveStatus();}
   clearTimeout(saveT);
   saveT=setTimeout(()=>{
-    try{localStorage.setItem(LS_KEY,JSON.stringify(S));$('#saveWarn').hidden=true;}
-    catch(e){const w=$('#saveWarn');w.hidden=false;w.textContent='瀏覽器無法儲存（可能被停用或已滿）。請定期按「匯出專案」另存。';}
+    try{localStorage.setItem(LS_KEY,JSON.stringify(S));localStorage.setItem(LS_CHG,String(lastChange));$('#saveWarn').hidden=true;autoOk=true;lastAuto=Date.now();}
+    catch(e){autoOk=false;const w=$('#saveWarn');w.hidden=false;w.textContent='瀏覽器無法儲存（可能被停用或已滿）。請定期按「匯出專案」另存。';}
+    updateSaveStatus();
   },300);
 }
 function load(){
@@ -929,12 +954,30 @@ function keepScroll(fn){
 const OUT_TABS=[['preview','預覽'],['tex','main.tex'],['cls','examsheet.cls']];
 function scheduleOutput(){clearTimeout(outT);outT=setTimeout(renderOut,150);}
 function anchorSave(name,blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.style.display='none';document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},3000);}
+function manualCopyDlg(name,data){
+  const old=document.getElementById('manualCopy');if(old)old.remove();
+  const ta=document.createElement('textarea');ta.readOnly=true;ta.value=data;
+  ta.style.cssText='width:100%;height:240px;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;border:1px solid #DDE1E8;border-radius:6px;padding:8px';
+  const ov=document.createElement('div');ov.id='manualCopy';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(24,30,46,.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
+  const card=document.createElement('div');
+  card.style.cssText='background:#fff;border-radius:12px;max-width:680px;width:100%;padding:16px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)';
+  const t=document.createElement('div');t.style.cssText='font-weight:700;font-size:16px;margin-bottom:6px';t.textContent='無法直接下載「'+name+'」';
+  const d=document.createElement('div');d.style.cssText='font-size:13px;color:#5B6577;margin-bottom:8px;line-height:1.6';
+  d.textContent='這個環境不允許下載檔案。請按「全選並複製」，貼到記事本／文字編輯器，存成「'+name+'」即可（副檔名要一致）。';
+  const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;margin-top:10px;justify-content:flex-end;align-items:center';
+  const st=document.createElement('span');st.style.cssText='font-size:13px;color:#157347;margin-right:auto';
+  const b1=document.createElement('button');b1.className='btn primary';b1.type='button';b1.textContent='全選並複製';
+  b1.onclick=async()=>{ta.focus();ta.select();let ok=false;try{await navigator.clipboard.writeText(data);ok=true;}catch(e){try{ok=document.execCommand('copy');}catch(e2){}}if(ok&&/\.json$/i.test(name))markExported();st.textContent=ok?'已複製到剪貼簿':'已全選，請按 Ctrl/Cmd+C 複製';st.style.color=ok?'#157347':'#9A6700';};
+  const b2=document.createElement('button');b2.className='btn';b2.type='button';b2.textContent='關閉';b2.onclick=()=>ov.remove();
+  row.append(st,b1,b2);card.append(t,d,ta,row);ov.append(card);document.body.append(ov);
+  setTimeout(()=>{ta.focus();ta.select();},50);
+}
 async function saveFile(name,data){
-  if(OFFLINE){anchorSave(name,new Blob([data],{type:'text/plain;charset=utf-8'}));flashMsg('已下載：'+name+'（在瀏覽器的下載資料夾）');return;}
-  let dl=null;try{dl=await claude.use('downloads');}catch(e){}
-  if(dl){try{await dl.save({filename:name,data});flashMsg('已送出下載：'+name);return;}catch(e){if(e&&e.code==='declined')return;}}
-  try{await navigator.clipboard.writeText(data);flashMsg('這個環境不能直接下載，已複製「'+name+'」的內容，請貼到 Overleaf。');}
-  catch(e){flashMsg('無法下載或複製，請在文字框內手動全選複製。',true);}
+  if(OFFLINE){anchorSave(name,new Blob([data],{type:'text/plain;charset=utf-8'}));if(/\.json$/i.test(name))markExported();flashMsg('已下載：'+name+'（在瀏覽器的下載資料夾）');return;}
+  let dl=null;try{dl=await window.claude.use('downloads');}catch(e){}
+  if(dl){try{await dl.save({filename:name,data});if(/\.json$/i.test(name))markExported();flashMsg('已送出下載：'+name);return;}catch(e){if(e&&e.code==='declined')return;}}
+  manualCopyDlg(name,data);
 }
 let msgT=0;
 function flashMsg(t,bad){const m=$('#outMsg');if(!m)return;m.textContent=t;m.style.color=bad?'var(--danger)':'var(--ok)';clearTimeout(msgT);msgT=setTimeout(()=>{m.textContent='';},4000);}
@@ -2242,7 +2285,7 @@ async function paginate(ans){
 function loadScript(u){return new Promise((res,rej)=>{if(document.querySelector(`script[data-lib="${u}"]`))return res();const s=document.createElement('script');s.src=u;s.dataset.lib=u;s.onload=()=>res();s.onerror=()=>rej(new Error('載入失敗：'+u));document.head.append(s);});}
 async function saveBinary(name,blob){
   if(OFFLINE){anchorSave(name,blob);return {ok:true};}
-  let dl=null;try{dl=await claude.use('downloads');}catch(e){}
+  let dl=null;try{dl=await window.claude.use('downloads');}catch(e){}
   if(!dl)return {ok:false,why:'nodl'};
   const tries=[()=>blob,async()=>new Uint8Array(await blob.arrayBuffer())];
   let last=null;
@@ -2420,12 +2463,12 @@ function openSave(){
   bc.addEventListener('click',close);ov.addEventListener('mousedown',e=>{if(e.target===ov)close();});
   b1.addEventListener('click',async()=>{
     const r=await saveBinary(examFileBase()+'_overleaf.zip',buildOverleafZip());
-    if(r.ok)say('已送出下載。Overleaf：New Project → Upload Project，選這個 zip，編譯器選 XeLaTeX，編譯兩次。');
+    if(r.ok){markExported();say('已送出下載。Overleaf：New Project → Upload Project，選這個 zip，編譯器選 XeLaTeX，編譯兩次。');}
     else if(r.why==='declined')say('已取消下載。');
     else say('這個環境不允許下載 zip。可以改到「main.tex」與「examsheet.cls」分頁按「複製」，貼進 Overleaf 的同名檔案。',true);
   });
   b2.addEventListener('click',()=>saveFile('main.tex',genTex()));
-  b3.addEventListener('click',async()=>{await saveFile('exam-project.json',JSON.stringify(S,null,1));say('已送出下載（或已複製到剪貼簿）。');});
+  b3.addEventListener('click',async()=>{await saveFile('exam-project.json',JSON.stringify(S,null,1));});
   const card=h('div',{style:'background:#fff;border-radius:12px;max-width:640px;width:100%;padding:16px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)'},
     h('div',{style:'font-weight:700;font-size:16px;margin-bottom:6px'},'存檔'),
     h('div',{class:'hint'},'選一種存法。一般老師存「考卷檔」就夠了，會用 Overleaf 的老師存 zip。'),
@@ -2440,7 +2483,7 @@ function openSave(){
 function exportProject(){saveFile('exam-project.json',JSON.stringify(S,null,1));}
 function importProject(file){
   const bad=()=>flashMsg('這不是有效的考卷檔。',true);
-  const load=txt=>{try{const st=JSON.parse(txt);if(!st||st.v!==1||!st.cfg||!Array.isArray(st.sections))throw 0;S=migrate(st);settingsBuilt=false;rerender();flashMsg('已開啟考卷');}catch(e){bad();}};
+  const load=txt=>{try{const st=JSON.parse(txt);if(!st||st.v!==1||!st.cfg||!Array.isArray(st.sections))throw 0;S=migrate(st);settingsBuilt=false;rerender();markExported();flashMsg('已開啟考卷');}catch(e){bad();}};
   const rd=new FileReader();
   if(/\.zip$/i.test(file.name)){
     rd.onload=()=>{try{const z=readZipStore(rd.result);if(!z['exam-project.json'])throw 0;load(new TextDecoder().decode(z['exam-project.json']));}catch(e){flashMsg('這個 zip 不是由本工具存出的檔案。',true);}};
@@ -3449,6 +3492,7 @@ function rtToggle(on){
 
 /* ================= 啟動 ================= */
 if(!load())sampleState();
+updateSaveStatus();setInterval(updateSaveStatus,30000);setTimeout(()=>{booted=true;},1000);
 buildSettings();settingsBuilt=true;buildFigLib();
 initAddBars();initPvClick();initPane();initMM();
 setTimeout(()=>{try{mmLoadML().catch(()=>{});}catch(e){}},2500);
