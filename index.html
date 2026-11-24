@@ -210,10 +210,13 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 </div>
 <div class="banner" id="saveWarn" hidden></div>
 <div class="banner" id="guide">
-  <b>用法：</b>左邊填設定與題目，右邊即時預覽（答案卡格子的數字會自動重排）。做好按上方「<b>列印 / 存成 PDF</b>」；按「<b>存檔</b>」可存成考卷檔（下次用「開啟舊檔」接著改）；熟悉 LaTeX 的老師可以下載 <b>Overleaf 專案 zip</b>（含 main.tex 與 examsheet.cls，上傳後用 <b>XeLaTeX</b> 編譯兩次）。
+  <b>用法：</b>左邊填題目，右邊看預覽；做好按上方「<b>列印 / 存成 PDF</b>」，想之後接著改就按「<b>存檔</b>」。
+  <details style="margin-top:6px"><summary style="cursor:pointer;color:#1E407C;font-weight:600">更多說明</summary>
+  <div style="margin-top:6px">按「存檔」可存成考卷檔（下次用「開啟舊檔」接著改）；熟悉 LaTeX 的老師可以下載 <b>Overleaf 專案 zip</b>（含 main.tex 與 examsheet.cls，上傳後用 <b>XeLaTeX</b> 編譯兩次）。
   選填題的解答直接輸入答案（如 <code>-56/7</code>、<code>\sqrt{27}</code>），數字與正負號會自動變成答案卡的圈圈格子。圖形請先放進第 ④ 區圖庫，再到每題「附圖」選用。<br>
   左邊各個區塊都可以按區塊上方的標題列來收合，方便檢視其他區塊。<br>
-  <label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="rtToggle" checked style="width:auto"> 左邊欄位沒在編輯時，顯示排版後的數學式（點公式可用數學符號修改，點文字回到輸入）</label>
+  <label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="rtToggle" checked style="width:auto"> 左邊欄位沒在編輯時，顯示排版後的數學式（點公式可用數學符號修改，點文字回到輸入）</label></div>
+  </details>
 </div>
 <div class="layout">
   <div class="left">
