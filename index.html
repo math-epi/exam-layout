@@ -197,7 +197,7 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 </head>
 <body>
 <div class="top">
-  <h1>考卷排版工作台<small>輸出 XeLaTeX 考卷（國立羅東高中版型）</small><span style="margin-left:10px;font-size:12px;padding:2px 10px;border-radius:999px;background:#1E407C;color:#fff;font-weight:600;vertical-align:middle">網路版</span></h1>
+  <h1>考卷排版工作台<small>輸出 XeLaTeX 考卷（國立羅東高中版型）</small><span style="margin-left:10px;font-size:12px;padding:2px 10px;border-radius:999px;background:#1E407C;color:#fff;font-weight:600;vertical-align:middle">GitHub版</span></h1>
   <button class="btn small primary" id="btnPrint" type="button">列印 / 存成 PDF</button>
   <button class="btn small" id="btnNew" type="button">新考卷</button>
   <button class="btn small" id="btnExport" type="button" title="存成考卷檔，或下載給 Overleaf 用的專案（含 main.tex）">存檔</button>
@@ -275,7 +275,7 @@ let mjQ=Promise.resolve();
 const PAGEFMT=[['p','第 1 頁'],['pt','第 1 頁，共 3 頁'],['sl','1 / 3'],['dash','- 1 -'],['num','1'],['none','不顯示頁碼']];
 function pageText(fmt,i,n){return ({p:`第 ${i} 頁`,pt:`第 ${i} 頁，共 ${n} 頁`,sl:`${i} / ${n}`,dash:`- ${i} -`,num:String(i),none:''})[fmt]??`第 ${i} 頁`;}
 const OFFLINE=true;
-const AI_FIG_URL='https://claude.ai/artifact/56eVkXvhqNSSEhcP3tvxmn#fig-convert';  // AI 版的手繪圖轉向量圖專用頁
+const AI_FIG_URL='https://claude.ai/artifact/56eVkXvhqNSSEhcP3tvxmn#fig-convert';  // Claude版的手繪圖轉向量圖專用頁
 function typeset(el){
   mjQ=mjQ.then(()=>{if(window.MathJax&&MathJax.startup&&MathJax.typesetPromise)return MathJax.startup.promise.then(()=>MathJax.typesetPromise([el]));}).catch(()=>{}).then(()=>{try{fixOpts(el);}catch(e){}try{placeFigs(el);}catch(e){}});
 }
@@ -1016,6 +1016,7 @@ function autoMathText(txt,hits){
         let q=s0-1;while(q>=0&&U[q].k==='sp')q--;
         if((q<0||U[q].s==='\n')&&nx&&(nx.s==='.'||nx.s==='、'))return;
       }
+      if(/^\d+(?:\.\d+)?$/.test(raw)){let z=s1+1;while(z<L&&U[z].k==='sp')z++;if(z<L&&U[z].s==='分')return;}   // 配分（3分）有自己的輸入欄，不當數學式
       reps.push({a:s0,b:s1,seg,raw});
     });
   });
@@ -2199,7 +2200,7 @@ function parseWhole(text,kind){
   return out;
 }
 
-/* ================= ✦ 手繪圖轉向量圖（AI；網路版） ================= */
+/* ================= ✦ 手繪圖轉向量圖（AI；Claude版） ================= */
 const FIG_PROMPT=String.raw`你是 TikZ 繪圖助手，為台灣高中數學講義把手繪草稿重繪成精確的向量圖。
 輸入：附圖是手繪草稿（也可能沒有附圖，只有文字要求）。草稿內若寫有「繪圖要求：」，其後的文字也是繪圖要求；與下方「補充要求」衝突時，以補充要求為準。
 做法：
@@ -2236,8 +2237,8 @@ async function figAI(prompt,blobs,ctl){
 const REV_CHIPS=['文字再大一點','文字不要壓到線','輔助線改虛線','標出角度記號','標出邊長','整張圖放大一點'];
 function figAiPanel(onDone){
   if(OFFLINE)return h('div',{class:'ocr',style:'display:flex;flex-direction:column;gap:6px;margin-bottom:6px'},
-    h('a',{class:'btn small primary',href:AI_FIG_URL,target:'_blank',rel:'noopener',style:'text-decoration:none;align-self:flex-start'},'✦ 手繪圖轉向量圖：前往 AI 版轉換 ↗'),
-    h('span',{class:'hint'},'會在新分頁開啟 AI 版的專用頁（需登入 Claude）。轉好後按「把這張圖送回考卷排版工作台」，只有那張圖會加進這裡的圖庫，你排好的考卷不會被動到。'));
+    h('a',{class:'btn small primary',href:AI_FIG_URL,target:'_blank',rel:'noopener',style:'text-decoration:none;align-self:flex-start'},'✦ 手繪圖轉向量圖：前往 Claude版轉換 ↗'),
+    h('span',{class:'hint'},'會在新分頁開啟 Claude版的專用頁（需登入 Claude）。轉好後按「把這張圖送回考卷排版工作台」，只有那張圖會加進這裡的圖庫，你排好的考卷不會被動到。'));
   const files=[];let ctl=null;
   const det=h('details',{class:'ocr'},h('summary',{class:'hint',style:'cursor:pointer'},'✦ 手繪圖轉向量圖（上傳手繪草稿，AI 重畫成精確的向量圖）'));
   const body=h('div',{class:'card-b',style:'padding:8px 0 0'});det.append(body);
@@ -3735,7 +3736,7 @@ buildSettings();settingsBuilt=true;buildFigLib();
 initAddBars();initPvClick();initPane();initMM();
 setTimeout(()=>{try{mmLoadML().catch(()=>{});}catch(e){}},2500);
 renderTabs();renderSections();renderOut();
-/* 從網路版帶入內容：網址 # 後面是壓縮過的考卷，打開就自動載入 */
+/* 從 Claude版帶入內容：網址 # 後面是壓縮過的考卷，打開就自動載入 */
 async function importFromHash(){
   const m=/^#import=(.+)$/.exec(location.hash);if(!m)return;
   try{
@@ -3745,12 +3746,12 @@ async function importFromHash(){
     const st=JSON.parse(txt);
     if(!st||st.v!==1||!st.cfg||!Array.isArray(st.sections))throw 0;
     S=migrate(st);settingsBuilt=false;rerender();
-    flashMsg('已從網路版帶入你的考卷內容');
+    flashMsg('已從 Claude版帶入你的考卷內容');
   }catch(e){flashMsg('帶入考卷內容失敗，請回到原本的頁面再按一次。',true);}
   try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
 }
 importFromHash();
-/* 從 AI 版專用頁帶回「一張圖」：網址 #fig=（壓縮的圖形資料）。只把這張圖加進圖庫，不動考卷內容。
+/* 從 Claude版專用頁帶回「一張圖」：網址 #fig=（壓縮的圖形資料）。只把這張圖加進圖庫，不動考卷內容。
    若原本的考卷分頁還開著，圖直接交給那個分頁（BroadcastChannel），這個分頁只顯示提示。 */
 const FIG_CH=('BroadcastChannel' in window)?new BroadcastChannel('exam-layout-fig'):null;
 function figToast(t,bad){
@@ -3764,7 +3765,7 @@ function figInbox(text){
   const ids=addParsedFigs(r.figs.slice(0,1));
   rerender();
   try{const c=document.getElementById('cardFig');if(c)c.open=true;}catch(e){}
-  figToast('已從 AI 版加入圖「'+((S.figs.find(f=>f.id===ids[0])||{}).name||'')+'」，在第 ④ 區圖庫；到每題的「附圖」選用。');
+  figToast('已從 Claude版加入圖「'+((S.figs.find(f=>f.id===ids[0])||{}).name||'')+'」，在第 ④ 區圖庫；到每題的「附圖」選用。');
   return ids.length;
 }
 if(FIG_CH)FIG_CH.addEventListener('message',e=>{
@@ -3790,7 +3791,7 @@ async function figFromHash(){
     const bin=atob(m[1].replace(/-/g,'+').replace(/_/g,'/'));
     const u8=Uint8Array.from(bin,c=>c.charCodeAt(0));
     text=await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
-  }catch(e){figToast('帶回圖形失敗：資料不完整，請回到 AI 版再按一次「送回」。',true);return;}
+  }catch(e){figToast('帶回圖形失敗：資料不完整，請回到 Claude版再按一次「送回」。',true);return;}
   if(FIG_CH){
     const handed=await new Promise(res=>{
       const id=Math.random().toString(36).slice(2);
