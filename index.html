@@ -3497,6 +3497,21 @@ buildSettings();settingsBuilt=true;buildFigLib();
 initAddBars();initPvClick();initPane();initMM();
 setTimeout(()=>{try{mmLoadML().catch(()=>{});}catch(e){}},2500);
 renderTabs();renderSections();renderOut();
+/* 從網路版帶入內容：網址 # 後面是壓縮過的考卷，打開就自動載入 */
+async function importFromHash(){
+  const m=/^#import=(.+)$/.exec(location.hash);if(!m)return;
+  try{
+    const bin=atob(m[1].replace(/-/g,'+').replace(/_/g,'/'));
+    const u8=Uint8Array.from(bin,c=>c.charCodeAt(0));
+    const txt=await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+    const st=JSON.parse(txt);
+    if(!st||st.v!==1||!st.cfg||!Array.isArray(st.sections))throw 0;
+    S=migrate(st);settingsBuilt=false;rerender();
+    flashMsg('已從網路版帶入你的考卷內容');
+  }catch(e){flashMsg('帶入考卷內容失敗，請回到原本的頁面再按一次。',true);}
+  try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
+}
+importFromHash();
 </script>
 </body>
 </html>
