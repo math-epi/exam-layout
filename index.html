@@ -907,14 +907,21 @@ function hasFrac(t){return splitMath(t).some(sg=>sg.m&&/\\d?frac(?![A-Za-z])/.te
 /* ---- 文字裡的數字、單一英文字母 → 數學式 ---- */
 const AM_OPS='+-−=<>≤≥≠±×÷*/,()^_';
 const AM_MAP={'≤':'\\le ','≥':'\\ge ','≠':'\\ne ','±':'\\pm ','×':'\\times ','÷':'\\div ','−':'-'};
+const AM_FW=/[０-９Ａ-Ｚａ-ｚ＝＜＞＋－＊／（）]/;
+const AM_GREEK={'α':'\\alpha','β':'\\beta','γ':'\\gamma','δ':'\\delta','θ':'\\theta','λ':'\\lambda','μ':'\\mu','π':'\\pi','σ':'\\sigma','φ':'\\varphi','ω':'\\omega','Δ':'\\Delta','Σ':'\\Sigma','Ω':'\\Omega'};
+const AM_REL='=<>≤≥≠';
 function amUnits(txt){
-  const re=/\\(?:[A-Za-z]+|[\s\S])|\d+(?:\.\d+)?|[A-Za-z]+|[\s\S]/y;
+  const re=/\\(?:[A-Za-z]+|[\s\S])|[０-９]+(?:．[０-９]+)?|\d+(?:\.\d+)?|[Ａ-Ｚａ-ｚ]+|[A-Za-z]+|[\s\S]/y;
   const U=[];let m;
   while(re.lastIndex<txt.length&&(m=re.exec(txt))){
-    const s=m[0];let k;
+    const o=m[0];
+    let s=o;
+    if(AM_FW.test(o[0]))s=o.replace(/[！-～]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/．/g,'.');
+    let k;
     if(s[0]==='\\')k=s==='\\%'?'pct':'x';
     else if(/^\d/.test(s))k='n';
     else if(/^[A-Za-z]+$/.test(s))k=s.length===1?'v':'w';
+    else if(AM_GREEK[s])k='v';
     else if(s==='%')k='pct';
     else if(s==='°')k='deg';
     else if(s==="'"||s==='’')k='pr';
@@ -922,7 +929,7 @@ function amUnits(txt){
     else if(/^\s$/.test(s))k='sp';
     else if(AM_OPS.includes(s))k='op';
     else k='o';
-    U.push({k,s});
+    U.push({k,s,o});
   }
   const L=U.length;
   const prevNS=i=>{let j=i-1;while(j>=0&&U[j].k==='sp')j--;return j;};
@@ -936,6 +943,13 @@ function amUnits(txt){
       else if(i>=2&&U[i-1].k==='pr'&&(U[i-2].k==='w'||U[i-2].k==='v'))u.k='w'; // don't
     }else if(u.k==='n'){
       if(i>=1&&U[i-1].k==='w')u.k='o';                          // log2、abc3
+    }
+  }
+  for(let i=0;i<L;i++){
+    const u=U[i];
+    if(u.k==='w'&&/^[A-Z]{2,4}$/.test(u.s)){
+      const p=prevNS(i),n=nextNS(i);
+      if((p>=0&&U[p].k==='op'&&AM_REL.includes(U[p].s))||(n<L&&U[n].k==='op'&&AM_REL.includes(U[n].s)))u.k='v';
     }
   }
   // 後綴符號只能緊接在數字、字母或右括號之後
@@ -970,11 +984,13 @@ function amTrim(seg){
     const u=seg[a];
     if(isAtom(u)||(u.k==='op'&&u.s==='('))break;
     if(u.k==='op'&&(u.s==='-'||u.s==='−'||u.s==='+')){const nx=seg[a+1];if(nx&&(isAtom(nx)||(nx.k==='op'&&nx.s==='(')))break;}
+    if(u.k==='op'&&AM_REL.includes(u.s)){let z=a+1;while(z<b&&seg[z].k==='sp')z++;if(z<b&&isAtom(seg[z]))break;}
     a++;
   }
   while(b>a){
     const u=seg[b-1];
     if(isAtom(u)||u.k==='pct'||u.k==='deg'||u.k==='pr'||(u.k==='op'&&u.s===')'))break;
+    if(u.k==='op'&&AM_REL.includes(u.s)){let z=b-2;while(z>=a&&seg[z].k==='sp')z--;if(z>=a&&(isAtom(seg[z])||(seg[z].k==='op'&&seg[z].s===')')))break;}
     b--;
   }
   return seg.slice(a,b);
@@ -1030,11 +1046,11 @@ function autoMathText(txt,hits){
   reps.sort((x,y)=>x.a-y.a);
   let out='';let k=0;
   reps.forEach(r=>{
-    while(k<r.a){out+=U[k].s;k++;}
-    const body=r.seg.map(u=>u.k==='deg'?'^\\circ':(u.k==='pct'?'\\%':(AM_MAP[u.s]||u.s))).join('').replace(/\s+$/,'');
+    while(k<r.a){out+=U[k].o;k++;}
+    const body=r.seg.map(u=>u.k==='deg'?'^\\circ':(u.k==='pct'?'\\%':(AM_GREEK[u.s]?AM_GREEK[u.s]+' ':(AM_MAP[u.s]||u.s)))).join('').replace(/>=/g,'\\ge ').replace(/<=/g,'\\le ').replace(/\s+$/,'');
     out+='$'+body+'$';hits.push(r.raw.trim());k=r.b+1;
   });
-  while(k<L){out+=U[k].s;k++;}
+  while(k<L){out+=U[k].o;k++;}
   return out;
 }
 function autoMathTx(t){
