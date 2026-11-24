@@ -195,6 +195,34 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 .pvcalc .b{flex:1;min-width:0}
 .pvcalc .cspace{flex:none}
 .pv-sec+.pv-calc{margin-top:0}
+/* 設定浮動視窗 */
+.cfgtabs{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.cfgtabs .cl{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px}
+.cfgtab{border:1.5px solid var(--cc);background:var(--ct);color:var(--cc);padding:4px 12px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.cfgtab:hover{filter:brightness(.97)}
+.cfgtab.on{background:var(--cc);color:#fff}
+.typebar{padding:8px 14px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.typebar>b{font-size:14px}
+.typepick{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;flex:1;min-width:0}
+.typepick .typerow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:0;border-bottom:none}
+.typepick .typerow .tn{min-width:0}
+.typepick .note{font-size:12px;color:var(--danger)}
+.cfgwin{position:fixed;z-index:36;display:flex;flex-direction:column;box-sizing:border-box;border:2px solid var(--cc);border-radius:12px;overflow:hidden;
+  background:color-mix(in srgb,var(--ct) calc(var(--wa,.9)*100%),transparent);
+  -webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);box-shadow:0 10px 34px rgba(20,30,50,.28)}
+.cfgwin[hidden]{display:none}
+.cfgwin-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;background:var(--cc);color:#fff}
+.cfgwin-h b{flex:1;min-width:140px;font-size:15px}
+.cfgwin-h label{display:inline-flex;align-items:center;gap:5px;font-size:12px;opacity:.95}
+.cfgwin-h input[type=range]{width:90px;accent-color:#fff;padding:0;height:16px}
+.cfgwin-x{border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.15);color:#fff;border-radius:7px;padding:2px 12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.cfgwin-x:hover{background:rgba(255,255,255,.32)}
+.cfgwin-b{overflow:auto;padding:4px 0 6px;flex:1;min-height:0}
+.cfgwin .card-b{padding:8px 14px 10px}
+.cfgwin input:not([type=checkbox]):not([type=radio]):not([type=range]),.cfgwin select,.cfgwin textarea{background:rgba(255,255,255,.96)}
+.cfgwin .secset{background:rgba(255,255,255,.55)}
+.cfgdetail-t{font-weight:700;font-size:13px;margin:0 0 2px;color:var(--cc)}
+@media print{.cfgwin,.cfgtabs,.typebar{display:none!important}}
 </style>
 </head>
 <body>
@@ -215,19 +243,16 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
   <b>用法：</b>左邊填題目，右邊看預覽；做好按上方「<b>列印 / 存成 PDF</b>」，想之後接著改就按「<b>存檔</b>」。
   <details style="margin-top:6px"><summary style="cursor:pointer;color:#1E407C;font-weight:600">更多說明</summary>
   <div style="margin-top:6px">按「存檔」可存成考卷檔（下次用「開啟舊檔」接著改）；熟悉 LaTeX 的老師可以下載 <b>Overleaf 專案 zip</b>（含 main.tex 與 examsheet.cls，上傳後用 <b>XeLaTeX</b> 編譯兩次）。
-  選填題的解答直接輸入答案（如 <code>-56/7</code>、<code>\sqrt{27}</code>），數字與正負號會自動變成答案卡的圈圈格子。圖形請先放進第 ④ 區圖庫，再到每題「附圖」選用。<br>
-  左邊各個區塊都可以按區塊上方的標題列來收合，方便檢視其他區塊。<br>
+  選填題的解答直接輸入答案（如 <code>-56/7</code>、<code>\sqrt{27}</code>），數字與正負號會自動變成答案卡的圈圈格子。圖形請先放進「圖庫」，再到每題「附圖」選用。<br>
+  版面、題型預設、圖庫、行距與字型等設定，請按題目區上方的彩色「設定」標籤，會浮出半透明視窗（可用視窗上的滑桿調透明度，按「關閉」或 Esc 關掉）。<br>
   <label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="rtToggle" checked style="width:auto"> 左邊欄位沒在編輯時，顯示排版後的數學式（點公式可用數學符號修改，點文字回到輸入）</label></div>
   </details>
 </div>
 <div class="layout">
   <div class="left">
-    <details class="card" id="cardHead" open><summary>① 標頭與版面設定</summary><div class="card-b" id="setHead"></div></details>
-    <details class="card" id="cardTypes" open><summary>② 本試卷有哪些題型（勾選就會出現該題型的題目區）</summary><div class="card-b"><div id="typePick"></div><div class="hint" style="margin-top:6px">單選題與多選題共用連續題號；填充題的字母自動編號；混合題可放任何小題；自訂題型可自己命名。左下角浮動的「新增題目」會加在你目前所在的題型區塊。</div></div></details>
-    <details class="card" id="cardOpt"><summary>③ 題型預設（選項數、配分、全卷滿分檢查）</summary><div class="card-b" id="setOpt"></div></details>
-    <details class="card" id="cardFig"><summary>④ 圖庫（手繪圖轉向量圖、圖片）</summary><div class="card-b" id="setFig"></div></details>
-    <details class="card" id="cardAdv"><summary>⑤ 行距、間距與字型</summary><div class="card-b" id="setAdv"></div></details>
+    <div class="card typebar" id="typeBar"><b>本試卷題型</b><div class="typepick" id="typePick"></div></div>
     <div class="card contentbar" id="contentBar" style="padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <div class="cfgtabs" id="cfgTabs"></div>
       <b style="flex:1;min-width:120px">題目內容</b>
       <button class="btn small" id="btnCollapse" type="button">全部收合</button>
       <button class="btn small" id="btnExpand" type="button">全部展開</button>
@@ -236,7 +261,7 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
     <div id="warns" class="warns" hidden></div>
     <div id="sections" style="display:flex;flex-direction:column;gap:12px"></div>
     <div class="addbar" id="addbar" hidden><b style="font-size:14px">還沒有任何題型</b>
-      <span class="hint">請到上方「② 本試卷有哪些題型」勾選要出的題型，勾選後這裡就會出現該題型的題目區。</span></div>
+      <span class="hint">請到上方「本試卷題型」勾選要出的題型，勾選後這裡就會出現該題型的題目區。</span></div>
   </div>
   <div class="right">
     <div class="rzh" id="rzh" title="按住左右拖曳，調整左右兩邊的寬度（連按兩下還原）"></div>
@@ -245,6 +270,13 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
     <div class="out-main" id="outMain"></div>
   </div>
 </div>
+<div id="cfgHold" hidden>
+  <div class="cfgpane" data-pane="head"><div class="card-b" id="setHead"></div></div>
+  <div class="cfgpane" data-pane="opt"><div class="card-b" id="typeDetail"></div><div class="card-b" id="setOpt"></div></div>
+  <div class="cfgpane" data-pane="fig"><div class="card-b" id="setFig"></div></div>
+  <div class="cfgpane" data-pane="adv"><div class="card-b" id="setAdv"></div></div>
+</div>
+<div class="cfgwin" id="cfgWin" hidden role="dialog" aria-label="設定視窗"><div class="cfgwin-h"><b id="cfgWinT"></b><label title="調整視窗透明度，方便同時看到後面">透明度<input type="range" id="cfgWinOp" min="55" max="100" step="1" aria-label="視窗透明度"></label><button class="cfgwin-x" id="cfgWinX" type="button" title="關閉（Esc）">關閉 ✕</button></div><div class="cfgwin-b" id="cfgWinB"></div></div>
 <div class="floatadd" id="floatAdd" hidden></div>
 <div class="wtag" id="wTag" hidden></div>
 
@@ -1606,7 +1638,7 @@ function secCard(s,si){
     twoClick(h('button',{class:'btn small danger',type:'button'},'刪除大題'),()=>{S.sections.splice(S.sections.indexOf(s),1);rerender();}));
   card.append(hd);makeDrag(card,grip,S.sections,s);
   const b=h('div',{class:'sec-b'});
-  b.append(h('div',{class:'hint',style:'margin:0 0 6px'},'題型名稱、每題配分、說明，請在上方「② 本試卷有哪些題型」該題型下面設定。',h('button',{class:'btn small',type:'button',style:'margin-left:6px',onclick:()=>{const c=$('#cardTypes');c.open=true;c.scrollIntoView({behavior:'smooth',block:'start'});}},'到 ② 設定')));
+  b.append(h('div',{class:'hint',style:'margin:0 0 6px'},'題型名稱、每題配分、說明，請到「題型預設」視窗設定。',h('button',{class:'btn small',type:'button',style:'margin-left:6px',onclick:()=>openCfg('opt')},'開啟題型預設')));
   if(s.type==='calc')b.append(h('div',{class:'slotinfo','data-calcinfo':s.id}));
   const spbCb=h('input',{type:'checkbox'});spbCb.checked=!!s.pbAfter;
   spbCb.addEventListener('change',()=>{s.pbAfter=spbCb.checked;changed();});
@@ -1675,6 +1707,7 @@ function addSection(type){
 }
 function renderTypePicker(){
   const box=$('#typePick');if(!box)return;
+  const detBox=$('#typeDetail'),detParts=[];
   box.replaceChildren(...TYPE_ORDER.map(t=>{
     const list=S.sections.filter(s=>s.type===t),nq=list.reduce((a,s)=>a+s.qs.length,0);
     const note=h('span',{class:'note'});
@@ -1688,10 +1721,10 @@ function renderTypePicker(){
       typeArm=null;S.sections=S.sections.filter(s=>s.type!==t);lastFocusQ=null;
       rerender();
     });
-    const row=h('div',{class:'typerow',style:tcStyle(t)},h('label',{class:'chk'},cb,h('span',{class:'tdot'}),h('span',{class:'tn'},typeLabel(t))),h('span',{class:'hint'},TYPE_HINT[t]+(list.length>1?`（目前有 ${list.length} 個）`:'')));
+    const row=h('div',{class:'typerow',style:tcStyle(t)},h('label',{class:'chk'},cb,h('span',{class:'tdot'}),h('span',{class:'tn'},typeLabel(t))));row.title=TYPE_HINT[t]+(list.length>1?`（目前有 ${list.length} 個）`:'');
     if(list.length>0&&(t==='custom'||t==='mixed'))row.append(h('button',{class:'btn small',type:'button',onclick:()=>addSection(t)},'＋ 再加一個'));
     row.append(note);
-    const wrap=h('div',{},row);
+    const wrap=h('div',{});
     list.forEach((sec,k)=>{
       const desc=bindInput(sec,'desc',{type:'text',after:changed,placeholder:sec.type==='multi'?'留空＝依下方部分給分自動產生':'例如：答案若為分數，請化為最簡分數'});
       wrap.append(h('div',{class:'secset'},
@@ -1701,6 +1734,7 @@ function renderTypePicker(){
           field('每題配分',bindInput(sec,'pts',{type:'text',after:()=>{changed();updPartialUI();}})),
           field('說明（標題括號內）',desc))));
     });
+    if(list.length)wrap.prepend(h('div',{class:'cfgdetail-t',style:tcStyle(t)},'● '+typeLabel(t)));
     if(t==='multi'&&list.length>0){
       const C=S.cfg,mk=k=>{const i=bindInput(C,k,{type:'text',after:()=>{changed();updPartialUI();}});i.inputMode='decimal';return i;};
       const i1=mk('multiP1'),i2=mk('multiP2'),i3=mk('multiP3');
@@ -1715,8 +1749,10 @@ function renderTypePicker(){
         h('span',{class:'hint'},'（留空＝依大考規則自動算；錯三個以上填 0 或留空＝不給分）')),sentence);
       updPartialUI();
     }
-    return wrap;
+    if(wrap.childNodes.length)detParts.push(wrap);
+    return row;
   }));
+  if(detBox)detBox.replaceChildren(...(detParts.length?[h('div',{class:'hint'},'各題型區塊的名稱、每題配分與說明（勾選的題型才會出現在這裡）。')]:[h('div',{class:'hint'},'還沒有勾選題型。請先在題目區上方的「本試卷題型」勾選。')]),...detParts);
 }
 /* 導覽列：每個大題一顆有顏色的按鈕，點了捲到該大題，目前所在的大題反白 */
 function renderNav(){
@@ -1757,7 +1793,6 @@ function addQuestionHere(kind){
   if(i>=0)s.qs.splice(i+1,0,q);else if(w.qid==null&&s.qs.length)s.qs.unshift(q);else s.qs.push(q);
   s.collapsed=false;lastFocusQ=q.id;userScrolled=false;markProg();floatKey='';rerender();focusQ(q.id);
 }
-const CFG_TAGS=[['cardHead','① 標頭與版面設定'],['cardTypes','② 本試卷有哪些題型'],['cardOpt','③ 題型預設'],['cardFig','④ 圖庫'],['cardAdv','⑤ 行距、間距與字型']];
 let lastPvQ=null;
 function updateTag(){
   const tag=$('#wTag'),L=$('.left'),bar=$('#contentBar');if(!tag||!L||!bar)return;
@@ -1778,11 +1813,7 @@ function updateTag(){
       }
     }
   }else{
-    let nm=CFG_TAGS[0][1];
-    for(const [id,name] of CFG_TAGS){const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<=line)nm=name;}
-    const adv=document.getElementById('cardAdv');
-    if(adv&&adv.getBoundingClientRect().bottom<=line)nm='題目內容';
-    txt=nm;
+    txt='題目內容';
   }
   if(!txt){tag.hidden=true;return;}
   tag.style.cssText=style+`;left:${Math.max(8,lr.left+4)}px;top:${top}px`;
@@ -1810,6 +1841,66 @@ function goQ(id){
   if(need)rerender();
   focusQ(id);
 }
+
+/* ===== 設定浮動視窗：標籤在題目導覽列上，一次只開一個，用關閉鈕或 Esc 關閉 ===== */
+const CFG_WINS={
+  head:{tab:'標頭與版面',title:'標頭與版面設定',c:'#0B7F8C',t:'#E2F3F5'},
+  opt:{tab:'題型預設',title:'題型預設（題型名稱／配分、選項數、全卷滿分檢查）',c:'#8A7300',t:'#F8F1CC'},
+  fig:{tab:'圖庫',title:'圖庫（手繪圖轉向量圖、圖片）',c:'#B0307A',t:'#F9E2EF'},
+  adv:{tab:'行距間距與字型',title:'行距、間距與字型',c:'#4A4FB5',t:'#E5E6F8'}
+};
+let cfgOpen=null;
+function cfgPlace(){
+  const w=$('#cfgWin');if(!w||w.hidden)return;
+  const L=$('.left'),bar=$('#contentBar');if(!L||!bar)return;
+  const lr=L.getBoundingClientRect(),br=bar.getBoundingClientRect(),TH=TOPH();
+  const top=Math.max(TH+6,br.bottom+6),left=Math.max(8,lr.left);
+  const width=Math.max(340,Math.min(lr.width,760,innerWidth-16));
+  w.style.left=Math.min(left,Math.max(8,innerWidth-width-8))+'px';w.style.top=top+'px';w.style.width=width+'px';
+  w.style.maxHeight=Math.max(200,innerHeight-top-12)+'px';
+}
+function closeCfg(){
+  const w=$('#cfgWin'),hold=$('#cfgHold');if(!w)return;
+  const body=$('#cfgWinB');
+  while(body.firstChild)hold.append(body.firstChild);
+  w.hidden=true;cfgOpen=null;renderCfgTabs();
+}
+function openCfg(key){
+  const def=CFG_WINS[key];if(!def)return;
+  if(cfgOpen===key){return;}
+  const w=$('#cfgWin'),hold=$('#cfgHold'),body=$('#cfgWinB');
+  while(body.firstChild)hold.append(body.firstChild);
+  const pane=hold.querySelector(`.cfgpane[data-pane="${key}"]`);if(!pane)return;
+  body.append(pane);
+  w.style.setProperty('--cc',def.c);w.style.setProperty('--ct',def.t);
+  $('#cfgWinT').textContent=def.title;
+  w.hidden=false;cfgOpen=key;cfgPlace();body.scrollTop=0;renderCfgTabs();
+}
+function toggleCfg(key){if(cfgOpen===key)closeCfg();else openCfg(key);}
+function renderCfgTabs(){
+  const box=$('#cfgTabs');if(!box)return;
+  box.replaceChildren(h('span',{class:'cl'},'設定：'),...Object.keys(CFG_WINS).map(k=>{
+    const d=CFG_WINS[k];
+    return h('button',{type:'button',class:'cfgtab'+(cfgOpen===k?' on':''),style:`--cc:${d.c};--ct:${d.t}`,title:d.title,'aria-pressed':cfgOpen===k?'true':'false',onclick:()=>toggleCfg(k)},d.tab);
+  }));
+  const bar=$('#contentBar');if(bar)document.documentElement.style.setProperty('--navh',bar.offsetHeight+'px');
+  cfgPlace();
+}
+function initCfgWin(){
+  const w=$('#cfgWin'),sl=$('#cfgWinOp');if(!w)return;
+  let op=0.9;try{const v=parseFloat(localStorage.getItem('exam-cfgwin-op'));if(v>=0.55&&v<=1)op=v;}catch(e){}
+  const setOp=v=>{w.style.setProperty('--wa',String(v));};
+  setOp(op);sl.value=String(Math.round(op*100));
+  sl.addEventListener('input',()=>{const v=Number(sl.value)/100;setOp(v);try{localStorage.setItem('exam-cfgwin-op',String(v));}catch(e){}});
+  $('#cfgWinX').addEventListener('click',closeCfg);
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Escape'||e.defaultPrevented||!cfgOpen)return;
+    if(document.querySelector('.ocr-modal,#texDlg,#saveDlg')||(typeof prState!=='undefined'&&prState))return;
+    closeCfg();
+  });
+  addEventListener('resize',cfgPlace);addEventListener('scroll',cfgPlace,{passive:true});
+  renderCfgTabs();
+}
 function initPvClick(){
   let navT=0;const main=$('#outMain');
   const noSel=()=>{const sel=window.getSelection&&window.getSelection();return !(sel&&String(sel).trim());};
@@ -1830,7 +1921,7 @@ function initPvClick(){
         setTimeout(()=>{const el=document.querySelector(`[data-sid="${s.id}"]`);if(el){markProg();el.scrollIntoView({behavior:'smooth',block:'start'});el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),1500);}},30);
         return;
       }
-      const c=$('#cardHead');if(c){c.open=true;markProg();c.scrollIntoView({behavior:'smooth',block:'start'});}
+      openCfg('head');
     },260);
   });
 }
@@ -4101,7 +4192,7 @@ function rtToggle(on){
 if(!load())sampleState();
 updateSaveStatus();setInterval(updateSaveStatus,30000);setTimeout(()=>{booted=true;},1000);
 buildSettings();settingsBuilt=true;buildFigLib();
-initAddBars();initPvClick();initPane();initMM();
+initAddBars();initPvClick();initPane();initMM();initCfgWin();
 setTimeout(()=>{try{mmLoadML().catch(()=>{});}catch(e){}},2500);
 renderTabs();renderSections();renderOut();
 /* 從 Claude版帶入內容：網址 # 後面是壓縮過的考卷，打開就自動載入 */
@@ -4132,8 +4223,8 @@ function figInbox(text){
   if(!r.figs.length)return 0;
   const ids=addParsedFigs(r.figs.slice(0,1));
   rerender();
-  try{const c=document.getElementById('cardFig');if(c)c.open=true;}catch(e){}
-  figToast('已從 Claude版加入圖「'+((S.figs.find(f=>f.id===ids[0])||{}).name||'')+'」，在第 ④ 區圖庫；到每題的「附圖」選用。');
+  try{openCfg('fig');}catch(e){}
+  figToast('已從 Claude版加入圖「'+((S.figs.find(f=>f.id===ids[0])||{}).name||'')+'」，在「圖庫」視窗；到每題的「附圖」選用。');
   return ids.length;
 }
 if(FIG_CH)FIG_CH.addEventListener('message',e=>{
