@@ -198,31 +198,27 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 /* 設定浮動視窗 */
 .cfgtabs{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .cfgtabs .cl{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px}
-.cfgtab{border:1.5px solid var(--cc);background:var(--ct);color:var(--cc);padding:4px 12px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.cfgtab{border:1px solid var(--cc);background:var(--ct);color:var(--cc);padding:4px 12px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
 .cfgtab:hover{filter:brightness(.97)}
 .cfgtab.on{background:var(--cc);color:#fff}
-.typebar{padding:8px 14px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
-.typebar>b{font-size:14px}
-.typepick{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;flex:1;min-width:0}
+.cfgtabs .sep{width:1px;align-self:stretch;background:var(--line);margin:0 4px}
+.typepick{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;min-width:0;padding:2px 0}
 .typepick .typerow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:0;border-bottom:none}
 .typepick .typerow .tn{min-width:0}
 .typepick .note{font-size:12px;color:var(--danger)}
-.cfgwin{position:fixed;z-index:36;display:flex;flex-direction:column;box-sizing:border-box;border:2px solid var(--cc);border-radius:12px;overflow:hidden;
-  background:color-mix(in srgb,var(--ct) calc(var(--wa,.9)*100%),transparent);
-  -webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);box-shadow:0 10px 34px rgba(20,30,50,.28)}
+.cfgwin{position:fixed;z-index:36;display:flex;flex-direction:column;box-sizing:border-box;border:1px solid #C6CEDA;border-top:4px solid var(--cc);border-radius:10px;overflow:hidden;
+  background:#FBFCFD;box-shadow:0 12px 32px rgba(27,34,48,.22),0 2px 6px rgba(27,34,48,.10)}
 .cfgwin[hidden]{display:none}
-.cfgwin-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;background:var(--cc);color:#fff}
-.cfgwin-h b{flex:1;min-width:140px;font-size:15px}
-.cfgwin-h label{display:inline-flex;align-items:center;gap:5px;font-size:12px;opacity:.95}
-.cfgwin-h input[type=range]{width:90px;accent-color:#fff;padding:0;height:16px}
-.cfgwin-x{border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.15);color:#fff;border-radius:7px;padding:2px 12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
-.cfgwin-x:hover{background:rgba(255,255,255,.32)}
+.cfgwin-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 14px;background:var(--ct);color:var(--cc);border-bottom:1px solid #D5DBE5}
+.cfgwin-h b{flex:1;min-width:140px;font-size:15px;letter-spacing:.02em}
+.cfgwin-x{border:1px solid #B9C2D0;background:#fff;color:#3A4558;border-radius:7px;padding:2px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.cfgwin-x:hover{background:#EEF1F6}
 .cfgwin-b{overflow:auto;padding:4px 0 6px;flex:1;min-height:0}
 .cfgwin .card-b{padding:8px 14px 10px}
-.cfgwin input:not([type=checkbox]):not([type=radio]):not([type=range]),.cfgwin select,.cfgwin textarea{background:rgba(255,255,255,.96)}
-.cfgwin .secset{background:rgba(255,255,255,.55)}
+.cfgwin input:not([type=checkbox]):not([type=radio]):not([type=range]),.cfgwin select,.cfgwin textarea{background:#fff}
+.cfgwin .secset{background:#F1F4F8;border:1px solid #E1E6EE}
 .cfgdetail-t{font-weight:700;font-size:13px;margin:0 0 2px;color:var(--cc)}
-@media print{.cfgwin,.cfgtabs,.typebar{display:none!important}}
+@media print{.cfgwin,.cfgtabs{display:none!important}}
 </style>
 </head>
 <body>
@@ -244,13 +240,12 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
   <details style="margin-top:6px"><summary style="cursor:pointer;color:#1E407C;font-weight:600">更多說明</summary>
   <div style="margin-top:6px">按「存檔」可存成考卷檔（下次用「開啟舊檔」接著改）；熟悉 LaTeX 的老師可以下載 <b>Overleaf 專案 zip</b>（含 main.tex 與 examsheet.cls，上傳後用 <b>XeLaTeX</b> 編譯兩次）。
   選填題的解答直接輸入答案（如 <code>-56/7</code>、<code>\sqrt{27}</code>），數字與正負號會自動變成答案卡的圈圈格子。圖形請先放進「圖庫」，再到每題「附圖」選用。<br>
-  版面、題型預設、圖庫、行距與字型等設定，請按題目區上方的彩色「設定」標籤，會浮出半透明視窗（可用視窗上的滑桿調透明度，按「關閉」或 Esc 關掉）。<br>
+  版面、題型預設、圖庫、行距與字型等設定，請按題目區上方的彩色「設定」標籤，會浮出設定視窗（按「關閉」或 Esc 關掉）。要勾選這份考卷的題型，請按「本試卷題型」標籤。<br>
   <label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="rtToggle" checked style="width:auto"> 左邊欄位沒在編輯時，顯示排版後的數學式（點公式可用數學符號修改，點文字回到輸入）</label></div>
   </details>
 </div>
 <div class="layout">
   <div class="left">
-    <div class="card typebar" id="typeBar"><b>本試卷題型</b><div class="typepick" id="typePick"></div></div>
     <div class="card contentbar" id="contentBar" style="padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
       <div class="cfgtabs" id="cfgTabs"></div>
       <b style="flex:1;min-width:120px">題目內容</b>
@@ -261,7 +256,7 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
     <div id="warns" class="warns" hidden></div>
     <div id="sections" style="display:flex;flex-direction:column;gap:12px"></div>
     <div class="addbar" id="addbar" hidden><b style="font-size:14px">還沒有任何題型</b>
-      <span class="hint">請到上方「本試卷題型」勾選要出的題型，勾選後這裡就會出現該題型的題目區。</span></div>
+      <span class="hint">請按上方「本試卷題型」標籤，勾選要出的題型，勾選後這裡就會出現該題型的題目區。</span></div>
   </div>
   <div class="right">
     <div class="rzh" id="rzh" title="按住左右拖曳，調整左右兩邊的寬度（連按兩下還原）"></div>
@@ -271,12 +266,13 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
   </div>
 </div>
 <div id="cfgHold" hidden>
+  <div class="cfgpane" data-pane="type"><div class="card-b"><div class="hint" style="margin:0 0 6px">勾選這份考卷要出的題型；勾選後題目區會出現該題型。名稱、配分、說明請到「題型預設」設定。<button class="btn small" type="button" style="margin-left:6px" onclick="openCfg('opt')">開啟題型預設</button></div><div class="typepick" id="typePick"></div></div></div>
   <div class="cfgpane" data-pane="head"><div class="card-b" id="setHead"></div></div>
   <div class="cfgpane" data-pane="opt"><div class="card-b" id="typeDetail"></div><div class="card-b" id="setOpt"></div></div>
   <div class="cfgpane" data-pane="fig"><div class="card-b" id="setFig"></div></div>
   <div class="cfgpane" data-pane="adv"><div class="card-b" id="setAdv"></div></div>
 </div>
-<div class="cfgwin" id="cfgWin" hidden role="dialog" aria-label="設定視窗"><div class="cfgwin-h"><b id="cfgWinT"></b><label title="調整視窗透明度，方便同時看到後面">透明度<input type="range" id="cfgWinOp" min="55" max="100" step="1" aria-label="視窗透明度"></label><button class="cfgwin-x" id="cfgWinX" type="button" title="關閉（Esc）">關閉 ✕</button></div><div class="cfgwin-b" id="cfgWinB"></div></div>
+<div class="cfgwin" id="cfgWin" hidden role="dialog" aria-label="設定視窗"><div class="cfgwin-h"><b id="cfgWinT"></b><button class="cfgwin-x" id="cfgWinX" type="button" title="關閉（Esc）">關閉 ✕</button></div><div class="cfgwin-b" id="cfgWinB"></div></div>
 <div class="floatadd" id="floatAdd" hidden></div>
 <div class="wtag" id="wTag" hidden></div>
 
@@ -1752,7 +1748,7 @@ function renderTypePicker(){
     if(wrap.childNodes.length)detParts.push(wrap);
     return row;
   }));
-  if(detBox)detBox.replaceChildren(...(detParts.length?[h('div',{class:'hint'},'各題型區塊的名稱、每題配分與說明（勾選的題型才會出現在這裡）。')]:[h('div',{class:'hint'},'還沒有勾選題型。請先在題目區上方的「本試卷題型」勾選。')]),...detParts);
+  if(detBox)detBox.replaceChildren(...(detParts.length?[h('div',{class:'hint'},'各題型區塊的名稱、每題配分與說明（勾選的題型才會出現在這裡）。')]:[h('div',{class:'hint'},'還沒有勾選題型。請先按題目區上方的「本試卷題型」標籤勾選。')]),...detParts);
 }
 /* 導覽列：每個大題一顆有顏色的按鈕，點了捲到該大題，目前所在的大題反白 */
 function renderNav(){
@@ -1844,10 +1840,11 @@ function goQ(id){
 
 /* ===== 設定浮動視窗：標籤在題目導覽列上，一次只開一個，用關閉鈕或 Esc 關閉 ===== */
 const CFG_WINS={
-  head:{tab:'標頭與版面',title:'標頭與版面設定',c:'#0B7F8C',t:'#E2F3F5'},
-  opt:{tab:'題型預設',title:'題型預設（題型名稱／配分、選項數、全卷滿分檢查）',c:'#8A7300',t:'#F8F1CC'},
-  fig:{tab:'圖庫',title:'圖庫（手繪圖轉向量圖、圖片）',c:'#B0307A',t:'#F9E2EF'},
-  adv:{tab:'行距間距與字型',title:'行距、間距與字型',c:'#4A4FB5',t:'#E5E6F8'}
+  type:{tab:'本試卷題型',title:'本試卷題型（勾選要出的題型）',c:'#0E6377',t:'#E4F0F3',main:true},
+  head:{tab:'標頭與版面',title:'標頭與版面設定',c:'#3D4F7A',t:'#E8ECF4'},
+  opt:{tab:'題型預設',title:'題型預設（題型名稱／配分、選項數、全卷滿分檢查）',c:'#7A6420',t:'#F2EEE0'},
+  fig:{tab:'圖庫',title:'圖庫（手繪圖轉向量圖、圖片）',c:'#7B4B7A',t:'#F1E9F1'},
+  adv:{tab:'行距間距與字型',title:'行距、間距與字型',c:'#44505F',t:'#EAEDF1'}
 };
 let cfgOpen=null;
 function cfgPlace(){
@@ -1879,19 +1876,16 @@ function openCfg(key){
 function toggleCfg(key){if(cfgOpen===key)closeCfg();else openCfg(key);}
 function renderCfgTabs(){
   const box=$('#cfgTabs');if(!box)return;
-  box.replaceChildren(h('span',{class:'cl'},'設定：'),...Object.keys(CFG_WINS).map(k=>{
+  const keys=Object.keys(CFG_WINS),mk=k=>{
     const d=CFG_WINS[k];
     return h('button',{type:'button',class:'cfgtab'+(cfgOpen===k?' on':''),style:`--cc:${d.c};--ct:${d.t}`,title:d.title,'aria-pressed':cfgOpen===k?'true':'false',onclick:()=>toggleCfg(k)},d.tab);
-  }));
+  };
+  box.replaceChildren(...keys.filter(k=>CFG_WINS[k].main).map(mk),h('span',{class:'sep'}),h('span',{class:'cl'},'設定：'),...keys.filter(k=>!CFG_WINS[k].main).map(mk));
   const bar=$('#contentBar');if(bar)document.documentElement.style.setProperty('--navh',bar.offsetHeight+'px');
   cfgPlace();
 }
 function initCfgWin(){
-  const w=$('#cfgWin'),sl=$('#cfgWinOp');if(!w)return;
-  let op=0.9;try{const v=parseFloat(localStorage.getItem('exam-cfgwin-op'));if(v>=0.55&&v<=1)op=v;}catch(e){}
-  const setOp=v=>{w.style.setProperty('--wa',String(v));};
-  setOp(op);sl.value=String(Math.round(op*100));
-  sl.addEventListener('input',()=>{const v=Number(sl.value)/100;setOp(v);try{localStorage.setItem('exam-cfgwin-op',String(v));}catch(e){}});
+  const w=$('#cfgWin');if(!w)return;
   $('#cfgWinX').addEventListener('click',closeCfg);
   document.addEventListener('keydown',e=>{
     if(e.key!=='Escape'||e.defaultPrevented||!cfgOpen)return;
