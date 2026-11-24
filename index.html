@@ -1021,7 +1021,8 @@ function autoMathText(txt,hits){
         let q=s0-1;while(q>=0&&U[q].k==='sp')q--;
         if(q>=0&&U[q].s==='第')return;
         let z=s1+1,nx='';while(z<L&&nx.length<3){if(U[z].k!=='sp')nx+=U[z].s;z++;}
-        if(/^(學年度|學年|學期|年級|班|號|月|日)/.test(nx))return;
+        if(/^(學年度|學年|學期|年級|班|號|月)/.test(nx))return;
+        if(/^日/.test(nx)&&q>=0&&U[q].s==='月')return;   // 只有「3月5日」的日才算日期；「3日後」要轉
       }
       reps.push({a:s0,b:s1,seg,raw});
     });
