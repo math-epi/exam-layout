@@ -1938,6 +1938,328 @@ function mathSvg(svgText){
   if(vb.length===4){svg.setAttribute('width',vb[2]);svg.setAttribute('height',vb[3]);}
   return document.importNode(svg,true);
 }
+/* ===== 純 TikZ 的簡易預覽（圖形資料沒有 SVG 時才用；只支援常見指令，遇到不支援的就回傳空字串，維持「無預覽」提示） ===== */
+const tzCache=new Map();
+function figSvg(f){
+  if(!f||f.kind==='table'||f.kind==='image')return '';
+  if(f.svg)return f.svg;
+  const b=String(f.body||'');if(!b.trim())return '';
+  if(!tzCache.has(b)){let r='';try{r=tikzToSvg(b);}catch(e){r='';}tzCache.set(b,r||'');}
+  return tzCache.get(b);
+}
+function tikzToSvg(src){
+  const U=40,FS=15,PT=0.03515;
+  const fail=m=>{throw new Error(m);};
+  const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const f2=v=>String(Math.round(v*100)/100);
+  /* ---- 工具：括號配對、頂層切割 ---- */
+  function matchEnd(s,i,o,c){let d=0;for(let k=i;k<s.length;k++){const ch=s[k];if(ch==='\\'){k++;continue;}if(ch===o)d++;else if(ch===c){d--;if(d===0)return k;}}fail('括號不成對');}
+  function splitTop(s,sep){
+    const out=[];let d=0,cur='';
+    for(let k=0;k<s.length;k++){
+      const ch=s[k];
+      if(ch==='\\'){cur+=ch+(s[k+1]||'');k++;continue;}
+      if('({['.includes(ch))d++;else if(')}]'.includes(ch))d--;
+      if(ch===sep&&d===0){out.push(cur);cur='';}else cur+=ch;
+    }
+    out.push(cur);return out;
+  }
+  /* ---- 數學式 ---- */
+  const FN={pi:Math.PI,cos:x=>Math.cos(x*Math.PI/180),sin:x=>Math.sin(x*Math.PI/180),tan:x=>Math.tan(x*Math.PI/180),
+    sqrt:Math.sqrt,abs:Math.abs,atan:x=>Math.atan(x)*180/Math.PI,acos:x=>Math.acos(x)*180/Math.PI,asin:x=>Math.asin(x)*180/Math.PI,exp:Math.exp,ln:Math.log};
+  function ev(t){
+    t=String(t).trim().replace(/[{}]/g,'');
+    if(t==='')fail('空的數值');
+    t=t.replace(/(\d*\.?\d+)\s*cm\b/g,'($1)').replace(/(\d*\.?\d+)\s*mm\b/g,'($1*0.1)').replace(/(\d*\.?\d+)\s*pt\b/g,'($1*'+PT+')');
+    const rest=t.replace(/[a-z]+/g,w=>{if(!(w in FN))fail('不支援的名稱 '+w);return '';});
+    if(!/^[\d+\-*\/().,\s^]*$/.test(rest))fail('不支援的算式');
+    t=t.replace(/\^/g,'**').replace(/(\d)\s*\(/g,'$1*(').replace(/(\d)\s+(pi|cos|sin|sqrt)/g,'$1*$2');
+    const v=new Function(...Object.keys(FN),'"use strict";return ('+t+')')(...Object.values(FN));
+    if(typeof v!=='number'||!isFinite(v))fail('算式不是數字');
+    return v;
+  }
+  /* ---- 顏色 ---- */
+  const CN={black:[0,0,0],white:[255,255,255],red:[255,0,0],green:[0,128,0],blue:[0,0,255],cyan:[0,255,255],magenta:[255,0,255],yellow:[255,255,0],
+    gray:[128,128,128],grey:[128,128,128],lightgray:[211,211,211],darkgray:[64,64,64],orange:[255,128,0],purple:[191,0,64],violet:[128,0,191],brown:[191,128,64],
+    pink:[255,191,191],teal:[0,128,128],olive:[128,128,0],lime:[191,255,0]};
+  function colorOf(sp){
+    const p=String(sp).trim().split('!');
+    const b=CN[p[0]];if(!b)return null;
+    if(p.length===1)return '#'+b.map(x=>x.toString(16).padStart(2,'0')).join('');
+    const pct=parseFloat(p[1]);if(!isFinite(pct))return null;
+    const o=p[2]?CN[p[2]]:[255,255,255];if(!o)return null;
+    return '#'+b.map((x,i)=>Math.round(x*pct/100+o[i]*(100-pct)/100).toString(16).padStart(2,'0')).join('');
+  }
+  /* ---- 選項 ---- */
+  function parseOpts(str,base){
+    const o=Object.assign({},base);
+    splitTop(str||'',',').forEach(raw=>{
+      const t=raw.trim().replace(/\s+/g,' ');if(!t)return;
+      const eq=t.indexOf('=');const key=eq>=0?t.slice(0,eq).trim():t;const val=eq>=0?t.slice(eq+1).trim():'';
+      if(/^(shift|xshift|yshift|rotate|scale|xscale|yscale|cm|x|y|z|transform canvas|clip|rotate around|xslant|yslant)$/.test(key))fail('不支援座標變換 '+key);
+      const am=t.match(/^(<|[A-Za-z]+|\{[^}]*\})?-(>+|[A-Za-z]+|\{[^}]*\})?$/);
+      if(eq<0&&am&&(am[1]||am[2])){o.aS=!!am[1];o.aE=!!am[2];return;}
+      if(eq<0&&t==='<->'){o.aS=o.aE=true;return;}
+      if(/^(densely |loosely )?dashed$/.test(t)){o.dash='6 4';return;}
+      if(/^(densely |loosely )?dotted$/.test(t)){o.dash='1.5 3';return;}
+      if(t==='solid'){o.dash='';return;}
+      const W={'ultra thin':0.4,'very thin':0.6,'thin':0.9,'semithick':1.5,'thick':1.9,'very thick':2.5,'ultra thick':3.4};
+      if(eq<0&&t in W){o.w=W[t];return;}
+      if(key==='line width'){const v=ev(val);o.w=Math.max(0.3,v/PT*0.4*3);return;}
+      if(t==='draw'){o.drawFlag=true;return;}
+      if(key==='draw'){o.drawFlag=true;const c=colorOf(val);if(c)o.dc=c;return;}
+      if(t==='fill'){o.fillFlag=true;return;}
+      if(key==='fill'){o.fillFlag=true;const c=colorOf(val);if(c)o.fc=c;return;}
+      if(key==='color'){const c=colorOf(val);if(c)o.col=c;return;}
+      if(key==='opacity'){const v=parseFloat(val);if(isFinite(v))o.op=v;return;}
+      if(eq<0){const c=colorOf(t);if(c){o.col=c;return;}}
+      /* 其他（pattern、label、inner sep、font…）只影響細節，忽略 */
+    });
+    return o;
+  }
+  /* ---- 前處理 ---- */
+  let s=String(src).split('\n').map(l=>l.replace(/(^|[^\\])%.*$/,'$1')).join('\n');
+  s=s.replace(/\\begin\{tikzpicture\}(\[[^\]]*\])?|\\end\{tikzpicture\}/g,'');
+  let guard=0;
+  for(;;){
+    const i=s.indexOf('\\foreach');if(i<0)break;
+    if(++guard>40)fail('迴圈太多');
+    let k=i+8;const vm=s.slice(k).match(/^\s*\\([A-Za-z]+)\s+in\s*/);if(!vm)fail('foreach 格式不支援');
+    k+=vm[0].length;if(s[k]!=='{')fail('foreach 清單格式不支援');
+    const e1=matchEnd(s,k,'{','}');const listTxt=s.slice(k+1,e1);
+    k=e1+1;while(/\s/.test(s[k]||''))k++;
+    let body,e2;
+    if(s[k]==='{'){e2=matchEnd(s,k,'{','}');body=s.slice(k+1,e2);}
+    else{let d=0;e2=k;for(;e2<s.length;e2++){const ch=s[e2];if('({['.includes(ch))d++;else if(')}]'.includes(ch))d--;else if(ch===';'&&d===0)break;}body=s.slice(k,e2+1);}
+    let items=splitTop(listTxt,',').map(x=>x.trim()).filter(x=>x!=='');
+    const di=items.indexOf('...');
+    if(di>=0){
+      if(di===items.length-1||di===0)fail('foreach 範圍格式不支援');
+      const a=ev(items[di-1]),b=ev(items[di+1]);
+      const step=di>=2?a-ev(items[di-2]):(b>=a?1:-1);
+      if(!step)fail('foreach 步長為 0');
+      const arr=items.slice(0,di-1).map(x=>String(ev(x)));
+      for(let x=a,n=0;(step>0?x<=b+1e-9:x>=b-1e-9)&&n<200;x+=step,n++)arr.push(String(Math.round(x*1e6)/1e6));
+      items=arr;
+    }
+    if(items.length>60)fail('foreach 次數太多');
+    if(items.some(x=>x.includes('/')))fail('foreach 多變數不支援');
+    const re=new RegExp('\\\\'+vm[1]+'(?![A-Za-z])','g');
+    const exp=items.map(v=>body.replace(re,'('+v+')')).join('\n');
+    s=s.slice(0,i)+exp+s.slice(s[k]==='{'?e2+1:e2+1);
+    if(s.length>200000)fail('太長');
+  }
+  /* ---- 解析 ---- */
+  const named={};const els=[];const labels=[];
+  let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+  const grow=(x,y,r)=>{r=r||0;minx=Math.min(minx,x-r);maxx=Math.max(maxx,x+r);miny=Math.min(miny,y-r);maxy=Math.max(maxy,y+r);};
+  const PX=(x,y)=>[x*U,-y*U];
+  function coordOf(str,ref){
+    let t=str.trim();
+    if(t.startsWith('$')||t.includes('cs:'))fail('不支援的座標');
+    if(/^[A-Za-z_][\w']*$/.test(t)){if(!named[t])fail('找不到座標 '+t);return named[t].slice();}
+    if(/^[A-Za-z_][\w']*\.[a-z ]+$/.test(t))fail('不支援錨點座標');
+    const parts=splitTop(t,',');
+    if(parts.length===2)return [ev(parts[0]),ev(parts[1])];
+    if(parts.length===3)fail('不支援三維座標');
+    const pc=t.split(':');
+    if(pc.length===2){const a=ev(pc[0]),r=ev(pc[1]);return [r*Math.cos(a*Math.PI/180),r*Math.sin(a*Math.PI/180)];}
+    return fail('座標格式不支援');
+  }
+  function textLabel(txt,x,y,opts,pxAt){
+    /* opts：節點選項字串；(x,y)=像素座標 */
+    let words=[];
+    splitTop(opts||'',',').forEach(raw=>{
+      const t=raw.trim();const eq=t.indexOf('=');const key=(eq>=0?t.slice(0,eq):t).trim();const v=eq>=0?t.slice(eq+1).trim():'';
+      if(/^(above|below|left|right)( (above|below|left|right))*$/.test(key))words=words.concat(key.split(' '));
+      else if(key==='anchor'){const m={north:'below',south:'above',east:'left',west:'right'};v.split(' ').forEach(w=>{if(m[w])words.push(m[w]);});}
+    });
+    const up=words.includes('above'),dn=words.includes('below'),lf=words.includes('left'),rt=words.includes('right');
+    let anchor='middle',px=x,py=y,by;
+    if(rt){anchor='start';px=x+(up||dn?4:7);}else if(lf){anchor='end';px=x-(up||dn?4:7);}
+    if(up)by=py-6;else if(dn)by=py+6+FS*0.75;else by=py+FS*0.32;
+    const T=String(txt).trim();if(!T)return;
+    let tex='',plain=T.replace(/\$/g,'').replace(/\\[a-zA-Z]+/g,'').replace(/[{}]/g,'');
+    if(T.includes('$')){
+      const m=T.match(/^\$([^$]*)\$$/);
+      tex=m?m[1]:'\\text{'+T+'}';
+    }else if(/\\[a-zA-Z]/.test(T))tex='\\text{'+T+'}';
+    const w=tex?Math.min(FS*6,tex.length*FS*0.5):[...plain].reduce((a,c)=>a+(c.charCodeAt(0)>255?FS:FS*0.55),0);
+    const x0=anchor==='start'?px:anchor==='end'?px-w:px-w/2;
+    grow(x0,by-FS,0);grow(x0+w,by+FS*0.3,0);
+    labels.push('<text x="'+f2(px)+'" y="'+f2(by)+'" font-size="'+FS+'" font-family="serif" text-anchor="'+anchor+'"'+(tex?' data-tex="'+esc(tex)+'"':'')+'>'+esc(plain||tex)+'</text>');
+  }
+  function arrowPoly(tx,ty,dx,dy,col){
+    const L=Math.hypot(dx,dy)||1;const ux=dx/L,uy=dy/L,nx=-uy,ny=ux;const len=8,wd=3.2;
+    const bx=tx-ux*len,by=ty-uy*len;
+    const p=[[tx,ty],[bx+nx*wd,by+ny*wd],[tx-ux*len*0.72,ty-uy*len*0.72],[bx-nx*wd,by-ny*wd]];
+    p.forEach(q=>grow(q[0],q[1],0));
+    return '<polygon points="'+p.map(q=>f2(q[0])+','+f2(q[1])).join(' ')+'" fill="'+col+'" stroke="'+col+'" stroke-width="0.4" stroke-linejoin="round"/>';
+  }
+  function runPath(cmd,optStr,body,base){
+    const o=parseOpts(optStr,base);
+    const doDraw=cmd==='draw'||cmd==='filldraw'||o.drawFlag;
+    const doFill=cmd==='fill'||cmd==='filldraw'||o.fillFlag;
+    const strokeC=o.dc||o.col||'#111',fillC=o.fc||o.col||'#111';
+    const sw=o.w||1.2;
+    const subs=[];let sp=null;let cur=null,ref=null,start=null,lastSeg=null;
+    const shapes=[];
+    let conn=null;
+    const rel=()=>ref||[0,0];
+    const pushPt=(op,pts)=>{if(!sp){sp={ops:[]};subs.push(sp);}sp.ops.push({op,pts});pts.forEach(p=>grow(p[0]*U,-p[1]*U,sw));};
+    function goTo(p,c){
+      if(c==null||c==='move'){sp=null;pushPt('M',[p]);start=p;}
+      else if(c==='--'||c==='to')pushPt('L',[p]);
+      else if(c==='-|')pushPt('L',[[p[0],cur[1]]]),pushPt('L',[p]);
+      else if(c==='|-')pushPt('L',[[cur[0],p[1]]]),pushPt('L',[p]);
+      else if(c==='rect'){
+        const a=cur,b=p;sp=null;pushPt('M',[a]);pushPt('L',[[b[0],a[1]]]);pushPt('L',[b]);pushPt('L',[[a[0],b[1]]]);sp.ops.push({op:'Z',pts:[]});
+        start=a;
+      }
+      lastSeg=c&&c!=='move'?[cur,p]:null;
+      cur=p;
+    }
+    let i=0;const n=body.length;
+    const ws=()=>{while(i<n&&/\s/.test(body[i]))i++;};
+    function readCoord(){
+      ws();let relm=0;
+      if(body.startsWith('++',i)){relm=2;i+=2;}else if(body[i]==='+'){relm=1;i++;}
+      ws();if(body[i]!=='(')fail('預期座標');
+      const e=matchEnd(body,i,'(',')');const inner=body.slice(i+1,e);i=e+1;
+      let p=coordOf(inner);
+      if(relm){const b=relm===2?cur:ref;if(!b)fail('相對座標前沒有起點');p=[b[0]+p[0],b[1]+p[1]];}
+      return {p,relm};
+    }
+    function setRef(r){if(r.relm===1){/* ref 不變 */}else ref=r.p;}
+    while(true){
+      ws();if(i>=n)break;
+      const rest=body.slice(i);let m;
+      if(rest[0]==='('||rest[0]==='+'){
+        const r=readCoord();
+        if(conn==='rect'){goTo(r.p,'rect');}
+        else goTo(r.p,conn||(cur?'move':null));
+        if(r.relm===2)ref=r.p;else if(r.relm===0)ref=r.p;
+        conn=null;
+      }else if(rest.startsWith('--')){i+=2;ws();if(body.startsWith('cycle',i)){i+=5;if(!cur)fail('cycle');pushPt('Z',[]);cur=start;conn=null;}else conn='--';}
+      else if(rest.startsWith('-|')){i+=2;conn='-|';}
+      else if(rest.startsWith('|-')){i+=2;conn='|-';}
+      else if(rest.startsWith('..')){
+        i+=2;ws();if(!body.startsWith('controls',i))fail('.. 格式不支援');i+=8;
+        const c1=readCoord().p;ws();let c2=c1;
+        if(body.startsWith('and',i)){i+=3;c2=readCoord().p;}
+        ws();if(!body.startsWith('..',i))fail('.. controls 缺結尾');i+=2;
+        const e=readCoord();pushPt('C',[c1,c2,e.p]);lastSeg=[cur,e.p];cur=e.p;ref=e.p;conn=null;
+      }
+      else if(m=rest.match(/^to\b\s*(\[[^\]]*\])?/)){if(m[1]&&m[1].slice(1,-1).trim())fail('to 的彎曲選項不支援');i+=m[0].length;conn='to';}
+      else if(m=rest.match(/^cycle\b/)){i+=5;pushPt('Z',[]);cur=start;}
+      else if(m=rest.match(/^rectangle\b/)){i+=9;conn='rect';}
+      else if(m=rest.match(/^circle\b/)){
+        i+=6;ws();let rx,ry;
+        if(body[i]==='['){const e=matchEnd(body,i,'[',']');const op=body.slice(i+1,e);i=e+1;ws();
+          const mm=op.match(/radius\s*=\s*([^,]+)/);if(!mm)fail('circle 選項不支援');rx=ry=ev(mm[1]);}
+        else if(body[i]==='('){const e=matchEnd(body,i,'(',')');const inner=body.slice(i+1,e);i=e+1;rx=ry=ev(inner);}
+        else fail('circle 缺半徑');
+        if(!cur)fail('circle 沒有圓心');
+        shapes.push({k:'e',c:cur.slice(),rx,ry});grow(cur[0]*U,-cur[1]*U,Math.max(rx,ry)*U+sw);
+      }
+      else if(m=rest.match(/^ellipse\b/)){
+        i+=7;ws();if(body[i]!=='(')fail('ellipse 格式');const e=matchEnd(body,i,'(',')');const inner=body.slice(i+1,e);i=e+1;
+        const pr=inner.split(/\band\b/);if(pr.length!==2)fail('ellipse 格式');
+        const rx=ev(pr[0]),ry=ev(pr[1]);if(!cur)fail('ellipse');shapes.push({k:'e',c:cur.slice(),rx,ry});grow(cur[0]*U,-cur[1]*U,Math.max(rx,ry)*U+sw);
+      }
+      else if(m=rest.match(/^arc\b/)){
+        i+=3;ws();if(body[i]!=='(')fail('arc 只支援 (起角:終角:半徑)');
+        const e=matchEnd(body,i,'(',')');const pr=body.slice(i+1,e).split(':');i=e+1;
+        if(pr.length!==3||!cur)fail('arc 格式');
+        const a=ev(pr[0]),b=ev(pr[1]),r=ev(pr[2]),R=Math.PI/180;
+        const c=[cur[0]-r*Math.cos(a*R),cur[1]-r*Math.sin(a*R)];
+        const end=[c[0]+r*Math.cos(b*R),c[1]+r*Math.sin(b*R)];
+        pushPt('A',[end]);sp.ops[sp.ops.length-1].arc={r:r*U,large:Math.abs(b-a)>180?1:0,sweep:b>a?0:1};
+        grow(c[0]*U,-c[1]*U,r*U);
+        cur=end;ref=end;
+      }
+      else if(m=rest.match(/^(node|coordinate)\b/)){
+        i+=m[1].length;ws();let opts='';
+        if(body[i]==='['){const e=matchEnd(body,i,'[',']');opts=body.slice(i+1,e);i=e+1;ws();}
+        let nm='';
+        if(body[i]==='('){const e=matchEnd(body,i,'(',')');nm=body.slice(i+1,e).trim();i=e+1;ws();}
+        let at=null;
+        if(body.startsWith('at',i)&&/\s|\(/.test(body[i+2]||'')){i+=2;ws();at=readCoord().p;ws();}
+        let txt='';
+        if(m[1]==='node'){if(body[i]!=='{')fail('node 缺文字');const e=matchEnd(body,i,'{','}');txt=body.slice(i+1,e);i=e+1;}
+        let pos=at||cur;if(!pos)fail('node 沒有位置');
+        if(!at&&lastSeg){
+          let tt=null;const po=splitTop(opts,',').map(x=>x.trim());
+          po.forEach(x=>{if(x==='midway')tt=0.5;else if(x==='near start')tt=0.25;else if(x==='near end')tt=0.75;else if(x==='at start')tt=0;else if(x==='at end')tt=1;else if(/^pos\s*=/.test(x))tt=ev(x.replace(/^pos\s*=/,''));});
+          if(tt!=null)pos=[lastSeg[0][0]+(lastSeg[1][0]-lastSeg[0][0])*tt,lastSeg[0][1]+(lastSeg[1][1]-lastSeg[0][1])*tt];
+        }
+        if(nm)named[nm]=pos.slice();
+        if(m[1]==='node'){const q=PX(pos[0],pos[1]);grow(q[0],q[1],0);textLabel(txt,q[0],q[1],opts);}
+      }
+      else fail('不支援的指令：'+rest.slice(0,12));
+    }
+    /* 輸出 */
+    if(doDraw||doFill){
+      const arrowC=strokeC;
+      subs.forEach(sb=>{
+        if(!sb.ops.length)return;
+        const pl=[];sb.ops.forEach(op=>{op.pts.forEach(p=>pl.push(PX(p[0],p[1])));});
+        const closed=sb.ops.some(op=>op.op==='Z');
+        let d='';
+        const last=sb.ops[sb.ops.length-1];
+        let tail=null,head=null;
+        if(doDraw&&!closed&&pl.length>=2){
+          if(o.aE){const t=pl[pl.length-1];let pv=pl[pl.length-2];if(last.op==='C')pv=PX(last.pts[1][0],last.pts[1][1]);tail=[t,pv];}
+          if(o.aS){const t=pl[0];let nx=pl[1];if(sb.ops[1]&&sb.ops[1].op==='C')nx=PX(sb.ops[1].pts[0][0],sb.ops[1].pts[0][1]);head=[t,nx];}
+        }
+        sb.ops.forEach((op,k)=>{
+          let pts=op.pts.map(p=>PX(p[0],p[1]));
+          if(k===sb.ops.length-1&&tail&&op.op==='L'){const L=Math.hypot(tail[0][0]-tail[1][0],tail[0][1]-tail[1][1]);if(L>9){const ux=(tail[0][0]-tail[1][0])/L,uy=(tail[0][1]-tail[1][1])/L;pts=[[pts[0][0]-ux*5.5,pts[0][1]-uy*5.5]];}}
+          if(k===1&&head&&op.op==='L'&&sb.ops[0].op==='M'){}
+          if(op.op==='M')d+='M'+f2(pts[0][0])+' '+f2(pts[0][1]);
+          else if(op.op==='L')d+='L'+f2(pts[0][0])+' '+f2(pts[0][1]);
+          else if(op.op==='C')d+='C'+pts.map(p=>f2(p[0])+' '+f2(p[1])).join(' ');
+          else if(op.op==='A')d+='A'+f2(op.arc.r)+' '+f2(op.arc.r)+' 0 '+op.arc.large+' '+op.arc.sweep+' '+f2(pts[0][0])+' '+f2(pts[0][1]);
+          else if(op.op==='Z')d+='Z';
+        });
+        const attr=' fill="'+(doFill?fillC:'none')+'"'+(doFill&&o.op!=null?' fill-opacity="'+o.op+'"':'')+(doDraw?' stroke="'+strokeC+'" stroke-width="'+sw+'" stroke-linejoin="round" stroke-linecap="round"'+(o.dash?' stroke-dasharray="'+o.dash+'"':''):' stroke="none"');
+        els.push('<path d="'+d+'"'+attr+'/>');
+        if(tail)els.push(arrowPoly(tail[0][0],tail[0][1],tail[0][0]-tail[1][0],tail[0][1]-tail[1][1],arrowC));
+        if(head)els.push(arrowPoly(head[0][0],head[0][1],head[0][0]-head[1][0],head[0][1]-head[1][1],arrowC));
+      });
+      shapes.forEach(sh=>{
+        const c=PX(sh.c[0],sh.c[1]);
+        const attr=' fill="'+(doFill?fillC:'none')+'"'+(doDraw?' stroke="'+strokeC+'" stroke-width="'+sw+'"'+(o.dash?' stroke-dasharray="'+o.dash+'"':''):' stroke="none"');
+        els.push(sh.rx===sh.ry?'<circle cx="'+f2(c[0])+'" cy="'+f2(c[1])+'" r="'+f2(sh.rx*U)+'"'+attr+'/>':'<ellipse cx="'+f2(c[0])+'" cy="'+f2(c[1])+'" rx="'+f2(sh.rx*U)+'" ry="'+f2(sh.ry*U)+'"'+attr+'/>');
+      });
+    }
+  }
+  /* 逐一處理敘述 */
+  const stack=[{}];
+  const stmts=splitTop(s,';');
+  stmts.forEach(raw=>{
+    let t=raw.trim();
+    for(;;){
+      let m;
+      if(m=t.match(/^\\begin\{scope\}\s*(\[[^\]]*\])?/)){stack.push(parseOpts(m[1]?m[1].slice(1,-1):'',stack[stack.length-1]));t=t.slice(m[0].length).trim();}
+      else if(m=t.match(/^\\end\{scope\}/)){if(stack.length>1)stack.pop();t=t.slice(m[0].length).trim();}
+      else break;
+    }
+    if(!t)return;
+    const base=stack[stack.length-1];
+    let m=t.match(/^\\(draw|fill|filldraw|path)\b\s*(\[(?:[^\[\]]|\[[^\]]*\])*\])?/);
+    if(m){runPath(m[1],m[2]?m[2].slice(1,-1):'',t.slice(m[0].length),base);return;}
+    m=t.match(/^\\(node|coordinate)\b/);
+    if(m){runPath('path','',t.slice(1),base);return;}
+    fail('不支援的指令：'+t.slice(0,16));
+  });
+  if(!els.length&&!labels.length)return '';
+  const mg=10;
+  if(minx>maxx){minx=0;maxx=1;miny=0;maxy=1;}
+  const W=maxx-minx+2*mg,H=maxy-miny+2*mg;
+  if(W>2000||H>2000)fail('圖太大');
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+f2(W)+' '+f2(H)+'" width="'+f2(W)+'" height="'+f2(H)+'"><g transform="translate('+f2(mg-minx)+' '+f2(mg-miny)+')">'+els.join('')+labels.join('')+'</g></svg>';
+}
 function parseFigureData(text){
   text=String(text||'').trim();
   if(!text)return {figs:[],error:'貼上框是空的'};
@@ -2064,10 +2386,11 @@ function optFigEl(f,wpct){
   const em=Math.max(2,Math.min(24,wpct*0.4));
   const box=h('span',{class:'ofig',style:'flex:none;display:inline-block;margin-left:.4em;line-height:0'});
   if(f.kind==='image')box.append(h('img',{src:f.data,style:`width:${em}em;max-width:100%`}));
-  else if(f.svg){
-    const m=f.svg.match(/viewBox="[\d.\-]+\s+[\d.\-]+\s+([\d.]+)\s+([\d.]+)"/);
+  else if(figSvg(f)){
+    const sv=figSvg(f);
+    const m=sv.match(/viewBox="[\d.\-]+\s+[\d.\-]+\s+([\d.]+)\s+([\d.]+)"/);
     const wem=m?(parseFloat(m[1])/40*(f.scale||1)*2.362):6;
-    box.append(h('img',{src:svgUrl(f.svg),'data-figsvg':f.id,style:`width:${wem}em;max-width:100%`}));
+    box.append(h('img',{src:svgUrl(sv),'data-figsvg':f.id,style:`width:${wem}em;max-width:100%`}));
   }else box.append(h('span',{style:'border:1px dashed #aaa;font-size:.6em;color:#888;padding:.3em'},'圖 '+f.id+'（編譯後顯示）'));
   return box;
 }
@@ -2075,10 +2398,11 @@ function figEl(f,wpct){
   const box=h('div',{class:'figbox',style:`flex:none;width:${wpct}%;margin-left:1em;align-self:flex-start;text-align:center`});
   if(f.kind==='table'){box.append(tableEl(f));}
   else if(f.kind==='image'){box.append(h('img',{src:f.data,style:'max-width:100%'}));}
-  else if(f.svg){
-    const m=f.svg.match(/viewBox="[\d.\-]+\s+[\d.\-]+\s+([\d.]+)\s+([\d.]+)"/);
+  else if(figSvg(f)){
+    const sv=figSvg(f);
+    const m=sv.match(/viewBox="[\d.\-]+\s+[\d.\-]+\s+([\d.]+)\s+([\d.]+)"/);
     const wem=m?(parseFloat(m[1])/40*(f.scale||1)*2.362):10;
-    const im=h('img',{src:svgUrl(f.svg),'data-figsvg':f.id,style:`width:${wem}em;max-width:100%`});
+    const im=h('img',{src:svgUrl(sv),'data-figsvg':f.id,style:`width:${wem}em;max-width:100%`});
     box.append(im);
   }else box.append(h('div',{style:'border:1px dashed #aaa;font-size:.7em;color:#888;padding:1em .3em'},'圖 '+f.id+'：只有 TikZ，無預覽（編譯後顯示）'));
   return box;
@@ -2086,8 +2410,8 @@ function figEl(f,wpct){
 function hydrateFigs(root){
   mjQ=mjQ.then(()=>window.MathJax&&MathJax.startup?MathJax.startup.promise:null).then(()=>{
     root.querySelectorAll('img[data-figsvg]').forEach(im=>{
-      const f=findFig(im.dataset.figsvg);if(!f||!f.svg)return;
-      const el=mathSvg(f.svg);if(!el)return;
+      const f=findFig(im.dataset.figsvg);const sv=f?figSvg(f):'';if(!sv)return;
+      const el=mathSvg(sv);if(!el)return;
       const wst=im.style.width;el.style.width=wst;el.style.maxWidth='100%';el.style.height='auto';
       el.style.overflow='visible';el.setAttribute('data-figsvg',f.id);im.replaceWith(el);
     });
@@ -2184,7 +2508,7 @@ function buildFigLib(){
     const th=h('div',{style:'flex:none;width:96px;min-height:60px;background:#fff;border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;padding:4px'});
     if(f.kind==='image')th.append(h('img',{src:f.data,style:'max-width:100%;max-height:90px'}));
     else if(f.kind==='table')th.append(h('span',{class:'hint'},'表格 '+(f.rows||[]).length+'×'+Math.max(1,...(f.rows||[[]]).map(r=>r.length))));
-    else if(f.svg)th.append(h('img',{src:svgUrl(f.svg),'data-figsvg':f.id,style:'max-width:100%;max-height:90px'}));
+    else if(figSvg(f))th.append(h('img',{src:svgUrl(figSvg(f)),'data-figsvg':f.id,style:'max-width:100%;max-height:90px'}));
     else th.append(h('span',{class:'hint'},'無預覽'));
     const right=h('div',{style:'flex:1;min-width:0;display:flex;flex-direction:column;gap:6px'},
       h('div',{class:'optrow'},h('b',{style:'flex:none'},'圖 '+f.id),bindInput(f,'name',{type:'text',after:()=>{save();}})),
