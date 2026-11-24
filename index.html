@@ -1017,6 +1017,12 @@ function autoMathText(txt,hits){
         if((q<0||U[q].s==='\n')&&nx&&(nx.s==='.'||nx.s==='、'))return;
       }
       if(/^\d+(?:\.\d+)?$/.test(raw)){let z=s1+1;while(z<L&&U[z].k==='sp')z++;if(z<L&&U[z].s==='分')return;}   // 配分（3分）有自己的輸入欄，不當數學式
+      if(/^\d+(?:\.\d+)?$/.test(raw)){                                  // 序數、日期、班級：當文字，不轉（第3題、3月5日、113學年度、2年級3班5號）
+        let q=s0-1;while(q>=0&&U[q].k==='sp')q--;
+        if(q>=0&&U[q].s==='第')return;
+        let z=s1+1,nx='';while(z<L&&nx.length<3){if(U[z].k!=='sp')nx+=U[z].s;z++;}
+        if(/^(學年度|學年|學期|年級|班|號|月|日)/.test(nx))return;
+      }
       reps.push({a:s0,b:s1,seg,raw});
     });
   });
