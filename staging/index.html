@@ -1838,6 +1838,7 @@ function qCard(s,q){
       if(e.value===v){if(e._tok&&document.activeElement===e)e._tok.load();return;}
       const a=document.activeElement===e,p=a?e.selectionStart:0,old=e.value.length;
       e.value=v;
+      if(!a&&e._rtv&&typeof rtRender==='function')rtRender(e);
       if(a){const np=Math.max(0,Math.min(v.length,p+v.length-old));e.setSelectionRange(np,np);if(e._tok)e._tok.load();}
     };
     const mcSetFields=()=>{
