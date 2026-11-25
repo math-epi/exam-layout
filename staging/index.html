@@ -1725,7 +1725,9 @@ function fmtButtons(el){
 /* 收合：該題（大題）收起後排在畫面最上面（工具列下方），接著就是它的下一題；展開：留在原位不跳 */
 function toggleCollapse(o,sel){
   const e0=document.querySelector(sel),top0=e0?e0.getBoundingClientRect().top:0;
-  const col=!o.collapsed;o.collapsed=col;rerender(true);
+  const col=!o.collapsed;o.collapsed=col;
+  if(sel.startsWith('[data-qid')){lastFocusQ=o.id;userScrolled=false;lastPvQ=null;markProg();}   // 右邊預覽跟著這題
+  rerender(true);
   const el=document.querySelector(sel);if(!el)return;
   const cs=getComputedStyle(document.documentElement);
   const off=(parseFloat(cs.getPropertyValue('--toph'))||0)+(parseFloat(cs.getPropertyValue('--navh'))||0)+10;
