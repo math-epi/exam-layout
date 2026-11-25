@@ -273,6 +273,8 @@ input.sw:checked+.swstate::after{content:'開'}
       <div class="cfgtabs" id="cfgTabs"></div>
       <div class="secnav" id="secnav"></div>
       <button class="btn small" id="btnCollapse" type="button" title="全部收合／全部展開">全部收合</button>
+      <button class="btn small" id="btnFixAll" type="button" hidden title="把全卷所有題目 $…$ 裡的中文一次修正">全卷修正數學式中文</button>
+      <button class="btn small" id="btnClearPb" type="button" hidden title="取消所有「此題後換頁」與「大題結束後換頁」">清除自訂分頁</button>
     </div>
     <div id="warns" class="warns" hidden></div>
     <div id="sections" style="display:flex;flex-direction:column;gap:12px"></div>
@@ -1879,8 +1881,8 @@ function refreshChips(){
   if(comp.warns.length){w.hidden=false;w.replaceChildren(h('b',{},'檢查提醒（'+comp.warns.length+'）'),h('ul',{},...comp.warns.slice(0,12).map(x=>h('li',{},x))),...(comp.warns.length>12?[h('span',{class:'hint'},'還有 '+(comp.warns.length-12)+' 則…')]:[]));}
   else w.hidden=true;
 }
-function changed(){save();scheduleOutput();refreshChips();}
-function rerender(keepOnlyStructure){buildSettingsIfNeeded();buildFigLib();renderSections();renderOut();save();}
+function changed(){save();scheduleOutput();refreshChips();if(window.syncBulkBtns)syncBulkBtns();}
+function rerender(keepOnlyStructure){buildSettingsIfNeeded();buildFigLib();renderSections();renderOut();save();if(window.syncBulkBtns)syncBulkBtns();}
 let settingsBuilt=false;
 function buildSettingsIfNeeded(){if(!settingsBuilt){buildSettings();settingsBuilt=true;}}
 const TYPE_ORDER=['single','multi','fill','mixed','calc','custom'];
@@ -3831,6 +3833,34 @@ $('#btnImport').onclick=()=>$('#fileImport').click();
 $('#fileImport').onchange=e=>{if(e.target.files[0])importProject(e.target.files[0]);e.target.value='';};
 $('#btnImportTex').onclick=()=>$('#fileTex').click();
 $('#fileTex').onchange=e=>{if(e.target.files.length)texImportFiles(e.target.files);e.target.value='';};
+/* 全卷批次：修正數學式中文、清除自訂分頁（有才顯示，按兩次確認） */
+function bulkCounts(){
+  let fx=0,fq=0,pb=0;
+  S.sections.forEach(sc=>{
+    if(sc.pbAfter)pb++;
+    sc.qs.forEach(q=>{const n=mathCjkInfo(q).n;if(n){fx+=n;fq++;}if(q.pbAfter)pb++;});
+  });
+  return {fx,fq,pb};
+}
+function bulkBtn(id,label,fn){
+  const b=$(id);let t=0;b._label=label;b._fn=fn;
+  b.addEventListener('click',()=>{
+    if(b.classList.contains('armed')){clearTimeout(t);b.classList.remove('armed');fn();}
+    else{b.classList.add('armed');b.textContent='確定？再按一次（'+b._conf+'）';t=setTimeout(()=>{b.classList.remove('armed');syncBulkBtns();},3500);}
+  });
+}
+function syncBulkBtns(){
+  if(typeof S==="undefined"||!S)return;
+  const c=bulkCounts(),f=$('#btnFixAll'),p=$('#btnClearPb');
+  if(!f||!p)return;
+  f.hidden=!c.fx;p.hidden=!c.pb;
+  f._conf='修正 '+c.fq+' 題共 '+c.fx+' 處';p._conf='取消 '+c.pb+' 個換頁';
+  if(!f.classList.contains('armed'))f.textContent='全卷修正數學式中文（'+c.fx+' 處）';
+  if(!p.classList.contains('armed'))p.textContent='清除自訂分頁（'+c.pb+'）';
+}
+bulkBtn('#btnFixAll','',()=>{S.sections.forEach(sc=>sc.qs.forEach(q=>mathCjkApply(q)));rerender();syncBulkBtns();});
+bulkBtn('#btnClearPb','',()=>{S.sections.forEach(sc=>{sc.pbAfter=false;sc.qs.forEach(q=>{q.pbAfter=false;});});rerender();syncBulkBtns();});
+if(typeof S!=="undefined"&&S)syncBulkBtns();
 const anyOpenQ=()=>S.sections.some(s=>s.collapsed||s.qs.some(q=>!q.collapsed));
 const syncCollapseBtn=()=>{const b=$('#btnCollapse');if(b)b.textContent=anyOpenQ()?'全部收合':'全部展開';};
 $('#btnCollapse').onclick=()=>{
