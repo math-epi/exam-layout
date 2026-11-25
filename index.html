@@ -262,6 +262,7 @@ input.sw:checked+.swstate::after{content:'開'}
   <button class="btn small" id="btnImport" type="button" title="開啟之前存的考卷檔">開啟舊檔</button>
   <button class="btn small" id="btnImportTex" type="button" title="匯入其他老師用 LaTeX 打的題目（.tex 或 .zip），自動分到各題型">匯入 LaTeX</button>
   <button class="btn small danger" id="btnReset" type="button">載入範例</button>
+  <a class="btn small" id="lnkManual" href="manual.html" target="_blank" rel="noopener" style="text-decoration:none">使用手冊</a>
   <span id="saveStatus" aria-live="polite" style="font-size:12px;margin-left:10px;padding:3px 10px;border-radius:999px;background:#EAF0FA;color:#5B6577;white-space:nowrap"></span>
   <input type="file" id="fileImport" accept=".json,.zip,application/json,application/zip" hidden>
   <input type="file" id="fileTex" accept=".tex,.txt,.zip" multiple hidden>
@@ -338,6 +339,8 @@ let mjQ=Promise.resolve();
 const PAGEFMT=[['p','第 1 頁'],['pt','第 1 頁，共 3 頁'],['sl','1 / 3'],['dash','- 1 -'],['num','1'],['none','不顯示頁碼']];
 function pageText(fmt,i,n){return ({p:`第 ${i} 頁`,pt:`第 ${i} 頁，共 ${n} 頁`,sl:`${i} / ${n}`,dash:`- ${i} -`,num:String(i),none:''})[fmt]??`第 ${i} 頁`;}
 const OFFLINE=true;
+/* 有沒有「瀏覽器內編譯」（需要同目錄的 wasm/ 資料夾）：只有 GitHub版有；轉成 Claude版、單機版時改 false */
+const CAN_COMPILE=true;
 const AI_FIG_URL='https://claude.ai/artifact/56eVkXvhqNSSEhcP3tvxmn#fig-convert';  // Claude版的手繪圖轉向量圖專用頁
 function typeset(el){
   mjQ=mjQ.then(()=>{if(window.MathJax&&MathJax.startup&&MathJax.typesetPromise)return MathJax.startup.promise.then(()=>MathJax.typesetPromise([el]));}).catch(()=>{}).then(()=>{try{fixOpts(el);}catch(e){}try{placeFigs(el);}catch(e){}});
@@ -521,7 +524,7 @@ function save(){
   clearTimeout(saveT);
   saveT=setTimeout(()=>{
     try{localStorage.setItem(LS_KEY,JSON.stringify(S));localStorage.setItem(LS_CHG,String(lastChange));$('#saveWarn').hidden=true;autoOk=true;lastAuto=Date.now();}
-    catch(e){autoOk=false;const w=$('#saveWarn');w.hidden=false;w.textContent='瀏覽器無法儲存（可能被停用或已滿）。請定期按「匯出專案」另存。';}
+    catch(e){autoOk=false;const w=$('#saveWarn');w.hidden=false;w.textContent='瀏覽器無法儲存（可能被停用或已滿）。請定期按「列印 / 存檔」→「存成考卷檔」另存。';}
     updateSaveStatus();
   },300);
 }
@@ -1590,7 +1593,7 @@ function buildSettings(){
     h('div',{class:'grid2'},
       field('多選題預設選項數',bindInput(C,'multiN',{id:'cfg_multiN',type:'number',int:true,min:2,max:9,after:changed})),
       field('單選題預設選項數',bindInput(C,'singleN',{id:'cfg_singleN',type:'number',int:true,min:2,max:9,after:changed}))),
-    field('填空題的大題名稱',bindInput(C,'fillName',{id:'cfg_fillName',type:'select',options:[['填充題','填充題'],['選填題','選填題']],after:()=>{S.sections.forEach(s=>{if(s.type==='fill'&&(s.name==='填充題'||s.name==='選填題'))s.name=C.fillName;});rerender(true);}}),'填空題型的名稱（② 的勾選項與浮動按鈕也會一起改）；已加入的填空題型區塊會一起改名。'),
+    field('填空題的大題名稱',bindInput(C,'fillName',{id:'cfg_fillName',type:'select',options:[['填充題','填充題'],['選填題','選填題']],after:()=>{S.sections.forEach(s=>{if(s.type==='fill'&&(s.name==='填充題'||s.name==='選填題'))s.name=C.fillName;});rerender(true);}}),'填空題型的名稱（「本試卷題型」的勾選項與浮動按鈕也會一起改）；已加入的填空題型區塊會一起改名。'),
     h('div',{class:'grid3'},
       field('多選題每題配分',bindInput(C,'multiPts',{id:'cfg_multiPts'})),field('單選題每題配分',bindInput(C,'singlePts',{id:'cfg_singlePts'})),field('填空題每題配分',bindInput(C,'fillPts',{id:'cfg_fillPts'}))),
     field('題目文字：離開欄位或貼上時，直接修正輸入的文字',bindInput(C,'autoFixCjk',{id:'cfg_autoFixCjk',type:'select',options:[['true','開（預設）'],['false','關']],after:()=>{C.autoFixCjk=($('#cfg_autoFixCjk').value==='true');changed();rerender();}}),'例如 $x 的最大值為M$ 會改成 $x$ 的最大值為 $M$，「設 x,y 為實數」會改成「設 $x,y$ 為實數」（與預覽相同規則，只處理題幹與選項，「題目文字：自動把數字…」關閉的題目不改）；也會處理貼上、手寫辨識、LaTeX 匯入的文字。每一題也可以單獨取消；改完可按「復原」。'),
@@ -1612,7 +1615,7 @@ function buildSettings(){
       field('填空題的小題之間（pt）',bindInput(C,'fillSkip',{id:'cfg_fillSkip',placeholder:'26',after:changed})),
       field('題幹與選項之間（pt）',bindInput(C,'stemSkip',{id:'cfg_stemSkip',placeholder:'0',after:changed}))),
     field('題目內段落與段落之間（pt）',bindInput(C,'paraSkip',{id:'cfg_paraSkip',placeholder:'0',after:changed}),'題目裡空一行分段時，段與段之間多加的距離。'),
-    h('span',{class:'hint'},'全部留空＝預設（行距 1.5、大題 7／8、選擇題 6、填空題 20、其餘 0）。數字越大空白越多；填空題留比較大是給學生計算。預覽是近似的，以 PDF／Overleaf 編譯結果為準。'),
+    h('span',{class:'hint'},'全部留空＝預設（行距 1.5、大題 14／8、選擇題 10、填空題 26、其餘 0）。數字越大空白越多；填空題留比較大是給學生計算。預覽是近似的，以 PDF／Overleaf 編譯結果為準。'),
     h('hr',{style:'border:none;border-top:1px solid var(--line);margin:10px 0'}),
     h('b',{style:'font-size:13px'},'字型'),
     h('span',{class:'hint'},'字型留空就用範本預設（標頭 PingFang TC、內文儷宋、英數 Times New Roman）。可填多個，用逗號分隔，依序找系統裡有的。'),
@@ -3400,8 +3403,8 @@ function openPrint(){
   const bClose=h('button',{class:'btn',type:'button'},'關閉');
   const bar=h('div',{style:'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 18px;border-bottom:1px solid var(--line)'},h('span',{class:'hint'},'版本：'),...bV,status,bPdf,bHtml,bClose);
   const body=h('div',{style:'overflow:auto;padding:14px 18px;background:#e9ecf2;flex:1;display:flex;flex-wrap:wrap;gap:14px;align-content:flex-start;justify-content:center;min-height:200px'});
-  const help=h('div',{class:'hint',style:'padding:8px 18px;border-top:1px solid var(--line)'},'用法：按「下載 PDF」，用 PDF 閱讀器或瀏覽器開啟後列印。字型用的是你電腦上的字型，近似 XeLaTeX 排版；排好後請先看過每一頁再印。');
-  if(OFFLINE){bHtml.hidden=true;help.textContent='用法：按「列印 / 另存 PDF」，在列印視窗選印表機，或選「另存為 PDF」。紙張大小與邊界已設定好（邊界請選「無」或預設）。字型用的是你電腦上的字型，近似 XeLaTeX 排版；排好後請先看過每一頁再印。';}
+  const help=h('div',{class:'hint',style:'padding:8px 18px;border-top:1px solid var(--line)'},'用法：按「下載 PDF」，用 PDF 閱讀器或瀏覽器開啟後列印。由瀏覽器排版輸出，不是用 LaTeX 編譯，用的是你電腦上的字型，結果可能和 LaTeX 編譯的有差異；排好後請先看過每一頁再印。');
+  if(OFFLINE){bHtml.hidden=true;help.textContent='用法：按「列印 / 另存 PDF」，在列印視窗選印表機，或選「另存為 PDF」。紙張大小與邊界已設定好（邊界請選「無」或預設）。由瀏覽器排版輸出，不是用 LaTeX 編譯，用的是你電腦上的字型，結果可能和 LaTeX 編譯的有差異；排好後請先看過每一頁再印。';}
   card.append(title,bar,body,help);ov.append(card);document.body.append(ov);prState={ov};
   const close=()=>{if(res&&res.host)res.host.remove();ov.remove();prState=null;document.removeEventListener('keydown',onKey);};
   const onKey=e=>{if(e.key==='Escape'&&!busy)close();};document.addEventListener('keydown',onKey);
@@ -3516,7 +3519,7 @@ function openSave(){
   const say=(t,bad)=>{msg.textContent=t;msg.style.color=bad?'var(--danger)':'var(--ok)';};
   const row=(btn,desc)=>h('div',{style:'display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)'},h('div',{style:'flex:none;width:210px'},btn),h('div',{class:'hint',style:'flex:1'},desc));
   const b0=h('button',{class:'btn',type:'button',style:'width:100%'},'列印 / 另存 PDF（備用）');
-  const b1=h('button',{class:'btn',type:'button',style:'width:100%'},'下載 Overleaf 專案（.zip）');
+  const b1=h('button',{class:CAN_COMPILE?'btn':'btn primary',type:'button',style:'width:100%'},'下載 Overleaf 專案（.zip）');
   const b2=h('button',{class:'btn',type:'button',style:'width:100%'},'只下載 main.tex');
   const b3=h('button',{class:'btn primary',type:'button',style:'width:100%'},'存成考卷檔（.json）');
   const bw=h('button',{class:'btn primary',type:'button',style:'width:100%'},'編譯成 PDF（建議）');
@@ -3544,10 +3547,10 @@ function openSave(){
   b3.addEventListener('click',async()=>{await saveFile('exam-project.json',JSON.stringify(S,null,1));});
   const card=h('div',{style:'background:#fff;border-radius:12px;max-width:640px;width:100%;padding:16px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)'},
     h('div',{style:'font-weight:700;font-size:16px;margin-bottom:6px'},'列印 / 存檔'),
-    h('div',{class:'hint'},'要印出正式考卷，請用第一項（或第二項）；要之後接著改，存成「考卷檔」就夠了。「列印 / 另存 PDF」是備用，效果不如前兩項。'),
-    row(bw,'用 XeLaTeX 直接在這個瀏覽器編譯成 PDF，排版與 Overleaf 完全相同，不需要 Overleaf 帳號。第一次使用要下載約 110 MB（約 1 分鐘），之後只要幾秒。編譯頁上方可以切換學生版、簡答版、詳解版。'),
-    row(b1,'內含 main.tex、examsheet.cls、附圖圖片，以及考卷檔。整包上傳到 Overleaf 用 XeLaTeX 編譯，成品與上一項相同。這個 zip 也能用「開啟舊檔」開回這個工具繼續改。'),
-    row(b0,'用瀏覽器內建的列印功能，可選版本（學生版／簡答版／詳解版）並預覽。【備用】排版是用瀏覽器近似出來的，行距、字體和數學式的細節不如前兩項精準，只在前兩項都用不了時使用。'),
+    h('div',{class:'hint'},(CAN_COMPILE?'要印出正式考卷，請用第一項（或第二項）':'要印出正式考卷，請用「下載 Overleaf 專案」')+'；要之後接著改，存成「考卷檔」就夠了。「列印 / 另存 PDF」是備用，由瀏覽器排版，結果和 LaTeX 編譯有差異。'),
+    CAN_COMPILE?row(bw,'用 XeLaTeX 直接在這個瀏覽器編譯成 PDF，排版與 Overleaf 完全相同，不需要 Overleaf 帳號。第一次使用要下載約 110 MB（約 1 分鐘），之後只要幾秒。編譯頁上方可以切換學生版、簡答版、詳解版。'):'',
+    row(b1,'內含 main.tex、examsheet.cls、附圖圖片，以及考卷檔。整包上傳到 Overleaf 用 XeLaTeX 編譯'+(CAN_COMPILE?'，成品與上一項相同':'（建議的輸出方式）')+'。這個 zip 也能用「開啟舊檔」開回這個工具繼續改。'),
+    row(b0,'用瀏覽器內建的列印功能，可選版本（學生版／簡答版／詳解版）並預覽。【備用】由瀏覽器排版輸出，不是用 LaTeX 編譯，字型、行距、數學式和分頁可能和 LaTeX 編譯的結果不同。建議只在其他輸出方式不能用時使用。'),
     row(b3,'只存這個工具用的考卷檔，之後用「開啟舊檔」接著改。'),
     row(b2,'只要 main.tex 這一個檔（examsheet.cls 在「examsheet.cls」分頁另外取得）。'),
     msg,h('div',{style:'text-align:right;margin-top:6px'},bc));
