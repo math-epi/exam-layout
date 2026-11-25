@@ -1726,9 +1726,9 @@ function fmtButtons(el){
 function toggleCollapse(o,sel){
   const e0=document.querySelector(sel),top0=e0?e0.getBoundingClientRect().top:0;
   const col=!o.collapsed;o.collapsed=col;
-  if(sel.startsWith('[data-qid')){lastFocusQ=o.id;userScrolled=false;lastPvQ=null;markProg();}   // 右邊預覽跟著這題
+  if(sel.startsWith('[data-qid')){lastFocusQ=o.id;userScrolled=false;lastPvQ=null;markProg();pvHold=true;}   // 右邊預覽跟著這題（等左邊定位後才動）
   rerender(true);
-  const el=document.querySelector(sel);if(!el)return;
+  const el=document.querySelector(sel);if(!el){pvHold=false;return;}
   const cs=getComputedStyle(document.documentElement);
   const off=(parseFloat(cs.getPropertyValue('--toph'))||0)+(parseFloat(cs.getPropertyValue('--navh'))||0)+10;
   const target=col?off:top0;
@@ -1739,11 +1739,11 @@ function toggleCollapse(o,sel){
   evs.forEach(ev=>window.addEventListener(ev,ab,{passive:true}));
   /* 重建當下左邊還沒捲到位，預覽可能先跟到別題；位置定下來之後（前幾格畫面、以及結束時）再把預覽對到這題 */
   const isQ=sel.startsWith('[data-qid');
-  const syncPv=()=>{if(isQ&&document.contains(el)){lastFocusQ=o.id;userScrolled=false;lastPvQ=null;try{markPv();}catch(e){}}};
+  const syncPv=()=>{pvHold=false;if(isQ&&document.contains(el)){lastFocusQ=o.id;userScrolled=false;lastPvQ=null;try{markPv();}catch(e){}}};
   let n=0;
   const step=()=>{
     const end=stop||performance.now()-t0>2000||!document.contains(el);
-    if(end){evs.forEach(ev=>window.removeEventListener(ev,ab));if(!stop)syncPv();return;}
+    if(end){evs.forEach(ev=>window.removeEventListener(ev,ab));if(!stop)syncPv();else pvHold=false;return;}
     markProg();
     const d=el.getBoundingClientRect().top-target;
     if(Math.abs(d)>1)window.scrollTo(0,window.scrollY+d);
@@ -2145,8 +2145,9 @@ function updateTag(){
   tag.style.cssText=style+`;left:${Math.max(8,lr.left+4)}px;top:${top}px`;
   tag.textContent=txt;tag.hidden=false;
 }
+let pvHold=false;   // 展開／收合後，左邊位置還沒定下來前，預覽先不要跟著動
 function markPv(){
-  const main=$('#outMain');if(!main||outTab!=='preview')return;
+  const main=$('#outMain');if(!main||outTab!=='preview'||pvHold)return;
   let qid=null;
   if(S.sections.length){const w=whereNow();if(w)qid=w.qid;}
   main.querySelectorAll('.pvq.pcur,.pvcalc.pcur').forEach(e=>e.classList.remove('pcur'));
