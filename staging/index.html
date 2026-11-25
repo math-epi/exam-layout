@@ -3044,7 +3044,7 @@ function printCss(mm){
 }
 /* MathJax 自己的樣式表（含隱藏朗讀用 MathML 的規則）：列印網頁檔是獨立檔案，要一起帶進去，否則每個數學式會多出一份文字 */
 function mjStyleText(){
-  let t='mjx-assistive-mml{display:none!important}\n';
+  let t='mjx-assistive-mml{display:none!important}\nmjx-container svg,mjx-container svg *{stroke:none!important}\n';
   document.querySelectorAll('style').forEach(st=>{if(/^MJX/i.test(st.id||''))t+=st.textContent+'\n';});
   return t;
 }
@@ -3055,6 +3055,7 @@ function nativePrint(res){
   const st=document.createElement('style');
   st.textContent=`@page{size:${res.mm[0]}mm ${res.mm[1]}mm;margin:0}
 @media print{html,body{height:auto!important;background:#fff!important;overflow:visible!important}
+mjx-container svg,mjx-container svg *{stroke:none!important}
 body.prn>*:not(.prn-host){display:none!important}
 .prn-host{position:static!important;width:auto!important;z-index:auto!important;left:auto!important;top:auto!important}
 .prn-host .pg{margin:0!important;box-shadow:none!important;break-after:page;page-break-after:always}
