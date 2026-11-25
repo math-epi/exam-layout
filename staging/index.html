@@ -213,8 +213,12 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 .cfgwin-h b{flex:1;min-width:140px;font-size:15px;letter-spacing:.02em}
 .cfgwin-x{border:1px solid #B9C2D0;background:#fff;color:#3A4558;border-radius:7px;padding:2px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
 .cfgwin-x:hover{background:#EEF1F6}
+.cfgwin-tabs{order:3;flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px}
+.cfgwin-tabs .cfgtab{padding:3px 10px;font-size:12.5px}
+.cfgwin-tabs .sep{width:1px;background:#C6CEDA;margin:0 2px}
 .cfgwin-b{overflow:auto;padding:4px 0 6px;flex:1;min-height:0}
-.cfgwin .card-b{padding:8px 14px 10px}
+.cfgwin .card-b{padding:8px 16px 10px;display:block;column-width:420px;column-gap:28px}
+.cfgwin .card-b>*{break-inside:avoid;margin:0 0 10px}
 .cfgwin input:not([type=checkbox]):not([type=radio]):not([type=range]),.cfgwin select,.cfgwin textarea{background:#fff}
 .cfgwin .secset{background:#F1F4F8;border:1px solid #E1E6EE}
 .cfgdetail-t{font-weight:700;font-size:13px;margin:0 0 2px;color:var(--cc)}
@@ -272,7 +276,7 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
   <div class="cfgpane" data-pane="fig"><div class="card-b" id="setFig"></div></div>
   <div class="cfgpane" data-pane="adv"><div class="card-b" id="setAdv"></div></div>
 </div>
-<div class="cfgwin" id="cfgWin" hidden role="dialog" aria-label="設定視窗"><div class="cfgwin-h"><b id="cfgWinT"></b><button class="cfgwin-x" id="cfgWinX" type="button" title="關閉（Esc）">關閉 ✕</button></div><div class="cfgwin-b" id="cfgWinB"></div></div>
+<div class="cfgwin" id="cfgWin" hidden role="dialog" aria-label="設定視窗"><div class="cfgwin-h"><b id="cfgWinT"></b><button class="cfgwin-x" id="cfgWinX" type="button" title="關閉（Esc）">關閉 ✕</button><div class="cfgwin-tabs" id="cfgWinTabs"></div></div><div class="cfgwin-b" id="cfgWinB"></div></div>
 <div class="floatadd" id="floatAdd" hidden></div>
 <div class="wtag" id="wTag" hidden></div>
 
@@ -1851,10 +1855,10 @@ function cfgPlace(){
   const w=$('#cfgWin');if(!w||w.hidden)return;
   const L=$('.left'),bar=$('#contentBar');if(!L||!bar)return;
   const lr=L.getBoundingClientRect(),br=bar.getBoundingClientRect(),TH=TOPH();
-  const top=Math.max(TH+6,br.bottom+6),left=Math.max(8,lr.left);
-  const width=Math.max(340,Math.min(lr.width,760,innerWidth-16));
+  const top=TH+6,left=Math.max(8,lr.left);
+  const width=Math.max(340,Math.min(1020,innerWidth-16));
   w.style.left=Math.min(left,Math.max(8,innerWidth-width-8))+'px';w.style.top=top+'px';w.style.width=width+'px';
-  w.style.maxHeight=Math.max(200,innerHeight-top-12)+'px';
+  w.style.maxHeight=Math.max(240,innerHeight-top-36)+'px';
 }
 function closeCfg(){
   const w=$('#cfgWin'),hold=$('#cfgHold');if(!w)return;
@@ -1876,11 +1880,13 @@ function openCfg(key){
 function toggleCfg(key){if(cfgOpen===key)closeCfg();else openCfg(key);}
 function renderCfgTabs(){
   const box=$('#cfgTabs');if(!box)return;
+  const wt=$('#cfgWinTabs');
   const keys=Object.keys(CFG_WINS),mk=k=>{
     const d=CFG_WINS[k];
     return h('button',{type:'button',class:'cfgtab'+(cfgOpen===k?' on':''),style:`--cc:${d.c};--ct:${d.t}`,title:d.title,'aria-pressed':cfgOpen===k?'true':'false',onclick:()=>toggleCfg(k)},d.tab);
   };
   box.replaceChildren(...keys.filter(k=>CFG_WINS[k].main).map(mk),h('span',{class:'sep'}),h('span',{class:'cl'},'設定：'),...keys.filter(k=>!CFG_WINS[k].main).map(mk));
+  if(wt)wt.replaceChildren(...keys.filter(k=>CFG_WINS[k].main).map(mk),h('span',{class:'sep'}),...keys.filter(k=>!CFG_WINS[k].main).map(mk));
   const bar=$('#contentBar');if(bar)document.documentElement.style.setProperty('--navh',bar.offsetHeight+'px');
   cfgPlace();
 }
