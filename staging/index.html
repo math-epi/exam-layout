@@ -211,6 +211,15 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 .cfgtab.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .cfgtab.on::before{background:#fff}
 .cfgtabs .sep{width:1px;align-self:stretch;background:var(--line);margin:0 4px}
+.swrow{display:inline-flex;gap:8px;align-items:center;cursor:pointer}
+input.sw{appearance:none;-webkit-appearance:none;flex:none;position:relative;width:34px;height:19px;margin:0;border-radius:999px;background:#B8C0CD;border:none;cursor:pointer;transition:background .15s}
+input.sw::after{content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .15s}
+input.sw:checked{background:var(--accent)}
+input.sw:checked::after{transform:translateX(15px)}
+.swstate{flex:none;min-width:1.6em;font-size:12.5px;font-weight:700;color:var(--muted)}
+.swstate::after{content:'關'}
+input.sw:checked+.swstate{color:var(--accent)}
+input.sw:checked+.swstate::after{content:'開'}
 .typepick{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;min-width:0;padding:2px 0}
 .typepick .typerow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:0;border-bottom:none}
 .typepick .typerow .tn{min-width:0}
@@ -253,7 +262,7 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
   <div style="margin-top:6px">按「列印 / 存檔」再選「存成考卷檔」，可存成考卷檔（下次用「開啟舊檔」接著改）；熟悉 LaTeX 的老師可以下載 <b>Overleaf 專案 zip</b>（含 main.tex 與 examsheet.cls，上傳後用 <b>XeLaTeX</b> 編譯兩次）。
   選填題的解答直接輸入答案（如 <code>-56/7</code>、<code>\sqrt{27}</code>），數字與正負號會自動變成答案卡的圈圈格子。圖形請先放進「圖庫」，再到每題「附圖」選用。<br>
   版面、題型預設、圖庫、行距與字型等設定，請按題目區上方的彩色「設定」標籤，會浮出設定視窗（按「關閉」或 Esc 關掉）。要勾選這份考卷的題型，請按「本試卷題型」標籤。<br>
-  <label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="rtToggle" checked style="width:auto"> 左邊欄位沒在編輯時，顯示排版後的數學式（點公式可用數學符號修改，點文字回到輸入）</label></div>
+  <label class="swrow" title="按一下切換開／關"><input type="checkbox" id="rtToggle" class="sw" checked><span class="swstate" aria-hidden="true"></span><span><b>顯示排版後的數學式</b>：左邊欄位沒在編輯時，以排版後的樣子顯示（點公式可用數學符號修改，點文字回到輸入）；關閉則顯示原始文字。</span></label></div>
   </details>
 </div>
 <div class="layout">
