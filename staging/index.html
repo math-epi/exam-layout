@@ -199,13 +199,17 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 .pv-sec+.pv-calc{margin-top:0}
 /* 設定浮動視窗 */
 .cfgtabs{flex:none;position:relative;display:flex;gap:6px;align-items:center}
-.cfgmenu{position:absolute;top:calc(100% + 6px);left:0;z-index:40;min-width:200px;background:#fff;border:1px solid #C6CEDA;border-radius:9px;padding:6px;display:flex;flex-direction:column;gap:5px;box-shadow:0 10px 26px rgba(27,34,48,.22)}
+.cfgmenu{position:absolute;top:calc(100% + 6px);left:0;z-index:40;min-width:200px;background:#fff;border:1px solid #CBD2DD;border-radius:9px;padding:6px;display:flex;flex-direction:column;gap:5px;box-shadow:0 10px 26px rgba(27,34,48,.22)}
 .cfgmenu[hidden]{display:none}
-.cfgmenu .cfgtab{text-align:left;padding:6px 12px}
+.cfgmenu .cfgtab{padding:7px 12px}
+.contentbar.menuopen{z-index:35}
 .cfgtabs .cl{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px}
-.cfgtab{border:1px solid var(--cc);background:var(--ct);color:var(--cc);padding:4px 12px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
-.cfgtab:hover{filter:brightness(.97)}
-.cfgtab.on{background:var(--cc);color:#fff}
+.cfgtab{display:inline-flex;align-items:center;gap:7px;border:1px solid #CBD2DD;background:#fff;color:var(--ink);padding:4px 12px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit}
+.cfgtab::before{content:'';flex:none;width:7px;height:7px;border-radius:50%;background:var(--cc,#64748B)}
+.cfgtab.nodot::before{display:none}
+.cfgtab:hover{border-color:var(--accent);background:#F5F7FB}
+.cfgtab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.cfgtab.on::before{background:#fff}
 .cfgtabs .sep{width:1px;align-self:stretch;background:var(--line);margin:0 4px}
 .typepick{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;min-width:0;padding:2px 0}
 .typepick .typerow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:0;border-bottom:none}
@@ -214,7 +218,7 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 .cfgwin{position:fixed;z-index:36;display:flex;flex-direction:column;box-sizing:border-box;border:1px solid #C6CEDA;border-top:4px solid var(--cc);border-radius:10px;overflow:hidden;
   background:#FBFCFD;box-shadow:0 12px 32px rgba(27,34,48,.22),0 2px 6px rgba(27,34,48,.10)}
 .cfgwin[hidden]{display:none}
-.cfgwin-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 14px;background:var(--ct);color:var(--cc);border-bottom:1px solid #D5DBE5}
+.cfgwin-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 14px;background:#F4F6FA;color:var(--ink);border-bottom:1px solid #DDE2EA}
 .cfgwin-h b{flex:1;min-width:140px;font-size:15px;letter-spacing:.02em}
 .cfgwin-x{border:1px solid #B9C2D0;background:#fff;color:#3A4558;border-radius:7px;padding:2px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
 .cfgwin-x:hover{background:#EEF1F6}
@@ -226,7 +230,7 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 .cfgwin .card-b>*{break-inside:avoid;margin:0 0 10px}
 .cfgwin input:not([type=checkbox]):not([type=radio]):not([type=range]),.cfgwin select,.cfgwin textarea{background:#fff}
 .cfgwin .secset{background:#F1F4F8;border:1px solid #E1E6EE}
-.cfgdetail-t{font-weight:700;font-size:13px;margin:0 0 2px;color:var(--cc)}
+.cfgdetail-t{font-weight:700;font-size:13px;margin:0 0 2px;color:var(--ink)}
 @media print{.cfgwin,.cfgtabs{display:none!important}}
 </style>
 </head>
@@ -1847,11 +1851,11 @@ function goQ(id){
 
 /* ===== 設定浮動視窗：標籤在題目導覽列上，一次只開一個，用關閉鈕或 Esc 關閉 ===== */
 const CFG_WINS={
-  type:{tab:'本試卷題型',title:'本試卷題型（勾選要出的題型）',c:'#0E6377',t:'#E4F0F3',main:true},
-  head:{tab:'標頭與版面',title:'標頭與版面設定',c:'#3D4F7A',t:'#E8ECF4'},
-  opt:{tab:'題型預設',title:'題型預設（題型名稱／配分、選項數、全卷滿分檢查）',c:'#7A6420',t:'#F2EEE0'},
-  fig:{tab:'圖庫',title:'圖庫（手繪圖轉向量圖、圖片）',c:'#7B4B7A',t:'#F1E9F1'},
-  adv:{tab:'行距間距與字型',title:'行距、間距與字型',c:'#44505F',t:'#EAEDF1'}
+  type:{tab:'本試卷題型',title:'本試卷題型（勾選要出的題型）',c:'#1E407C',t:'#EAF0FA',main:true},
+  head:{tab:'標頭與版面',title:'標頭與版面設定',c:'#3B6E8F',t:'#E8F0F5'},
+  opt:{tab:'題型預設',title:'題型預設（題型名稱／配分、選項數、全卷滿分檢查）',c:'#6B7F94',t:'#EDF0F4'},
+  fig:{tab:'圖庫',title:'圖庫（手繪圖轉向量圖、圖片）',c:'#5E7C7A',t:'#EBF1F0'},
+  adv:{tab:'行距間距與字型',title:'行距、間距與字型',c:'#7A7F8C',t:'#EEEFF2'}
 };
 let cfgOpen=null;
 function cfgPlace(){
@@ -1906,7 +1910,8 @@ function renderCfgTabs(){
     return h('button',{type:'button',class:'cfgtab'+(cfgOpen===k?' on':''),style:`--cc:${d.c};--ct:${d.t}`,title:d.title,'aria-pressed':cfgOpen===k?'true':'false',onclick:()=>{if(menu)cfgMenuOpen=false;toggleCfg(k);}},d.tab);
   };
   const others=keys.filter(k=>!CFG_WINS[k].main),anyOn=others.includes(cfgOpen);
-  const mb=h('button',{type:'button',class:'cfgtab'+(anyOn?' on':''),style:'--cc:#3A4558;--ct:#EEF1F6','aria-haspopup':'true','aria-expanded':cfgMenuOpen?'true':'false',title:'標頭與版面、題型預設、圖庫、行距間距與字型',onclick:()=>{cfgMenuOpen=!cfgMenuOpen;renderCfgTabs();}},'⚙ 設定 ▾');
+  const mb=h('button',{type:'button',class:'cfgtab nodot'+(anyOn?' on':''),style:'','aria-haspopup':'true','aria-expanded':cfgMenuOpen?'true':'false',title:'標頭與版面、題型預設、圖庫、行距間距與字型',onclick:()=>{cfgMenuOpen=!cfgMenuOpen;renderCfgTabs();}},'⚙ 設定 ▾');
+  const cb=$('#contentBar');if(cb)cb.classList.toggle('menuopen',!!cfgMenuOpen);
   const menu=h('div',{class:'cfgmenu',role:'menu'},...others.map(k=>mk(k,true)));menu.hidden=!cfgMenuOpen;
   box.replaceChildren(...keys.filter(k=>CFG_WINS[k].main).map(k=>mk(k)),mb,menu);
   if(wt)wt.replaceChildren(...keys.filter(k=>CFG_WINS[k].main).map(k=>mk(k)),h('span',{class:'sep'}),...others.map(k=>mk(k)));
