@@ -533,7 +533,7 @@ function minusOf(q){return q&&(q.minus==='yes'||(q.minus!=='no'&&S.cfg.minusSlot
 function normAns(a,minus){
   a=String(a||'').replace(/\$/g,'');
   if(/\\sn\{/.test(a))return a;
-  a=a.replace(/[；;]/g,' \\ansep ');
+  a=a.replace(/[；;]/g,' \\ansep ').replace(/\+\/?-|＋－/g,'±');
   let out='',i=0,prev='';
   const cjk=c=>/[\u3400-\u9fff]/.test(c);
   const signCtx=()=>prev===''||'(,={[|±'.includes(prev)||cjk(prev);
@@ -676,7 +676,7 @@ function slotsTex(str,ctx){
 }
 function ansPlain(x){
   if(x.includes('/')){const [a,b]=x.split('/');return a.startsWith('-')||a.startsWith('−')?String.raw`-\dfrac{${a.slice(1)}}{${b}}`:String.raw`\dfrac{${a}}{${b}}`;}
-  return x.replace(/±/g,String.raw`\pm `).replace(/−/g,'-');
+  return x.replace(/\+\/?-|＋－/g,'±').replace(/±/g,String.raw`\pm `).replace(/−/g,'-');
 }
 function itemTex(item,mode,ctx){
   return item.replace(/\\sn\{([^{}]*)\}/g,(m,x)=>{
@@ -1048,7 +1048,7 @@ function amTrim(seg){
   while(a<b){
     const u=seg[a];
     if(isAtom(u)||(u.k==='op'&&u.s==='('))break;
-    if(u.k==='op'&&(u.s==='-'||u.s==='−'||u.s==='+')){const nx=seg[a+1];if(nx&&(isAtom(nx)||(nx.k==='op'&&nx.s==='(')))break;}
+    if(u.k==='op'&&(u.s==='-'||u.s==='−'||u.s==='+'||u.s==='±')){const nx=seg[a+1];if(nx&&(isAtom(nx)||(nx.k==='op'&&nx.s==='(')))break;}
     if(u.k==='op'&&AM_REL.includes(u.s)){let z=a+1;while(z<b&&seg[z].k==='sp')z++;if(z<b&&isAtom(seg[z]))break;}
     a++;
   }
@@ -1120,7 +1120,11 @@ function autoMathText(txt,hits){
 }
 function autoMathTx(t){
   const hits=[];
-  const text=splitMath(t).map(sg=>sg.m?sg.t:autoMathText(sg.t,hits)).join('');
+  // 「+-」「+/-」代表 ±（\pm）：數學式裡直接換成 \pm，數學式外的先換成 ± 再包成數學式
+  const text=splitMath(t).map(sg=>{
+    if(sg.m){if(/\+\/?-|＋－/.test(sg.t)){hits.push('+-');return sg.t.replace(/\+\/?-|＋－/g,'\\pm ');}return sg.t;}
+    return autoMathText(sg.t.replace(/\+\/?-|＋－/g,()=>{hits.push('+-');return '±';}),hits);
+  }).join('');
   return {text,hits};
 }
 /* 這一題要不要自動改數學式：全卷設定（預設開）＋這題的勾選（預設開） */
@@ -1296,6 +1300,7 @@ function mathCjkApply(q,auto){
     return x;
   };
   q.stem=g(q.stem||'');
+  if(auto&&q.kind==='fill'&&/\+\/?-|＋－/.test(q.ans||'')){q.ans=q.ans.replace(/\+\/?-|＋－/g,'\\pm ');n++;}
   if(q.kind==='single'||q.kind==='multi')q.opts=(q.opts||[]).map(o=>g(o||''));
   if(q.kind!=='group'&&q.sol!=null)q.sol=f(q.sol);
   return n;
@@ -1807,10 +1812,11 @@ function qCard(s,q){
       setVal(stem,q.stem||'');
       if(q.kind==='single'||q.kind==='multi')card.querySelectorAll('.optrow input.mm-target').forEach((e,i)=>{if(q.opts[i]!=null)setVal(e,q.opts[i]);});
       const st=card.querySelector('.solbox textarea');if(st)setVal(st,q.sol||'');
+      if(q.kind==='fill'){const ai=card.querySelector('input[placeholder^="例如 (3,2)"]');if(ai)setVal(ai,q.ans||'');}
     };
     const mcAuto=()=>{
       if(mcSkip||!autoFixCjkOn(q))return;
-      const snap={stem:q.stem,opts:(q.opts||[]).slice(),sol:q.sol};
+      const snap={stem:q.stem,opts:(q.opts||[]).slice(),sol:q.sol,ans:q.ans};
       const n=mathCjkApply(q,true);
       if(!n)return;
       mcPrev=snap;mcAutoN=n;mcSetFields();changed();
@@ -1824,7 +1830,7 @@ function qCard(s,q){
     });
     mcUndo.addEventListener('click',()=>{
       if(!mcPrev)return;
-      q.stem=mcPrev.stem;if(q.opts)q.opts=mcPrev.opts;if(mcPrev.sol!==undefined)q.sol=mcPrev.sol;
+      q.stem=mcPrev.stem;if(q.opts)q.opts=mcPrev.opts;if(mcPrev.sol!==undefined)q.sol=mcPrev.sol;if(mcPrev.ans!==undefined)q.ans=mcPrev.ans;
       mcPrev=null;mcSkip=true;mcSetFields();changed();
     });
     card.addEventListener('input',()=>{mcSkip=false;if(mcPrev){mcPrev=null;if(card._proc)card._proc();}});
