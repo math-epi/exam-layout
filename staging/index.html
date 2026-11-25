@@ -159,9 +159,9 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 .pvq .fig{flex:none;width:26%;margin-left:1em;border:1px dashed #aaa;font-size:.7em;color:#888;text-align:center;padding:1em .3em;align-self:flex-start}
 .pvq.fillq{margin-bottom:1.3em}
 .pvq .figl{z-index:2}.pvq .lastm{display:inline}.pvq .figres{display:block}
-.pvq[data-pq],.pv-sec[data-ps],.hd[data-ph]{cursor:pointer}
-.pvq[data-pq]{border-radius:4px}.pvq[data-pq]:hover{background:rgba(0,0,0,.04)}
-.pvq.pcur,.pvq.pcur:hover{background:color-mix(in srgb,var(--tt,#E4EEFB) 85%,transparent);box-shadow:-5px 0 0 var(--tc,#1F5FAF),0 0 0 2px color-mix(in srgb,var(--tc,#1F5FAF) 40%,transparent)}
+.pvq[data-pq],.pvcalc[data-pq],.pv-sec[data-ps],.hd[data-ph]{cursor:pointer}
+.pvq[data-pq]{border-radius:4px}.pvq[data-pq]:hover,.pvcalc[data-pq]:hover{background:rgba(0,0,0,.04)}
+.pvq.pcur,.pvq.pcur:hover,.pvcalc.pcur,.pvcalc.pcur:hover{background:color-mix(in srgb,var(--tt,#E4EEFB) 85%,transparent);box-shadow:-5px 0 0 var(--tc,#1F5FAF),0 0 0 2px color-mix(in srgb,var(--tc,#1F5FAF) 40%,transparent)}
 .pv-sec[data-ps]:hover{background:rgba(0,0,0,.04)}
 .wtag{position:fixed;z-index:34;pointer-events:none;max-width:min(480px,90vw);padding:4px 13px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--tc,#334);background:color-mix(in srgb,var(--tt,#E9EDF5) 80%,transparent);border:1px solid color-mix(in srgb,var(--tc,#334) 35%,transparent);box-shadow:0 1px 8px rgba(0,0,0,.08);backdrop-filter:blur(2px)}
 .pvq.g{margin-bottom:.2em}
@@ -1666,7 +1666,7 @@ function secCard(s,si){
   card.append(b);return card;
 }
 function focusQ(id){
-  setTimeout(()=>{const el=document.querySelector(`[data-qid="${id}"]`);if(!el)return;markProg();el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.add('flash');setTimeout(()=>{const t=el.querySelector('textarea');if(t)t.focus({preventScroll:true});},350);},30);
+  setTimeout(()=>{const el=document.querySelector(`[data-qid="${id}"]`);if(!el)return;markProg();const t=el.querySelector('textarea'),tg=t?(t.closest('.f')||t):el;const nh=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--navh'))||0;const gap=Math.max(TOPH()+nh+16,innerHeight*0.22);window.scrollTo({top:Math.max(0,tg.getBoundingClientRect().top+window.scrollY-gap),behavior:'smooth'});el.classList.add('flash');setTimeout(()=>{if(t)t.focus({preventScroll:true});},350);},30);
 }
 function renderSections(){
   const box=$('#sections');
@@ -1839,9 +1839,9 @@ function markPv(){
   const main=$('#outMain');if(!main||outTab!=='preview')return;
   let qid=null;
   if(S.sections.length){const w=whereNow();if(w)qid=w.qid;}
-  main.querySelectorAll('.pvq.pcur').forEach(e=>e.classList.remove('pcur'));
+  main.querySelectorAll('.pvq.pcur,.pvcalc.pcur').forEach(e=>e.classList.remove('pcur'));
   if(qid==null){lastPvQ=null;return;}
-  const els=main.querySelectorAll(`.pvq[data-pq="${qid}"]`);
+  const els=main.querySelectorAll(`.pvq[data-pq="${qid}"],.pvcalc[data-pq="${qid}"]`);
   els.forEach(e=>e.classList.add('pcur'));
   if(qid!==lastPvQ&&els.length){
     lastPvQ=qid;
@@ -1948,7 +1948,7 @@ function initPvClick(){
   main.addEventListener('click',e=>{
     if(outTab!=='preview')return;
     clearTimeout(navT);
-    const r=e.target.closest('.pvq[data-pq]'),sec=r?null:e.target.closest('[data-ps]'),hd=(r||sec)?null:e.target.closest('[data-ph]');
+    const r=e.target.closest('.pvq[data-pq],.pvcalc[data-pq]'),sec=r?null:e.target.closest('[data-ps]'),hd=(r||sec)?null:e.target.closest('[data-ph]');
     const qid=r?Number(r.dataset.pq):null,sid=sec?Number(sec.dataset.ps):null;
     if(!r&&!sec&&!hd)return;
     /* 稍等一下：若是雙擊選字或拖曳選取，就不要跳走 */
