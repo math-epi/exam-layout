@@ -985,15 +985,29 @@ const AM_MAP={'≤':'\\le ','≥':'\\ge ','≠':'\\ne ','±':'\\pm ','×':'\\tim
 const AM_FW=/[０-９Ａ-Ｚａ-ｚ＝＜＞＋－＊／（）]/;
 const AM_GREEK={'α':'\\alpha','β':'\\beta','γ':'\\gamma','δ':'\\delta','θ':'\\theta','λ':'\\lambda','μ':'\\mu','π':'\\pi','σ':'\\sigma','φ':'\\varphi','ω':'\\omega','Δ':'\\Delta','Σ':'\\Sigma','Ω':'\\Omega'};
 const AM_REL='=<>≤≥≠';
+/* 數學式外面直接打的 LaTeX 指令（\sqrt{2}、\frac{1}{2}、\pi…）整個當成一個「變數」單位，連同大括號一起包進 $…$，不要只把大括號裡的數字拆出去 */
+const AM_CMD=/^\\(?:sqrt|d?frac|tfrac|binom|log|ln|sin|cos|tan|cot|sec|csc|pi|infty|pm|mp|cdot|times|div|le|ge|leq|geq|ne|neq|approx|sum|prod|int|lim|overline|vec|hat|bar|angle|triangle|circ|alpha|beta|gamma|delta|theta|lambda|mu|sigma|omega|phi|varphi|epsilon|cdots|ldots)$/;
+const AM_NARG={sqrt:1,frac:2,dfrac:2,tfrac:2,binom:2,overline:1,vec:1,hat:1,bar:1};
+function amGroup(t,i,o,c){   // t[i]===o，回傳配對的 c 之後一格的位置，找不到回 -1
+  let d=0;for(let k=i;k<t.length;k++){if(t[k]==='\\'){k++;continue;}if(t[k]===o)d++;else if(t[k]===c){d--;if(d===0)return k+1;}}
+  return -1;
+}
 function amUnits(txt){
   const re=/\\(?:[A-Za-z]+|[\s\S])|[０-９]+(?:．[０-９]+)?|\d+(?:\.\d+)?|[Ａ-Ｚａ-ｚ]+|[A-Za-z]+|[\s\S]/y;
   const U=[];let m;
   while(re.lastIndex<txt.length&&(m=re.exec(txt))){
-    const o=m[0];
+    let o=m[0];
+    if(o[0]==='\\'&&AM_CMD.test(o)){
+      const nm=o.slice(1);let e=re.lastIndex;
+      if(nm==='sqrt'&&txt[e]==='['){const z=amGroup(txt,e,'[',']');if(z>0)e=z;}
+      for(let g=AM_NARG[nm]||0;g>0&&txt[e]==='{';g--){const z=amGroup(txt,e,'{','}');if(z<0)break;e=z;}
+      o=txt.slice(m.index,e);re.lastIndex=e;
+    }
     let s=o;
-    if(AM_FW.test(o[0]))s=o.replace(/[！-～]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/．/g,'.');
+    if(o[0]==='\\'&&o.length>1&&AM_CMD.test(o.match(/^\\[A-Za-z]+/)[0]))s=o;
+    else if(AM_FW.test(o[0]))s=o.replace(/[！-～]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/．/g,'.');
     let k;
-    if(s[0]==='\\')k=s==='\\%'?'pct':'x';
+    if(s[0]==='\\')k=s==='\\%'?'pct':(AM_CMD.test(s.match(/^\\[A-Za-z]+/)?s.match(/^\\[A-Za-z]+/)[0]:'')?'v':'x');
     else if(/^\d/.test(s))k='n';
     else if(/^[A-Za-z]+$/.test(s))k=s.length===1?'v':'w';
     else if(AM_GREEK[s])k='v';
@@ -1708,8 +1722,18 @@ function fmtButtons(el){
     mk('e','<span class="fe">點</span>','著重點（文字下方加點）'),
     mk('x','清除','清除選取範圍內的粗體／底線等格式')];
 }
+/* 收合：該題（大題）收起後排在畫面最上面（工具列下方），接著就是它的下一題；展開：留在原位不跳 */
+function toggleCollapse(o,sel){
+  const e0=document.querySelector(sel),top0=e0?e0.getBoundingClientRect().top:0;
+  const col=!o.collapsed;o.collapsed=col;rerender(true);
+  const el=document.querySelector(sel);if(!el)return;
+  const cs=getComputedStyle(document.documentElement);
+  const off=(parseFloat(cs.getPropertyValue('--toph'))||0)+(parseFloat(cs.getPropertyValue('--navh'))||0)+10;
+  markProg();
+  window.scrollTo(0,window.scrollY+el.getBoundingClientRect().top-(col?off:top0));
+}
 function summary(q){
-  const t=(q.stem||'').replace(/\s+/g,' ').replace(/\\blank/g,'＿＿').trim();
+  let t=(q.stem||'').replace(/\\blank/g,'＿＿').replace(/\$\$[\s\S]*?\$\$|\$[^$]*\$/g,'□').replace(/\\(?:textbf|uline|dline|wline|dotuline|emph|text)\s*\{([^{}]*)\}/g,'$1').replace(/\\[A-Za-z]+\*?/g,'').replace(/[{}]/g,'').replace(/□(?:\s*□)+/g,'□').replace(/\s+/g,' ').trim();
   return t.slice(0,46)||'（尚未輸入題目）';
 }
 function qCard(s,q){
@@ -1728,7 +1752,7 @@ function qCard(s,q){
   const tools=h('div',{class:'q-tools'},
     h('button',{class:'btn small',type:'button',title:'上移',onclick:()=>moveItem(s.qs,q,-1)},'↑'),
     h('button',{class:'btn small',type:'button',title:'下移',onclick:()=>moveItem(s.qs,q,1)},'↓'),
-    h('button',{class:'btn small',type:'button',onclick:()=>{q.collapsed=!q.collapsed;rerender(true);}},q.collapsed?'展開':'收合'),
+    h('button',{class:'btn small',type:'button',onclick:()=>toggleCollapse(q,'[data-qid="'+q.id+'"]')},q.collapsed?'展開':'收合'),
     h('button',{class:'btn small',type:'button',onclick:()=>{const c=JSON.parse(JSON.stringify(q));c.id=newId();s.qs.splice(s.qs.indexOf(q)+1,0,c);rerender();focusQ(c.id);}},'複製'),
     twoClick(h('button',{class:'btn small danger',type:'button'},'刪除'),()=>{s.qs.splice(s.qs.indexOf(q),1);rerender();}));
   card.append(h('div',{class:'q-h'},badge,grip,incLb,pbLb,chip,sum,tools));
@@ -1915,7 +1939,7 @@ function secCard(s,si){
   const hd=h('div',{class:'sec-h'},grip,h('span',{class:'sec-title','data-stitle':s.id},''),tot,
     h('button',{class:'btn small',type:'button',onclick:()=>moveItem(S.sections,s,-1)},'↑'),
     h('button',{class:'btn small',type:'button',onclick:()=>moveItem(S.sections,s,1)},'↓'),
-    h('button',{class:'btn small',type:'button',onclick:()=>{s.collapsed=!s.collapsed;rerender(true);}},s.collapsed?'展開':'收合'),
+    h('button',{class:'btn small',type:'button',onclick:()=>toggleCollapse(s,'[data-sid="'+s.id+'"]')},s.collapsed?'展開':'收合'),
     twoClick(h('button',{class:'btn small danger',type:'button'},'刪除大題'),()=>{S.sections.splice(S.sections.indexOf(s),1);rerender();}));
   card.append(hd);makeDrag(card,grip,S.sections,s);
   const b=h('div',{class:'sec-b'});
