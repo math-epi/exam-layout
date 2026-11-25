@@ -3209,6 +3209,7 @@ function openSave(){
   const b1=h('button',{class:'btn',type:'button',style:'width:100%'},'下載 Overleaf 專案（.zip）');
   const b2=h('button',{class:'btn',type:'button',style:'width:100%'},'只下載 main.tex');
   const b3=h('button',{class:'btn primary',type:'button',style:'width:100%'},'存成考卷檔（.json）');
+  const bw=h('button',{class:'btn',type:'button',style:'width:100%'},'在瀏覽器內編譯 PDF（實驗）');
   const bc=h('button',{class:'btn',type:'button'},'關閉');
   const close=()=>{ov.remove();document.removeEventListener('keydown',onKey);};
   const onKey=e=>{if(e.key==='Escape')close();};document.addEventListener('keydown',onKey);
@@ -3221,6 +3222,7 @@ function openSave(){
   });
   b0.addEventListener('click',()=>{close();openPrint();});
   b2.addEventListener('click',()=>saveFile('main.tex',genTex()));
+  bw.addEventListener('click',()=>{try{localStorage.setItem('exam_wasm_tex',genTex());localStorage.setItem('exam_wasm_cls',EXAM_CLS);}catch(e){say('瀏覽器不讓這個頁面暫存資料，無法開啟。',true);return;}window.open('wasm/compile.html','_blank');say('已開啟編譯頁（新分頁）。第一次要下載約 110 MB，請稍候。');});
   b3.addEventListener('click',async()=>{await saveFile('exam-project.json',JSON.stringify(S,null,1));});
   const card=h('div',{style:'background:#fff;border-radius:12px;max-width:640px;width:100%;padding:16px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)'},
     h('div',{style:'font-weight:700;font-size:16px;margin-bottom:6px'},'列印 / 存檔'),
@@ -3228,6 +3230,7 @@ function openSave(){
     row(b0,'選版本（學生版／簡答版／詳解版）、預覽每一頁，再列印或另存成 PDF。'),
     row(b3,'只存這個工具用的考卷檔，之後用「開啟舊檔」接著改。'),
     row(b1,'內含 main.tex、examsheet.cls、附圖圖片，以及考卷檔。整包上傳到 Overleaf 就能編譯。這個 zip 也能用「開啟舊檔」開回這個工具繼續改。'),
+    row(bw,'實驗中：直接在這個瀏覽器用 XeLaTeX 編譯成 PDF，排版和 Overleaf 一樣，不用 Overleaf。第一次使用要下載約 110 MB。附圖（上傳的圖片）暫時還不支援。'),
     row(b2,'只要 main.tex 這一個檔（examsheet.cls 在「examsheet.cls」分頁另外取得）。'),
     msg,h('div',{style:'text-align:right;margin-top:6px'},bc));
   ov.append(card);document.body.append(ov);
