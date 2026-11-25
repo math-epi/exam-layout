@@ -2591,7 +2591,7 @@ function figPosUI(q){
   wrap.append(wbox);
   const wfield=field('圖寬（占版面 %）',bindInput(q,'figW',{type:'number',int:true,min:10,max:60,after:changed}));
   if(q.figWrap){
-    wrap.append(h('div',{class:'grid2'},wfield),h('span',{class:'hint'},'後面的題目會靠到圖旁邊，超過圖的底部才恢復全寬。圖放不下這一頁時，整題會移到下一頁。想選「圖放哪裡」（最左邊、最後一行、選項右下方等），請先取消勾選「文繞圖」。'));
+    wrap.append(h('div',{class:'grid2'},wfield),h('span',{class:'hint'},'後面的題目會靠到圖旁邊，超過圖的底部才恢復全寬。圖放不下這一頁時，整題會移到下一頁。若想自行選擇「圖放置的位置」（最左邊、最後一行、選項右下方等），請先取消勾選「文繞圖」。'));
     return wrap;
   }
   if(!isCh&&(q.figPos==='right'||q.figPos==='wrap'||q.figPos==='bottom'))q.figPos='auto';
