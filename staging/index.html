@@ -620,6 +620,11 @@ function compute(){
       else qi.label='題組';
       if(q.kind!=='group'&&(q.label||'').trim())qi.label=q.label.trim()+'.';   // 自訂題號：只改顯示，計數照舊
       info[q.id]=qi;
+      {const mi=mathCjkInfo(q);if(mi.n){
+        const nm=qi.label.replace(/\.$/,'');
+        const lb=q.kind==='group'?'題組':q.kind==='fill'||(s.type==='mixed'&&(q.kind==='single'||q.kind==='multi'))?'選填題 '+nm:q.kind==='single'||q.kind==='multi'?`第 ${nm} 題`:`大題「${s.name}」第 ${nm} 題`;
+        warns.push(`${lb}的數學式 $…$ 裡有中文（${mi.n} 處）。到該題按「一鍵修正」，中文會移到 $…$ 外面，或加上 \\text{}。`);
+      }}
     });
     secs[s.id]={sum,count,no:CNUM[si]||String(si+1)};total+=sum;
     if(s.qs.every(q=>q.inc===false))warns.push(`大題「${s.name}」沒有排進考卷的題目。`);
@@ -1133,6 +1138,142 @@ function qProcInfo(q){
   return {hasF,hits};
 }
 
+/* ================= 數學式裡的中文：檢查與修正 =================
+   老師常把中文打進 $…$ 裡，例如「$x 的最大值為M$」。
+   ① 能分開的（中文在最外層）：把中文移到 $ 外面，數學的部分各自包回 $…$ →「$x$ 的最大值為 $M$」
+   ② 不容易分開的（中文在 \frac、\sqrt、上下標、\left…\right、環境 裡面，或分開後兩邊接不起來）：中文就地包 \text{…}
+   只處理 $…$、$$…$$、\(…\)、\[…\]；已經在 \text{…} 裡的中文不動。 */
+const MC_CJK=/[぀-ヿ㐀-䶿一-鿿豈-﫿가-힯、-〿，；：？！]/;
+const MC_HAN=/[぀-ヿ㐀-䶿一-鿿豈-﫿가-힯]/;
+const MC_TEXTCMD=/^(?:text|textrm|textbf|textit|textnormal|textsf|texttt|mbox|hbox|mathrm|mathbf|mathit|mathsf|mathtt|operatorname|intertext|tag)$/;
+const MC_OPS='le|ge|leq|geq|neq|ne|in|notin|ni|times|cdot|div|to|rightarrow|leftarrow|Rightarrow|Leftarrow|Leftrightarrow|subset|subseteq|supset|supseteq|cup|cap|perp|parallel|approx|equiv|sim|cong|propto|land|lor|wedge|vee|setminus|mid|nmid';
+const MC_START=new RegExp('^(?:[=+*/<>^_&,;|]|\\\\(?:'+MC_OPS+'|pm|mp)(?![A-Za-z]))');
+const MC_END=new RegExp('(?:[=+\\-*/<>^_&,;|]|\\\\(?:'+MC_OPS+'|pm|mp|angle|triangle|overline|underline|vec|hat|bar|sqrt|frac|dfrac|binom|sum|prod|int|lim|log|ln|sin|cos|tan|max|min|arg))\\s*$');
+/* 把數學式內容切成記號：k='c' 中文（含中文之間的空格）、k='o' 其他；d＝大括號／\left／\begin 的深度 */
+function mcTokens(s){
+  const T=[];let i=0,d=0;
+  const push=(k,x)=>{const l=T[T.length-1];if(k==='c'&&l&&l.k==='c'&&l.d===d)l.s+=x;else T.push({k,s:x,d});};
+  while(i<s.length){
+    const c=s[i];
+    if(c==='\\'){
+      const m=/^\\(?:[A-Za-z]+|[\s\S])/.exec(s.slice(i,i+40));
+      const w=m?m[0]:'\\',name=w.slice(1);
+      if(MC_TEXTCMD.test(name)){          // \text{…} 整段原樣保留
+        let j=i+w.length;while(j<s.length&&/\s/.test(s[j]))j++;
+        if(s[j]==='{'){
+          let dd=0,k=j;
+          for(;k<s.length;k++){if(s[k]==='\\'){k++;continue;}if(s[k]==='{')dd++;else if(s[k]==='}'){dd--;if(dd===0)break;}}
+          push('o',s.slice(i,k+1));i=k+1;continue;
+        }
+      }
+      if(name==='left'||name==='begin')d++;
+      else if((name==='right'||name==='end')&&d>0)d--;
+      push('o',w);i+=w.length;continue;
+    }
+    if(c==='{'){d++;push('o',c);i++;continue;}
+    if(c==='}'){if(d>0)d--;push('o',c);i++;continue;}
+    push(MC_CJK.test(c)?'c':'o',c);i++;
+  }
+  // 中文之間只隔空格的，併成同一段
+  const R=[];
+  for(let a=0;a<T.length;a++){
+    const t=T[a];
+    if(t.k==='c'){
+      let b=a+1;while(b<T.length&&T[b].k==='o'&&/^\s$/.test(T[b].s))b++;
+      if(b>a+1&&b<T.length&&T[b].k==='c'&&T[b].d===t.d){
+        let s2=t.s;for(let z=a+1;z<b;z++)s2+=T[z].s;
+        const nx=T[b];T[b]={k:'c',s:s2+nx.s,d:t.d};continue;
+      }
+    }
+    R.push(t);
+  }
+  return R;
+}
+function mcStandalone(m){
+  const c=m.trim();
+  if(!c)return true;
+  return !MC_START.test(c)&&!MC_END.test(c);
+}
+/* 修一段數學式（不含外面的 $）。沒有中文回傳 null */
+function mcFixBody(body,open,close,inline){
+  const T=mcTokens(body);
+  if(!T.some(t=>t.k==='c'))return null;
+  // 巢狀（分數、根號、上下標、\left…\right、環境）：中文就地包 \text{}
+  T.forEach(t=>{if(t.k==='c'&&t.d>0){t.k='o';t.s='\\text{'+t.s+'}';t.n=true;}});
+  if(!T.some(t=>t.k==='c'))return open+joinTok(T)+close;
+  if(inline){
+    const P=[];let m='';
+    T.forEach(t=>{if(t.k==='c'){P.push({m});P.push({t:t.s});m='';}else m+=t.s;});
+    P.push({m});
+    if(P.every(p=>p.t!==undefined||mcStandalone(p.m))){
+      let out='',last='';
+      P.forEach(p=>{
+        if(p.t!==undefined){
+          if(last==='m'&&MC_HAN.test(p.t[0]))out+=' ';
+          out+=p.t;last=MC_HAN.test(p.t[p.t.length-1])?'t':'p';
+        }else{
+          const core=p.m.trim();
+          if(!core){out+=p.m;if(p.m)last='s';return;}
+          const lead=p.m.slice(0,p.m.indexOf(core)),trail=p.m.slice(lead.length+core.length);
+          if(last==='t'&&!lead)out+=' ';
+          out+=lead+open+core+close+trail;last=trail?'s':'m';
+        }
+      });
+      return out;
+    }
+  }
+  T.forEach(t=>{if(t.k==='c'){t.s='\\text{'+t.s+'}';t.n=true;}});
+  return open+joinTok(T)+close;
+}
+function joinTok(T){
+  let r='';
+  T.forEach((t,ix)=>{
+    if(t.n){
+      if(/[A-Za-z0-9]$/.test(r))r+=' ';
+      r+=t.s;
+      const nx=T[ix+1];if(nx&&/^[A-Za-z0-9\\]/.test(nx.s))r+=' ';
+    }else r+=t.s;
+  });
+  return r;
+}
+/* 修一整段文字：回傳 {text, hits:[{from,to}]} */
+function fixMathCjk(t){
+  const hits=[];
+  const text=splitMath(t).map(sg=>{
+    if(!sg.m)return sg.t;
+    const s=sg.t;let open,close,inline;
+    if(s.startsWith('$$')){open=close='$$';inline=false;}
+    else if(s[0]==='$'){open=close='$';inline=true;}
+    else if(s.startsWith('\\(')){open='\\(';close='\\)';inline=true;}
+    else{open='\\[';close='\\]';inline=false;}
+    const r=mcFixBody(s.slice(open.length,s.length-close.length),open,close,inline);
+    if(r===null||r===s)return s;
+    hits.push({from:s,to:r});return r;
+  }).join('');
+  return {text,hits};
+}
+/* 一題：題幹、選項、詳解裡有哪些數學式含中文 */
+function mathCjkParts(q){
+  const parts=[['stem',q.stem||'']];
+  if(q.kind==='single'||q.kind==='multi')(q.opts||[]).forEach((o,i)=>parts.push(['opt'+i,o||'']));
+  if(q.kind!=='group')parts.push(['sol',q.sol||'']);
+  return parts;
+}
+function mathCjkInfo(q){
+  const hits=[];
+  mathCjkParts(q).forEach(p=>{fixMathCjk(p[1]).hits.forEach(x=>hits.push(x));});
+  return {n:hits.length,hits};
+}
+/* 修正這一題（直接改題目文字）；回傳修了幾處 */
+function mathCjkApply(q){
+  let n=0;
+  const f=x=>{const r=fixMathCjk(x);n+=r.hits.length;return r.text;};
+  q.stem=f(q.stem||'');
+  if(q.kind==='single'||q.kind==='multi')q.opts=(q.opts||[]).map(o=>f(o||''));
+  if(q.kind!=='group'&&q.sol!=null)q.sol=f(q.sol);
+  return n;
+}
+
 /* ================= LaTeX 輸出 ================= */
 function plainEsc(t){
   return t.split('$').map((seg,i)=>i%2?seg:seg.replace(/%/g,'\\%').replace(/&/g,'\\&').replace(/#/g,'\\#').replace(/_/g,'\\_').replace(/~/g,'\\textasciitilde{}')).join('$');
@@ -1621,8 +1762,40 @@ function qCard(s,q){
     acb.addEventListener('change',()=>{q.autoMath=acb.checked;changed();});
     const amInfo=h('span',{class:'hint'});
     const amRow=h('label',{class:'chk',style:'font-size:13px;flex-wrap:wrap'},acb,'自動把題目文字裡的數字、單一英文字母改成數學式',amInfo);
-    strip.append(fracRow,amRow);
+    /* 數學式裡有中文：提示＋一鍵修正（可復原） */
+    const mcMsg=h('div',{class:'hint',style:'flex:1 1 16em;min-width:0;white-space:pre-wrap;word-break:break-all;color:#6B4E00'});
+    const mcBtn=h('button',{class:'btn small',type:'button'},'一鍵修正');
+    const mcUndo=h('button',{class:'btn small',type:'button'},'復原');
+    const mcRow=h('div',{style:'display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px;padding:6px 8px;border:1px solid #E8CF8A;border-radius:6px;background:#FFF8E6'},
+      h('b',{style:'font-size:13px;color:#6B4E00;white-space:nowrap'},'⚠ 數學式裡有中文'),mcMsg,mcBtn,mcUndo);
+    let mcPrev=null;
+    const mcSetFields=()=>{
+      stem.value=q.stem||'';
+      if(q.kind==='single'||q.kind==='multi')card.querySelectorAll('.optrow input.mm-target').forEach((e,i)=>{if(q.opts[i]!=null)e.value=q.opts[i];});
+      const st=card.querySelector('.solbox textarea');if(st)st.value=q.sol||'';
+    };
+    mcBtn.addEventListener('click',()=>{
+      mcPrev={stem:q.stem,opts:(q.opts||[]).slice(),sol:q.sol};
+      mathCjkApply(q);mcSetFields();changed();
+    });
+    mcUndo.addEventListener('click',()=>{
+      if(!mcPrev)return;
+      q.stem=mcPrev.stem;if(q.opts)q.opts=mcPrev.opts;if(mcPrev.sol!==undefined)q.sol=mcPrev.sol;
+      mcPrev=null;mcSetFields();changed();
+    });
+    card.addEventListener('input',()=>{if(mcPrev){mcPrev=null;if(card._proc)card._proc();}});
+    const mcShow=x=>{const t=String(x).replace(/\s+/g,' ');return t.length>46?t.slice(0,46)+'…':t;};
+    strip.append(mcRow,fracRow,amRow);
     card._proc=()=>{
+      const mi=mathCjkInfo(q);
+      mcRow.hidden=!(mi.n||mcPrev);
+      if(mi.n){
+        mcMsg.textContent='本題 '+mi.n+' 處：'+mi.hits.slice(0,2).map(x=>'\n'+mcShow(x.from)+'　→　'+mcShow(x.to)).join('')+(mi.n>2?'\n…':'');
+        mcBtn.hidden=false;mcUndo.hidden=true;
+      }else{
+        mcMsg.textContent='已修正。不滿意可按「復原」（再改動題目文字就不能復原）。';
+        mcBtn.hidden=true;mcUndo.hidden=false;
+      }
       const inf=qProcInfo(q);
       fracRow.hidden=!inf.hasF;
       amRow.hidden=!inf.hits.length;
