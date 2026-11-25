@@ -1450,7 +1450,9 @@ function renderTabs(){
   const tabs=$('#tabs');
   tabs.replaceChildren(...OUT_TABS.map(([k,n])=>h('button',{type:'button',role:'tab','aria-selected':outTab===k,onclick:()=>{outTab=k;renderTabs();renderOut();}},n)));
 }
+let pvSeq=0;
 function renderOut(){
+  pvSeq++;
   setTimeout(()=>{try{markPv();}catch(e){}},0);
   const tools=$('#outTools'),main=$('#outMain');
   const ver=h('span',{class:'addrow'},
@@ -1470,22 +1472,29 @@ function renderOut(){
     const w=Math.round(Math.max(320,Math.min(860,main.clientWidth-28))*pvZoom);
     p.style.width=w+'px';p.style.margin='0 auto';p.style.flexShrink='0';p.style.setProperty('--pf',(w/60.7)+'px');
     pw.append(p);wrap.append(pw);
-    /* 重建預覽時保住捲動位置：新內容在數學式排好前比較矮，瀏覽器會把捲動位置壓回去，排好後不會自己回來（打字時預覽會一路往上漂） */
+    /* 重建預覽用「雙緩衝」：新預覽先在背後（看不見）排好數學式與圖，排完再一次換掉舊的，並保住捲動位置。
+       這樣打字時預覽不會先閃出未排版的文字，也不會因為暫時變矮而位置跳動。縮放與第一次顯示則直接換。 */
     const oldWrap=main.querySelector('.paperwrap')?main.firstElementChild:null;
-    const keepPx=!!oldWrap&&!skipScrollKeep;
-    const st=main.scrollTop,sl=main.scrollLeft,ow=oldWrap?oldWrap.offsetHeight:0,t0=Date.now();
-    let touched=false;const tch=()=>{touched=true;};const evs=['wheel','touchstart','pointerdown','keydown'];
-    if(keepPx)evs.forEach(ev=>main.addEventListener(ev,tch,{passive:true}));
     main.style.overflowAnchor='none';
-    main.replaceChildren(wrap);
-    if(keepPx){wrap.style.minHeight=ow+'px';main.scrollTop=st;main.scrollLeft=sl;}
-    typeset(p);hydrateFigs(p);
-    if(keepPx)mjQ=mjQ.then(()=>{
-      evs.forEach(ev=>main.removeEventListener(ev,tch));
-      if(!wrap.isConnected)return;
-      wrap.style.minHeight='';
-      if(!touched&&!(pvAutoAt>t0)){main.scrollTop=st;main.scrollLeft=sl;}
-    });
+    if(oldWrap&&!skipScrollKeep){
+      const seq=pvSeq;
+      main.querySelectorAll('.pv-stage').forEach(e=>e.remove());
+      if(getComputedStyle(main).position==='static')main.style.position='relative';
+      wrap.classList.add('pv-stage');
+      wrap.style.cssText='position:absolute;visibility:hidden;pointer-events:none;left:'+oldWrap.offsetLeft+'px;top:'+oldWrap.offsetTop+'px;width:'+oldWrap.offsetWidth+'px';
+      main.append(wrap);
+      typeset(p);hydrateFigs(p);
+      mjQ=mjQ.then(()=>{
+        if(seq!==pvSeq||outTab!=='preview'||!wrap.isConnected||!oldWrap.isConnected){if(wrap.classList.contains('pv-stage'))wrap.remove();return;}
+        const st=main.scrollTop,sl=main.scrollLeft;
+        wrap.classList.remove('pv-stage');wrap.removeAttribute('style');
+        oldWrap.replaceWith(wrap);
+        main.scrollTop=st;main.scrollLeft=sl;
+        try{markPv();}catch(e){}
+      });
+    }else{
+      main.replaceChildren(wrap);typeset(p);hydrateFigs(p);
+    }
   }
   if(outTab==='preview'){
     const zb=(t,title,fn)=>h('button',{class:'btn small',type:'button',title,onclick:fn},t);
