@@ -25,7 +25,7 @@ textarea{width:100%;height:160px;font:12px/1.4 ui-monospace,Menlo,monospace;box-
 </style>
 </head>
 <body>
-<header><h1>瀏覽器內編譯 PDF</h1><span class="tag">實驗版</span>
+<header><h1>編譯成 PDF</h1>
 <span style="font-size:13px;opacity:.9">用 XeLaTeX（WebAssembly）直接在這台電腦的瀏覽器編譯，不需要 Overleaf，也不用連到任何伺服器。</span></header>
 <main>
 <div class="card">
@@ -69,6 +69,7 @@ async function getBytes(url,label,done){
   const out=new Uint8Array(got);let p=0;for(const c of parts){out.set(c,p);p+=c.length;}return out;
 }
 let runner=null,files=null,cls=null,busy=false,pdfUrl=null,lastLog='';
+function loadImgs(){return new Promise(res=>{try{const rq=indexedDB.open('exam_wasm',1);rq.onupgradeneeded=()=>rq.result.createObjectStore('kv');rq.onerror=()=>res([]);rq.onsuccess=()=>{const g=rq.result.transaction('kv').objectStore('kv').get('imgs');g.onsuccess=()=>{rq.result.close();res((g.result||[]).map(x=>({path:x.path,content:x.bytes})));};g.onerror=()=>res([]);};}catch(e){res([]);}});}
 async function ensureEngine(){
   if(!runner){
     stat('正在載入編譯引擎…');sub('第一次使用要下載約 110 MB，之後會存在這台電腦的瀏覽器裡，不用再下載。');bar(8);
@@ -99,7 +100,7 @@ async function go(){
     stat('編譯中…');sub('通常 10～30 秒。');bar(85);
     const t0=performance.now();
     const x=new XeLatex(runner);
-    const r=await x.compile({input:src,additionalFiles:[{path:'examsheet.cls',content:cls},...files]});
+    const r=await x.compile({input:src,additionalFiles:[{path:'examsheet.cls',content:cls},...files,...(await loadImgs())]});
     lastLog=r.log||'';
     const sec=((performance.now()-t0)/1000).toFixed(1);
     if(r.success&&r.pdf){
