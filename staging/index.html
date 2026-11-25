@@ -1543,7 +1543,7 @@ function qCard(s,q){
         ...q.opts.map((o,i)=>{
           const ip=h('input',{type:'text',class:'mm-target mono',spellcheck:false,placeholder:'選項內容（數學式用 $…$；選取文字後 Ctrl/⌘+B 粗體、Ctrl/⌘+U 底線）'});ip.value=o;fmtKeys(ip);
           ip.addEventListener('input',()=>{q.opts[i]=ip.value;changed();});
-          const fs=h('select',{class:'optfig',title:S.figs.some(f=>f.kind!=='table')?'這個選項要附的圖（來自第 ④ 區圖庫）':'圖庫還沒有圖：先到左邊第 ④ 區加入圖片或向量圖'},
+          const fs=h('select',{class:'optfig',title:S.figs.some(f=>f.kind!=='table')?'這個選項要附的圖（來自圖庫）':'圖庫還沒有圖：先到上方「⚙ 設定」→「圖庫」加入圖片或向量圖'},
             h('option',{value:''},'🖼 無圖'),...S.figs.filter(f=>f.kind!=='table').map(f=>h('option',{value:String(f.id)},'圖 '+f.id+'｜'+(f.name||''))));
           fs.value=optFigsGet(q,i);
           fs.addEventListener('change',()=>{optFigsSet(q,i,fs.value);fs.classList.toggle('on',fs.value!=='');changed();});
@@ -2591,7 +2591,7 @@ function figPosUI(q){
   wrap.append(wbox);
   const wfield=field('圖寬（占版面 %）',bindInput(q,'figW',{type:'number',int:true,min:10,max:60,after:changed}));
   if(q.figWrap){
-    wrap.append(h('div',{class:'grid2'},wfield),h('span',{class:'hint'},'後面的題目會靠到圖旁邊，超過圖的底部才恢復全寬。圖放不下這一頁時，整題會移到下一頁；取消勾選則用下面的傳統排法。'));
+    wrap.append(h('div',{class:'grid2'},wfield),h('span',{class:'hint'},'後面的題目會靠到圖旁邊，超過圖的底部才恢復全寬。圖放不下這一頁時，整題會移到下一頁。想選「圖放哪裡」（最左邊、最後一行、選項右下方等），請先取消勾選「文繞圖」。'));
     return wrap;
   }
   if(!isCh&&(q.figPos==='right'||q.figPos==='wrap'||q.figPos==='bottom'))q.figPos='auto';
@@ -2618,7 +2618,7 @@ function figPicker(q,card){
   sel.addEventListener('change',()=>{q.figId=sel.value===''?null:parseInt(sel.value,10);const d=sel.closest('details');rerender(true);});
   const det=h('details',{open:q.figId!=null?true:null},h('summary',{class:'hint',style:'cursor:pointer'},'附圖／表格'+(q.figId!=null?'（圖 '+q.figId+'）':'')),
     h('div',{class:'card-b',style:'padding:8px 0 0'},
-      field('從圖庫選一張圖',sel,S.figs.length?'圖庫在左邊第 ④ 區，可貼上手繪圖轉向量圖的資料。':'圖庫目前是空的：可以直接在下面上傳圖片，或到左邊第 ④ 區加入向量圖。'),
+      field('從圖庫選一張圖',sel,S.figs.length?'圖庫在上方「⚙ 設定」→「圖庫」，可貼上手繪圖轉向量圖的資料。':'圖庫目前是空的：可以直接在下面上傳圖片，或到上方「⚙ 設定」→「圖庫」加入向量圖。'),
       h('div',{class:'addrow'},h('button',{class:'btn small primary',type:'button',onclick:()=>{const f=newTable();q.figId=f.id;rerender(true);}},'＋ 新增表格')),
       (()=>{const cf=q.figId!=null?findFig(q.figId):null;return cf&&cf.kind==='table'?h('div',{},h('div',{class:'hint',style:'margin:4px 0'},'表格內容（圖 '+cf.id+'）：'),tableEditor(cf,()=>{save();scheduleOutput();})):null;})(),
       imgUploader(q),
@@ -3224,7 +3224,7 @@ function openSave(){
   b2.addEventListener('click',()=>saveFile('main.tex',genTex()));
   bw.addEventListener('click',async()=>{
     try{
-      localStorage.setItem('exam_wasm_tex',genTex());localStorage.setItem('exam_wasm_cls',EXAM_CLS);
+      const cur=verOf(),texs={};try{VERS.forEach(([v])=>{setVer(v);texs[v]=genTex();});}finally{setVer(cur);}localStorage.setItem('exam_wasm_tex',JSON.stringify({cur,texs}));localStorage.setItem('exam_wasm_cls',EXAM_CLS);
       const imgs=[],seen=new Set();
       S.sections.forEach(sc=>sc.qs.forEach(q=>{if(q.inc===false)return;eachFigRef(q,id=>{const f=findFig(id);if(f&&f.kind==='image'&&f.file&&!seen.has(f.file)){seen.add(f.file);const b=dataUrlBytes(f.data);if(b)imgs.push({path:f.file,bytes:b});}});}));
       await new Promise((ok,no)=>{const rq=indexedDB.open('exam_wasm',1);rq.onupgradeneeded=()=>rq.result.createObjectStore('kv');rq.onerror=()=>no(rq.error);rq.onsuccess=()=>{const tx=rq.result.transaction('kv','readwrite');tx.objectStore('kv').put(imgs,'imgs');tx.oncomplete=()=>{rq.result.close();ok();};tx.onerror=()=>no(tx.error);};});
@@ -3235,7 +3235,7 @@ function openSave(){
   const card=h('div',{style:'background:#fff;border-radius:12px;max-width:640px;width:100%;padding:16px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)'},
     h('div',{style:'font-weight:700;font-size:16px;margin-bottom:6px'},'列印 / 存檔'),
     h('div',{class:'hint'},'要印出正式考卷，請用第一項（或第二項）；要之後接著改，存成「考卷檔」就夠了。「列印 / 另存 PDF」是備用，效果不如前兩項。'),
-    row(bw,'用 XeLaTeX 直接在這個瀏覽器編譯成 PDF，排版與 Overleaf 完全相同，不需要 Overleaf 帳號。第一次使用要下載約 110 MB（約 1 分鐘），之後只要幾秒。目前編譯的是畫面上這個版本（學生版或含解答版，看「顯示解答」設定）。'),
+    row(bw,'用 XeLaTeX 直接在這個瀏覽器編譯成 PDF，排版與 Overleaf 完全相同，不需要 Overleaf 帳號。第一次使用要下載約 110 MB（約 1 分鐘），之後只要幾秒。編譯頁上方可以切換學生版、簡答版、詳解版。'),
     row(b1,'內含 main.tex、examsheet.cls、附圖圖片，以及考卷檔。整包上傳到 Overleaf 用 XeLaTeX 編譯，成品與上一項相同。這個 zip 也能用「開啟舊檔」開回這個工具繼續改。'),
     row(b0,'用瀏覽器內建的列印功能，可選版本（學生版／簡答版／詳解版）並預覽。【備用】排版是用瀏覽器近似出來的，行距、字體和數學式的細節不如前兩項精準，只在前兩項都用不了時使用。'),
     row(b3,'只存這個工具用的考卷檔，之後用「開啟舊檔」接著改。'),
@@ -4318,7 +4318,7 @@ function figHandedOver(){
   ov.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(24,30,46,.88);display:flex;align-items:center;justify-content:center;padding:16px';
   const card=document.createElement('div');
   card.style.cssText='background:#fff;border-radius:12px;max-width:460px;padding:20px 24px;font:15px/1.7 "Noto Sans TC","Microsoft JhengHei",sans-serif;color:#1B2230';
-  card.innerHTML='<div style="font-weight:700;font-size:17px;margin-bottom:6px">✓ 圖已加進原本的考卷分頁</div><div>請回到原本的「考卷排版工作台」分頁，在第 ④ 區圖庫就能看到。這個分頁可以直接關閉。</div>';
+  card.innerHTML='<div style="font-weight:700;font-size:17px;margin-bottom:6px">✓ 圖已加進原本的考卷分頁</div><div>請回到原本的「考卷排版工作台」分頁，在上方「⚙ 設定」→「圖庫」就能看到。這個分頁可以直接關閉。</div>';
   const b=document.createElement('button');b.type='button';b.className='btn';b.style.marginTop='12px';b.textContent='改在這個分頁繼續';
   b.onclick=()=>{location.reload();};
   card.append(b);ov.append(card);document.body.append(ov);
