@@ -59,8 +59,8 @@ input.mono{font-family:var(--font-mono);font-size:13.5px}
 .q.ins-after::after{content:'▼ 按「＋新增題目」，新題會加在這題之後';display:block;padding:3px 10px;font-size:12px;color:#fff;background:var(--tc,var(--accent));border-radius:0 0 9px 9px}
 .q.ins-before::before{content:'▲ 按「＋新增題目」，新題會加在這題之前';display:block;padding:3px 10px;font-size:12px;color:#fff;background:var(--tc,var(--accent));border-radius:9px 9px 0 0}
 .contentbar{position:sticky;top:var(--toph,0px);z-index:30;box-shadow:0 4px 10px rgba(0,0,0,.12)}
-.secnav{display:flex;gap:6px;flex-wrap:wrap;width:100%}
-.navchip{border:1px solid var(--tc);background:var(--tt);color:var(--tc);padding:3px 11px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer}
+.secnav{display:flex;gap:5px;flex-wrap:wrap;flex:1 1 160px;min-width:0}
+.navchip{border:1px solid var(--tc);background:var(--tt);color:var(--tc);padding:3px 8px;border-radius:999px;font-size:12.5px;white-space:nowrap;font-weight:600;cursor:pointer}
 .navchip.cur{background:var(--tc);color:#fff}
 .tdot{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--tc);margin-right:2px}
 .secset{margin:4px 0 6px 22px;padding:6px 8px;background:#F6F8FB;border-radius:8px}
@@ -196,7 +196,10 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 .pvcalc .cspace{flex:none}
 .pv-sec+.pv-calc{margin-top:0}
 /* 設定浮動視窗 */
-.cfgtabs{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.cfgtabs{flex:none;position:relative;display:flex;gap:6px;align-items:center}
+.cfgmenu{position:absolute;top:calc(100% + 6px);left:0;z-index:40;min-width:200px;background:#fff;border:1px solid #C6CEDA;border-radius:9px;padding:6px;display:flex;flex-direction:column;gap:5px;box-shadow:0 10px 26px rgba(27,34,48,.22)}
+.cfgmenu[hidden]{display:none}
+.cfgmenu .cfgtab{text-align:left;padding:6px 12px}
 .cfgtabs .cl{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px}
 .cfgtab{border:1px solid var(--cc);background:var(--ct);color:var(--cc);padding:4px 12px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
 .cfgtab:hover{filter:brightness(.97)}
@@ -250,12 +253,10 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 </div>
 <div class="layout">
   <div class="left">
-    <div class="card contentbar" id="contentBar" style="padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+    <div class="card contentbar" id="contentBar" style="padding:6px 8px;display:flex;flex-wrap:wrap;gap:6px 6px;align-items:center">
       <div class="cfgtabs" id="cfgTabs"></div>
-      <b style="flex:1;min-width:120px">題目內容</b>
-      <button class="btn small" id="btnCollapse" type="button">全部收合</button>
-      <button class="btn small" id="btnExpand" type="button">全部展開</button>
       <div class="secnav" id="secnav"></div>
+      <button class="btn small" id="btnCollapse" type="button" title="全部收合／全部展開">全部收合</button>
     </div>
     <div id="warns" class="warns" hidden></div>
     <div id="sections" style="display:flex;flex-direction:column;gap:12px"></div>
@@ -1765,6 +1766,7 @@ function renderNav(){
       userScrolled=true;setTimeout(updateFloat,60);
     }},`${comp.secs[s.id]?comp.secs[s.id].no+'. ':''}${s.name}`)));
   box.hidden=!S.sections.length;
+  if(typeof syncCollapseBtn==='function')syncCollapseBtn();
   const bar=$('#contentBar');if(bar)document.documentElement.style.setProperty('--navh',bar.offsetHeight+'px');
   setTopH();
 }
@@ -1878,22 +1880,28 @@ function openCfg(key){
   w.hidden=false;cfgOpen=key;cfgPlace();body.scrollTop=0;renderCfgTabs();
 }
 function toggleCfg(key){if(cfgOpen===key)closeCfg();else openCfg(key);}
+let cfgMenuOpen=false;
 function renderCfgTabs(){
   const box=$('#cfgTabs');if(!box)return;
   const wt=$('#cfgWinTabs');
-  const keys=Object.keys(CFG_WINS),mk=k=>{
+  const keys=Object.keys(CFG_WINS),mk=(k,menu)=>{
     const d=CFG_WINS[k];
-    return h('button',{type:'button',class:'cfgtab'+(cfgOpen===k?' on':''),style:`--cc:${d.c};--ct:${d.t}`,title:d.title,'aria-pressed':cfgOpen===k?'true':'false',onclick:()=>toggleCfg(k)},d.tab);
+    return h('button',{type:'button',class:'cfgtab'+(cfgOpen===k?' on':''),style:`--cc:${d.c};--ct:${d.t}`,title:d.title,'aria-pressed':cfgOpen===k?'true':'false',onclick:()=>{if(menu)cfgMenuOpen=false;toggleCfg(k);}},d.tab);
   };
-  box.replaceChildren(...keys.filter(k=>CFG_WINS[k].main).map(mk),h('span',{class:'sep'}),h('span',{class:'cl'},'設定：'),...keys.filter(k=>!CFG_WINS[k].main).map(mk));
-  if(wt)wt.replaceChildren(...keys.filter(k=>CFG_WINS[k].main).map(mk),h('span',{class:'sep'}),...keys.filter(k=>!CFG_WINS[k].main).map(mk));
+  const others=keys.filter(k=>!CFG_WINS[k].main),anyOn=others.includes(cfgOpen);
+  const mb=h('button',{type:'button',class:'cfgtab'+(anyOn?' on':''),style:'--cc:#3A4558;--ct:#EEF1F6','aria-haspopup':'true','aria-expanded':cfgMenuOpen?'true':'false',title:'標頭與版面、題型預設、圖庫、行距間距與字型',onclick:()=>{cfgMenuOpen=!cfgMenuOpen;renderCfgTabs();}},'⚙ 設定 ▾');
+  const menu=h('div',{class:'cfgmenu',role:'menu'},...others.map(k=>mk(k,true)));menu.hidden=!cfgMenuOpen;
+  box.replaceChildren(...keys.filter(k=>CFG_WINS[k].main).map(k=>mk(k)),mb,menu);
+  if(wt)wt.replaceChildren(...keys.filter(k=>CFG_WINS[k].main).map(k=>mk(k)),h('span',{class:'sep'}),...others.map(k=>mk(k)));
   const bar=$('#contentBar');if(bar)document.documentElement.style.setProperty('--navh',bar.offsetHeight+'px');
   cfgPlace();
 }
 function initCfgWin(){
   const w=$('#cfgWin');if(!w)return;
   $('#cfgWinX').addEventListener('click',closeCfg);
+  document.addEventListener('click',e=>{if(cfgMenuOpen&&e.target.isConnected&&!e.target.closest('#cfgTabs')){cfgMenuOpen=false;renderCfgTabs();}});
   document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&cfgMenuOpen){cfgMenuOpen=false;renderCfgTabs();return;}
     if(e.key!=='Escape'||e.defaultPrevented||!cfgOpen)return;
     if(document.querySelector('.ocr-modal,#texDlg,#saveDlg')||(typeof prState!=='undefined'&&prState))return;
     closeCfg();
@@ -3591,8 +3599,13 @@ $('#btnImport').onclick=()=>$('#fileImport').click();
 $('#fileImport').onchange=e=>{if(e.target.files[0])importProject(e.target.files[0]);e.target.value='';};
 $('#btnImportTex').onclick=()=>$('#fileTex').click();
 $('#fileTex').onchange=e=>{if(e.target.files.length)texImportFiles(e.target.files);e.target.value='';};
-$('#btnCollapse').onclick=()=>{S.sections.forEach(s=>{s.qs.forEach(q=>q.collapsed=true);});rerender();};
-$('#btnExpand').onclick=()=>{S.sections.forEach(s=>{s.collapsed=false;s.qs.forEach(q=>q.collapsed=false);});rerender();};
+const anyOpenQ=()=>S.sections.some(s=>s.collapsed||s.qs.some(q=>!q.collapsed));
+const syncCollapseBtn=()=>{const b=$('#btnCollapse');if(b)b.textContent=anyOpenQ()?'全部收合':'全部展開';};
+$('#btnCollapse').onclick=()=>{
+  if(S.sections.some(s=>s.qs.some(q=>!q.collapsed))){S.sections.forEach(s=>{s.qs.forEach(q=>q.collapsed=true);});}
+  else{S.sections.forEach(s=>{s.collapsed=false;s.qs.forEach(q=>q.collapsed=false);});}
+  rerender();syncCollapseBtn();
+};
 window.addEventListener('resize',()=>{clearTimeout(window.__rt);window.__rt=setTimeout(()=>{if(outTab==='preview')renderOut();},200);});
 
 /* ================= 數學符號面板（取自講義排版工作台） ================= */
