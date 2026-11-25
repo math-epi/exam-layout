@@ -1275,11 +1275,28 @@ function mathCjkInfo(q){
   return {n:hits.length,hits};
 }
 /* 修正這一題（直接改題目文字）；回傳修了幾處 */
+/* 自動模式：欄位裡的 $ 配對不確定（奇數個）或像美金，就整欄不寫回 */
+function autoFieldSafe(t){
+  t=String(t==null?'':t);
+  if((t.replace(/\\\$/g,'').replace(/\$\$/g,'').match(/\$/g)||[]).length%2)return false;
+  const segs=splitMath(t);
+  return !segs.some((sg,i)=>{
+    if(!sg.m||sg.t[0]!=='$'||sg.t.startsWith('$$'))return false;
+    const inner=sg.t.slice(1,-1),nx=segs[i+1],nc=nx&&!nx.m?nx.t[0]:'';
+    return /^[0-9]/.test(nc)||(/^[0-9][0-9,.]*\s*[㐀-鿿]/.test(inner)&&/\s$/.test(inner));
+  });
+}
 function mathCjkApply(q,auto){
   let n=0;
   const f=x=>{const r=fixMathCjk(x,auto);n+=r.hits.length;return r.text;};
-  q.stem=f(q.stem||'');
-  if(q.kind==='single'||q.kind==='multi')q.opts=(q.opts||[]).map(o=>f(o||''));
+  // 自動模式另外把「沒加 $ 的數字、單一英文字母」直接改寫成數學式（題幹與選項，與預覽相同規則）
+  const g=x=>{
+    x=f(x);
+    if(auto&&autoMathOn(q)&&autoFieldSafe(x)){const r=autoMathTx(x);n+=r.hits.length;return r.text;}
+    return x;
+  };
+  q.stem=g(q.stem||'');
+  if(q.kind==='single'||q.kind==='multi')q.opts=(q.opts||[]).map(o=>g(o||''));
   if(q.kind!=='group'&&q.sol!=null)q.sol=f(q.sol);
   return n;
 }
@@ -1521,7 +1538,7 @@ function buildSettings(){
     field('填空題的大題名稱',bindInput(C,'fillName',{id:'cfg_fillName',type:'select',options:[['填充題','填充題'],['選填題','選填題']],after:()=>{S.sections.forEach(s=>{if(s.type==='fill'&&(s.name==='填充題'||s.name==='選填題'))s.name=C.fillName;});rerender(true);}}),'填空題型的名稱（② 的勾選項與浮動按鈕也會一起改）；已加入的填空題型區塊會一起改名。'),
     h('div',{class:'grid3'},
       field('多選題每題配分',bindInput(C,'multiPts',{id:'cfg_multiPts'})),field('單選題每題配分',bindInput(C,'singlePts',{id:'cfg_singlePts'})),field('填空題每題配分',bindInput(C,'fillPts',{id:'cfg_fillPts'}))),
-    field('題目文字：離開欄位或貼上時，自動修正數學式裡的中文',bindInput(C,'autoFixCjk',{id:'cfg_autoFixCjk',type:'select',options:[['true','開（預設）'],['false','關']],after:()=>{C.autoFixCjk=($('#cfg_autoFixCjk').value==='true');changed();rerender();}}),'例如 $x 的最大值為M$ 會改成 $x$ 的最大值為 $M$；也會處理貼上、手寫辨識、LaTeX 匯入的文字。每一題也可以單獨取消；改完可按「復原」。'),
+    field('題目文字：離開欄位或貼上時，直接修正輸入的文字',bindInput(C,'autoFixCjk',{id:'cfg_autoFixCjk',type:'select',options:[['true','開（預設）'],['false','關']],after:()=>{C.autoFixCjk=($('#cfg_autoFixCjk').value==='true');changed();rerender();}}),'例如 $x 的最大值為M$ 會改成 $x$ 的最大值為 $M$，「設 x,y 為實數」會改成「設 $x,y$ 為實數」（與預覽相同規則，只處理題幹與選項，「題目文字：自動把數字…」關閉的題目不改）；也會處理貼上、手寫辨識、LaTeX 匯入的文字。每一題也可以單獨取消；改完可按「復原」。'),
     field('題目文字：自動把數字、單一英文字母改成數學式',bindInput(C,'autoMath',{id:'cfg_autoMath',type:'select',options:[['true','開（預設）'],['false','關']],after:()=>{C.autoMath=($('#cfg_autoMath').value==='true');changed();rerender();}}),'只處理數學式 $…$ 以外的文字；有意義的英文單字（at、of、you）不會動。每一題也可以單獨取消。'),
     field('選填題：算式中間的減號（如 2x−4 的 −）是否佔答案卡一格',bindInput(C,'minusSlot',{id:'cfg_minusSlot',type:'select',options:[['false','預設不佔格'],['true','預設佔一格']],after:()=>{C.minusSlot=($('#cfg_minusSlot').value==='true');changed();rerender();}}),'每一題也可以在題目裡單獨改。數字前面的負號一律佔格。'),
     h('div',{class:'grid2'},
@@ -1814,7 +1831,7 @@ function qCard(s,q){
     const mcShow=x=>{const t=String(x).replace(/\s+/g,' ');return t.length>46?t.slice(0,46)+'…':t;};
     const afc=h('input',{type:'checkbox'});afc.checked=q.autoFixCjk!==false;
     afc.addEventListener('change',()=>{q.autoFixCjk=afc.checked;changed();});
-    const afcRow=h('label',{class:'chk',style:'font-size:13px;flex-wrap:wrap'},afc,'離開欄位或貼上時，自動修正數學式裡的中文');
+    const afcRow=h('label',{class:'chk',style:'font-size:13px;flex-wrap:wrap'},afc,'離開欄位或貼上時，直接修正輸入的文字（數學式裡的中文、沒加 $ 的 x、y、數字）');
     strip.append(mcRow,afcRow,fracRow,amRow);
     card._proc=()=>{
       const mi=mathCjkInfo(q);
