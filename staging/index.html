@@ -233,9 +233,8 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 <body>
 <div class="top">
   <h1>考卷排版工作台<small>輸出 XeLaTeX 考卷（國立羅東高中版型）</small><span style="margin-left:10px;font-size:12px;padding:2px 10px;border-radius:999px;background:#1E407C;color:#fff;font-weight:600;vertical-align:middle">GitHub版</span></h1>
-  <button class="btn small primary" id="btnPrint" type="button">列印 / 存成 PDF</button>
+  <button class="btn small primary" id="btnPrint" type="button" title="列印、存成 PDF，或存成考卷檔／Overleaf 專案">列印 / 存檔</button>
   <button class="btn small" id="btnNew" type="button">新考卷</button>
-  <button class="btn small" id="btnExport" type="button" title="存成考卷檔，或下載給 Overleaf 用的專案（含 main.tex）">存檔</button>
   <button class="btn small" id="btnImport" type="button" title="開啟之前存的考卷檔">開啟舊檔</button>
   <button class="btn small" id="btnImportTex" type="button" title="匯入其他老師用 LaTeX 打的題目（.tex 或 .zip），自動分到各題型">匯入 LaTeX</button>
   <button class="btn small danger" id="btnReset" type="button">載入範例</button>
@@ -245,9 +244,9 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 </div>
 <div class="banner" id="saveWarn" hidden></div>
 <div class="banner" id="guide">
-  <b>用法：</b>左邊填題目，右邊看預覽；做好按上方「<b>列印 / 存成 PDF</b>」，想之後接著改就按「<b>存檔</b>」。
+  <b>用法：</b>左邊填題目，右邊看預覽；做好按上方「<b>列印 / 存檔</b>」，選「列印 / 另存 PDF」；想之後接著改，就選「存成考卷檔」。
   <details style="margin-top:6px"><summary style="cursor:pointer;color:#1E407C;font-weight:600">更多說明</summary>
-  <div style="margin-top:6px">按「存檔」可存成考卷檔（下次用「開啟舊檔」接著改）；熟悉 LaTeX 的老師可以下載 <b>Overleaf 專案 zip</b>（含 main.tex 與 examsheet.cls，上傳後用 <b>XeLaTeX</b> 編譯兩次）。
+  <div style="margin-top:6px">按「列印 / 存檔」再選「存成考卷檔」，可存成考卷檔（下次用「開啟舊檔」接著改）；熟悉 LaTeX 的老師可以下載 <b>Overleaf 專案 zip</b>（含 main.tex 與 examsheet.cls，上傳後用 <b>XeLaTeX</b> 編譯兩次）。
   選填題的解答直接輸入答案（如 <code>-56/7</code>、<code>\sqrt{27}</code>），數字與正負號會自動變成答案卡的圈圈格子。圖形請先放進「圖庫」，再到每題「附圖」選用。<br>
   版面、題型預設、圖庫、行距與字型等設定，請按題目區上方的彩色「設定」標籤，會浮出設定視窗（按「關閉」或 Esc 關掉）。要勾選這份考卷的題型，請按「本試卷題型」標籤。<br>
   <label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="rtToggle" checked style="width:auto"> 左邊欄位沒在編輯時，顯示排版後的數學式（點公式可用數學符號修改，點文字回到輸入）</label></div>
@@ -612,7 +611,7 @@ function compute(){
   });
   const imgs=new Set();
   S.sections.forEach(s=>s.qs.forEach(q=>{if(q.inc===false)return;eachFigRef(q,id=>{const f=findFig(id);if(!f)warns.push('有題目指定的附圖（圖 '+id+'）已不在圖庫。');else if(f.kind==='image')imgs.add(f.file);});}));
-  if(imgs.size)warns.push('圖片檔 '+[...imgs].join('、')+'：用「存檔」下載 Overleaf zip 會自動包含；若只複製 main.tex，要把圖片上傳到 Overleaf 專案（與 main.tex 同一層），檔名要完全一致。');
+  if(imgs.size)warns.push('圖片檔 '+[...imgs].join('、')+'：用「列印 / 存檔」下載 Overleaf zip 會自動包含；若只複製 main.tex，要把圖片上傳到 Overleaf 專案（與 main.tex 同一層），檔名要完全一致。');
   if(math&&qn>cardSlots())warns.push(`數學卡的答案只有 ${cardSlots()} 格（可在「設定」修改數學卡格數），目前選擇題與選填格子共 ${qn} 格，超過 ${qn-cardSlots()} 格。第 ${cardSlots()+1} 格起不會畫圈圈編號，請減少題數或選填的格子數。`);
   const ex=S.cfg.expectedTotal.trim();
   if(ex!==''&&num(ex)!==total)warns.push(`全卷配分合計 ${fmt(total)} 分，與設定的滿分 ${ex} 分不符。`);
@@ -3179,9 +3178,10 @@ function openSave(){
   const msg=h('div',{class:'hint',style:'min-height:22px;margin-top:10px'});
   const say=(t,bad)=>{msg.textContent=t;msg.style.color=bad?'var(--danger)':'var(--ok)';};
   const row=(btn,desc)=>h('div',{style:'display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)'},h('div',{style:'flex:none;width:210px'},btn),h('div',{class:'hint',style:'flex:1'},desc));
-  const b1=h('button',{class:'btn primary',type:'button',style:'width:100%'},'下載 Overleaf 專案（.zip）');
+  const b0=h('button',{class:'btn primary',type:'button',style:'width:100%'},OFFLINE?'列印 / 另存 PDF':'下載 PDF');
+  const b1=h('button',{class:'btn',type:'button',style:'width:100%'},'下載 Overleaf 專案（.zip）');
   const b2=h('button',{class:'btn',type:'button',style:'width:100%'},'只下載 main.tex');
-  const b3=h('button',{class:'btn',type:'button',style:'width:100%'},'存成考卷檔（.json）');
+  const b3=h('button',{class:'btn primary',type:'button',style:'width:100%'},'存成考卷檔（.json）');
   const bc=h('button',{class:'btn',type:'button'},'關閉');
   const close=()=>{ov.remove();document.removeEventListener('keydown',onKey);};
   const onKey=e=>{if(e.key==='Escape')close();};document.addEventListener('keydown',onKey);
@@ -3192,14 +3192,16 @@ function openSave(){
     else if(r.why==='declined')say('已取消下載。');
     else say('這個環境不允許下載 zip。可以改到「main.tex」與「examsheet.cls」分頁按「複製」，貼進 Overleaf 的同名檔案。',true);
   });
+  b0.addEventListener('click',()=>{close();openPrint();});
   b2.addEventListener('click',()=>saveFile('main.tex',genTex()));
   b3.addEventListener('click',async()=>{await saveFile('exam-project.json',JSON.stringify(S,null,1));});
   const card=h('div',{style:'background:#fff;border-radius:12px;max-width:640px;width:100%;padding:16px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)'},
-    h('div',{style:'font-weight:700;font-size:16px;margin-bottom:6px'},'存檔'),
-    h('div',{class:'hint'},'選一種存法。一般老師存「考卷檔」就夠了，會用 Overleaf 的老師存 zip。'),
+    h('div',{style:'font-weight:700;font-size:16px;margin-bottom:6px'},'列印 / 存檔'),
+    h('div',{class:'hint'},'要印出考卷或存成 PDF，選第一項；要之後接著改，存成「考卷檔」就夠了，會用 Overleaf 的老師再存 zip。'),
+    row(b0,'選版本（學生版／簡答版／詳解版）、預覽每一頁，再列印或另存成 PDF。'),
+    row(b3,'只存這個工具用的考卷檔，之後用「開啟舊檔」接著改。'),
     row(b1,'內含 main.tex、examsheet.cls、附圖圖片，以及考卷檔。整包上傳到 Overleaf 就能編譯。這個 zip 也能用「開啟舊檔」開回這個工具繼續改。'),
     row(b2,'只要 main.tex 這一個檔（examsheet.cls 在「examsheet.cls」分頁另外取得）。'),
-    row(b3,'只存這個工具用的考卷檔，之後用「開啟舊檔」接著改。'),
     msg,h('div',{style:'text-align:right;margin-top:6px'},bc));
   ov.append(card);document.body.append(ov);
 }
@@ -3613,7 +3615,7 @@ async function texImportFiles(fileList){
 
 twoClick($('#btnNew'),()=>{blankState();settingsBuilt=false;rerender();},'清空？再按一次');
 twoClick($('#btnReset'),()=>{sampleState();settingsBuilt=false;rerender();},'目前內容將被取代，再按一次');
-$('#btnExport').onclick=openSave;$('#btnPrint').onclick=openPrint;
+$('#btnPrint').onclick=openSave;
 $('#btnImport').onclick=()=>$('#fileImport').click();
 $('#fileImport').onchange=e=>{if(e.target.files[0])importProject(e.target.files[0]);e.target.value='';};
 $('#btnImportTex').onclick=()=>$('#fileTex').click();
