@@ -139,6 +139,11 @@ input.mono{font-family:var(--font-mono);font-size:13.5px}
 .rtv .rtd{display:block;white-space:normal;margin:2px 0}.rtv .rtm.rtd{padding:2px 4px}
 .rtv mjx-container{margin:0!important}.rtv .rtd mjx-container{display:block!important;margin:.2em 0!important}
 .rtv .rtm:not(.rtd) mjx-container{display:inline-block!important}
+.rte{cursor:text;outline:none}.rte:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(60,110,200,.18)}
+.rte.rta{min-height:104px;max-height:max(240px,62vh);overflow-y:auto}
+.rte.empty::before{content:attr(data-ph);color:var(--muted);pointer-events:none}
+.rte .rtm{background:#EEF3FB;padding:0 3px;-webkit-user-select:all;user-select:all}
+.rte .rtm.rtd{display:block;text-align:center}
 textarea.mm-target{min-height:104px;overflow-y:hidden}
 .rt-hid{position:absolute!important;width:1px!important;height:1px!important;min-height:0!important;padding:0!important;border-width:0!important;margin:0!important;opacity:0;overflow:hidden;resize:none!important;pointer-events:none}
 .rzh::after{content:'';position:absolute;left:3px;top:50%;width:3px;height:44px;margin-top:-22px;border-radius:2px;background:#B4BCCB}
@@ -269,7 +274,7 @@ input.sw:checked+.swstate::after{content:'開'}
   選填題的解答直接輸入答案（如 <code>-56/7</code>、<code>\sqrt{27}</code>），數字與正負號會自動變成答案卡的圈圈格子。圖形請先放進「圖庫」，再到每題「附圖」選用。<br>
   版面、題型預設、圖庫、行距與字型等設定，請按題目區上方的「⚙ 設定」按鈕，從下拉選單選一項，會浮出設定視窗（按「關閉」或 Esc 關掉）。要勾選這份考卷的題型，請按「本試卷題型」標籤。<br>
   <label class="swrow" title="按一下切換開／關"><input type="checkbox" id="rtToggle" class="sw" checked><span class="swstate" aria-hidden="true"></span><span><b>顯示排版後的數學式</b>：左邊欄位沒在編輯時，以排版後的樣子顯示（點公式可用數學符號修改，點文字回到輸入）；關閉則顯示原始文字。</span></label>
-  <label class="swrow" title="按一下切換開／關"><input type="checkbox" id="tokToggle" class="sw" checked><span class="swstate" aria-hidden="true"></span><span><b>編輯時把數學式收成〔數學式1〕</b>：點進題目、選項、詳解編輯時，<code>$…$</code> 會暫時顯示成〔數學式1〕，文字照一般方式修改，下方即時顯示排版預覽，點預覽裡的數學式可用視覺編輯器修改；關閉則顯示 LaTeX 原始碼。</span></label></div>
+  <div class="swrow" style="align-items:flex-start"><span style="flex:1 1 auto"><b>編輯方式</b>：點進題目、選項、詳解編輯時，數學式怎麼顯示。</span><select id="edMode" style="width:auto;flex:none"><option value="rich">直接顯示排版後的數學式（建議）</option><option value="tok">收成〔數學式1〕，下方即時預覽</option><option value="raw">顯示 LaTeX 原始碼</option></select></div></div>
   </details>
 </div>
 <div class="layout">
@@ -1129,7 +1134,7 @@ function autoMathTx(t){
   const text=splitMath(t).map(sg=>{
     if(sg.m){if(/\+\/?-|＋－/.test(sg.t)){hits.push('+-');return sg.t.replace(/\+\/?-|＋－/g,'\\pm ');}return sg.t;}
     return autoMathText(sg.t.replace(/\+\/?-|＋－/g,()=>{hits.push('+-');return '±';}),hits);
-  }).join('');
+  }).reduce((o,x)=>o+(o.endsWith('$')&&x.startsWith('$')&&!o.endsWith('\\$')?' ':'')+x,'');  // 兩個數學式緊貼（$a$$b$）會被 TeX 當成 $$ 顯示公式，中間補空格
   return {text,hits};
 }
 /* 這一題要不要自動改數學式：全卷設定（預設開）＋這題的勾選（預設開） */
@@ -1836,10 +1841,10 @@ function qCard(s,q){
     const setVal=(e,v)=>{
       if(e._tok&&e._tok.on)e._tok.commit();
       if(e.value===v){if(e._tok&&document.activeElement===e)e._tok.load();return;}
-      const a=document.activeElement===e,p=a?e.selectionStart:0,old=e.value.length;
+      const a=document.activeElement===e||(!!e._rtv&&document.activeElement===e._rtv&&richOn(e)),p=a?e.selectionStart:0,old=e.value.length;
       e.value=v;
-      if(!a&&e._rtv&&typeof rtRender==='function')rtRender(e);
       if(a){const np=Math.max(0,Math.min(v.length,p+v.length-old));e.setSelectionRange(np,np);if(e._tok)e._tok.load();}
+      if(e._rtv&&typeof rtRender==='function'&&(!a||richOn(e)))rtRender(e);
     };
     const mcSetFields=()=>{
       setVal(stem,q.stem||'');
@@ -1855,7 +1860,7 @@ function qCard(s,q){
       mcPrev=snap;mcAutoN=n;mcSetFields();changed();
     };
     const isMM=t=>t&&t.classList&&t.classList.contains('mm-target')&&(t.tagName==='TEXTAREA'||t.tagName==='INPUT');
-    card.addEventListener('focusout',e=>{if(isMM(e.target))mcAuto();});
+    card.addEventListener('focusout',e=>{const t=(e.target&&e.target._rteTa)||e.target;if(t._rich&&t._rich.redir)return;if(isMM(t))mcAuto();});
     card.addEventListener('paste',e=>{if(isMM(e.target))setTimeout(mcAuto,0);});
     mcBtn.addEventListener('click',()=>{
       mcPrev={stem:q.stem,opts:(q.opts||[]).slice(),sol:q.sol};
@@ -4187,7 +4192,7 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('keydown',e=>{
   if(e.altKey&&!e.ctrlKey&&!e.metaKey&&e.code==='KeyM'){
     e.preventDefault();if(!mmBox)return;
-    const a=document.activeElement,isField=isTarget(a);
+    const a0=document.activeElement,a=(a0&&a0._rteTa)||a0,isField=isTarget(a);
     if(mmBox.hidden)openMM(isField?a:null);else mmFocus();
     return;
   }
@@ -4197,7 +4202,7 @@ document.addEventListener('keydown',e=>{
     else if(e.key==='Escape'){e.preventDefault();closeMM();if(lastTa&&document.contains(lastTa))lastTa.focus();}
   }
 });
-document.addEventListener('focusin',e=>{if(isTarget(e.target))lastTa=e.target;});
+document.addEventListener('focusin',e=>{const t=(e.target&&e.target._rteTa)||e.target;if(isTarget(t))lastTa=t;});
 function mmShow(it){
   if(it.show)return it.show;
   if(/^\\text\{/.test(it.t))return '\\text{文字}';
@@ -4492,9 +4497,11 @@ function rtGrow(ta){
   ta.style.overflowY=need>mx?'auto':'hidden';
 }
 const rtGO=('IntersectionObserver' in window)?new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting)rtGrow(en.target);}),{rootMargin:'200px 0px'}):null;
-function rtOff(ta){ta.classList.remove('rt-hid');if(ta._rtv)ta._rtv.hidden=true;rtGrow(ta);}
+function rtOff(ta){if(richOn(ta))return;ta.classList.remove('rt-hid');if(ta._rtv)ta._rtv.hidden=true;rtGrow(ta);}
 function rtRender(ta){
   const rv=ta._rtv;if(!rv)return;
+  if(richOn(ta)){richRender(ta);return;}
+  if(rv.dataset.rich)richDetach(ta);
   const v=ta.value;
   const nd=!!ta.dataset.nodollar;
   if(!rtOn||!mmReady||document.activeElement===ta||(nd?!v.trim():v.indexOf('$')<0)){rtOff(ta);return;}
@@ -4518,7 +4525,8 @@ function rtCaret(e,ta){
 /* ====== 編輯時把 $…$ 暫時收成〔數學式N〕（不熟 LaTeX 的老師不會看到一堆語法） ======
    欄位聚焦時：value 裡的數學式是標記，對照表在 ta._tok.map；模型（q.stem 等）永遠存展開後的真正文字。
    失焦或要開數學符號面板時（commit）展開回 $…$。 */
-let tokOn=true;try{tokOn=localStorage.getItem('exam-tok')!=='off';}catch(e){}
+let edMode='rich';try{const m=localStorage.getItem('exam-ed');if(m==='rich'||m==='tok'||m==='raw')edMode=m;}catch(e){}
+let tokOn=edMode==='tok';
 const TOK_RE=/〔數學式(\d+)〕/g;
 function tokExpand(v,map){return v.replace(TOK_RE,(m,id)=>map[id]!=null?map[id]:m);}
 /* 把 v（裡面可能有標記與還沒收起的 $…$）整理成：全部數學式都是標記、編號依出現順序。caret 一併換算 */
@@ -4641,11 +4649,211 @@ function tokAttach(ta){
   ta.addEventListener('copy',e=>cp(e,false));ta.addEventListener('cut',e=>cp(e,true));
   if(document.activeElement===ta)T.load();
 }
-function tokToggle(on){
-  tokOn=!!on;try{localStorage.setItem('exam-tok',on?'on':'off');}catch(e){}
-  document.querySelectorAll('.mm-target').forEach(t=>{if(!t._tok)return;if(tokOn){if(document.activeElement===t)t._tok.load();}else t._tok.commit();});
+/* ====== 富文字編輯：數學式直接顯示排版後的樣子，點進去也不會看到 LaTeX ======
+   ta（原本的輸入框）仍是唯一的資料來源，但被藏起來；rv（.rtv）變成 contenteditable。
+   文字照一般方式打；數學式是一個整塊的排版方塊（點一下用視覺編輯器修改，Backspace 整個刪）。
+   rv → ta：輸入後序列化成真正文字（$…$）；ta → rv：外部改了 ta.value（數學符號面板、粗體鍵、自動修正）就重排。 */
+const ZW='​';
+const richOn=ta=>edMode==='rich'&&rtOn&&!!ta&&!!ta._rtv&&!ta.dataset.nodollar&&!!ta.closest('[data-qid]');
+function richSer(root,partial){
+  let out='';
+  const walk=n=>{for(const c of n.childNodes){
+    if(c.nodeType===3)out+=c.data.replace(/​/g,'');
+    else if(c.nodeName==='BR')out+='\n';
+    else if(c.classList&&c.classList.contains('rtm'))out+=c.dataset.raw||'';
+    else if(c.nodeName==='DIV'||c.nodeName==='P'){if(out&&!out.endsWith('\n'))out+='\n';walk(c);}
+    else if(c.nodeType===1)walk(c);
+  }};
+  walk(root);
+  if(!partial){const l=root.lastChild;if(l&&l.nodeName==='BR'&&out.endsWith('\n'))out=out.slice(0,-1);}
+  return out;
 }
-setTimeout(()=>{const c=document.getElementById('tokToggle');if(c){c.checked=tokOn;c.addEventListener('change',()=>tokToggle(c.checked));}},0);
+function richOff(rv,node,off){
+  let n=node;
+  while(n&&n!==rv){if(n.classList&&n.classList.contains('rtm')){off=[...n.parentNode.childNodes].indexOf(n);node=n.parentNode;break;}n=n.parentNode;}
+  const r=document.createRange();r.selectNodeContents(rv);
+  try{r.setEnd(node,off);}catch(e){return 0;}
+  const tmp=document.createElement('div');tmp.appendChild(r.cloneContents());
+  return richSer(tmp,true).length;
+}
+function richPos(rv,o){
+  let acc=0,res=null;
+  const walk=n=>{
+    for(const c of [...n.childNodes]){
+      if(res)return;
+      if(c.nodeType===3){
+        const L=c.data.replace(/​/g,'').length;
+        if(o<=acc+L){let k=o-acc,i=0;while(i<c.data.length&&k>0){if(c.data[i]!==ZW)k--;i++;}
+          if(k===0&&o===acc+L)i=c.data.length;res=[c,i];return;}
+        acc+=L;
+      }else if(c.nodeName==='BR'){
+        const ph=c===rv.lastChild&&c.previousSibling&&c.previousSibling.nodeName==='BR';
+        if(ph)continue;
+        if(o<=acc){res=[n,[...n.childNodes].indexOf(c)];return;}
+        acc+=1;
+      }else if(c.classList&&c.classList.contains('rtm')){
+        const L=(c.dataset.raw||'').length;
+        if(o<=acc){res=[n,[...n.childNodes].indexOf(c)];return;}
+        if(o<acc+L){res=[n,[...n.childNodes].indexOf(c)+1];return;}
+        acc+=L;
+      }else if(c.nodeType===1)walk(c);
+    }
+  };
+  walk(rv);
+  return res||[rv,rv.childNodes.length];
+}
+function richSetSel(ta,a,b){
+  const rv=ta._rtv,s=getSelection();if(!s)return;
+  const p1=richPos(rv,a),p2=b===a?p1:richPos(rv,b);
+  try{s.setBaseAndExtent(p1[0],p1[1],p2[0],p2[1]);}catch(e){}
+}
+function richSyncSel(ta){
+  const rv=ta._rtv,s=getSelection();if(!s||!s.rangeCount)return;
+  const r=s.getRangeAt(0);if(!rv.contains(r.startContainer)||!rv.contains(r.endContainer))return;
+  const a=richOff(rv,r.startContainer,r.startOffset),b=r.collapsed?a:richOff(rv,r.endContainer,r.endOffset);
+  try{ta.setSelectionRange(a,b);}catch(e){}
+}
+const richIO=('IntersectionObserver' in window)?new IntersectionObserver(es=>es.forEach(en=>{
+  if(!en.isIntersecting)return;const rv=en.target;richIO.unobserve(rv);
+  typeset(rv);mjQ=mjQ.then(()=>rv.querySelectorAll('.rtm').forEach(c=>{if(c.querySelector('mjx-container'))c.dataset.ok='1';}));
+}),{rootMargin:'400px 0px'}):null;
+function richBuild(ta){
+  const rv=ta._rtv,v=ta.value,isTa=ta.tagName==='TEXTAREA';
+  const act=document.activeElement===rv,a=ta.selectionStart,b=ta.selectionEnd;
+  const old=[...rv.querySelectorAll('.rtm')],used=new Set();
+  const nodes=[];
+  const mk=g=>{
+    const raw=v.slice(g.s,g.e);
+    const i=old.findIndex(c=>!used.has(c)&&c.dataset.raw===raw&&c.dataset.ok==='1');
+    if(i>=0){used.add(old[i]);return old[i];}
+    return h(g.w===2?'div':'span',{class:'rtm'+(g.w===2?' rtd':''),contenteditable:'false','data-raw':raw,title:'點一下，用數學符號修改這個數學式'},
+      mmReady?(g.w===2?'\\['+g.body+'\\]':'\\('+g.body+'\\)'):raw);
+  };
+  const addText=t=>{if(!t)return;t.split('\n').forEach((p,i)=>{if(i>0)nodes.push(document.createElement('br'));if(p)nodes.push(document.createTextNode(p));});};
+  const segs=rtSegs(v);
+  if(!segs.length)addText(v);
+  else segs.forEach(g=>{if(g.t==='text')addText(v.slice(g.s,g.e));else nodes.push(mk(g));});
+  if(v.endsWith('\n'))nodes.push(document.createElement('br'));
+  const isC=n=>n&&n.classList&&n.classList.contains('rtm');
+  const out=[];
+  nodes.forEach((n,i)=>{if(isC(n)&&(i===0||isC(nodes[i-1])))out.push(document.createTextNode(ZW));out.push(n);});
+  if(isC(nodes[nodes.length-1]))out.push(document.createTextNode(ZW));
+  R_guard(ta,()=>rv.replaceChildren(...out));
+  rv.classList.toggle('empty',!v);
+  rv.dataset.rich='1';
+  if(mmReady&&richIO)richIO.observe(rv);
+  if(act)richSetSel(ta,a,b);
+}
+function R_guard(ta,f){const R=ta._rich;R.hold=true;try{f();}finally{R.hold=false;}}
+function richInSync(ta){
+  const rv=ta._rtv;if(rv.dataset.rich!=='1')return false;
+  const v=ta.value;if(richSer(rv)!==v)return false;
+  const want=rtSegs(v).filter(g=>g.t==='math').length,chips=[...rv.querySelectorAll('.rtm')];
+  if(want!==chips.length)return false;
+  return !mmReady||chips.every(c=>c.dataset.ok==='1');
+}
+function richRender(ta){
+  if(!ta._rich)richInit(ta);
+  const R=ta._rich,rv=ta._rtv;
+  if(R.self||R.hold||R.comp)return;
+  richAttrs(ta);ta.classList.add('rt-hid');ta.tabIndex=-1;rv.hidden=false;
+  if(richInSync(ta))return;
+  richBuild(ta);
+}
+function richDetach(ta){
+  const rv=ta._rtv;if(!rv)return;
+  rv.contentEditable='false';rv.removeAttribute('role');rv.classList.remove('rte','rta','empty');delete rv.dataset.rich;
+  rv.replaceChildren();ta.tabIndex=0;ta.removeAttribute('tabindex');ta.classList.remove('rt-hid');rv.hidden=true;rv.style.minHeight='';
+}
+function richAttrs(ta){
+  const rv=ta._rtv;
+  if(rv.contentEditable!=='true')rv.contentEditable='true';
+  rv.spellcheck=false;rv.setAttribute('role','textbox');
+  rv.classList.add('rte');if(ta.tagName==='TEXTAREA')rv.classList.add('rta');
+  rv.dataset.ph=ta.getAttribute('placeholder')||'';
+}
+function richInit(ta){
+  const rv=ta._rtv,isTa=ta.tagName==='TEXTAREA';
+  const R=ta._rich={self:false,hold:false,comp:false,redir:false};
+  rv._rteTa=ta;
+  richAttrs(ta);
+  const push=()=>{
+    const v=richSer(rv);
+    R.self=true;
+    try{ta.value=v;richSyncSel(ta);rv.classList.toggle('empty',!v);ta.dispatchEvent(new Event('input',{bubbles:true}));}finally{R.self=false;}
+  };
+  rv.addEventListener('input',()=>{if(R.hold||R.batch)return;push();});
+  rv.addEventListener('compositionstart',()=>{R.comp=true;});
+  rv.addEventListener('compositionend',()=>{R.comp=false;});
+  rv.addEventListener('focus',()=>{try{lastTa=ta;}catch(e){}});
+  rv.addEventListener('blur',()=>{setTimeout(()=>{if(document.activeElement!==rv){R.comp=false;rtRender(ta);}},0);});
+  const insText=t=>{
+    R.batch=true;
+    try{t.split('\n').forEach((ln,i)=>{if(i&&isTa)document.execCommand('insertLineBreak');if(ln)document.execCommand('insertText',false,isTa||i===0?ln:' '+ln);});}
+    finally{R.batch=false;}
+    push();
+  };
+  rv.addEventListener('paste',e=>{
+    e.preventDefault();
+    let t=(e.clipboardData||window.clipboardData).getData('text/plain')||'';
+    t=t.replace(/\r\n?/g,'\n');if(!isTa)t=t.replace(/\s*\n\s*/g,' ');
+    insText(t);
+    richBuild(ta);
+    ta.dispatchEvent(new Event('paste',{bubbles:true}));
+  });
+  rv.addEventListener('drop',e=>{e.preventDefault();const t=e.dataTransfer&&e.dataTransfer.getData('text/plain');if(t)insText(isTa?t:t.replace(/\s*\n\s*/g,' '));});
+  const cp=(e,cut)=>{
+    const s=getSelection();if(!s||!s.rangeCount||s.isCollapsed)return;
+    const r=s.getRangeAt(0);if(!rv.contains(r.commonAncestorContainer))return;
+    const tmp=document.createElement('div');tmp.appendChild(r.cloneContents());
+    e.clipboardData.setData('text/plain',richSer(tmp,true));e.preventDefault();
+    if(cut)document.execCommand('delete');
+  };
+  rv.addEventListener('copy',e=>cp(e,false));rv.addEventListener('cut',e=>cp(e,true));
+  const skipZw=dir=>{
+    const s=getSelection();if(!s||!s.isCollapsed||!s.anchorNode||s.anchorNode.nodeType!==3)return;
+    const n=s.anchorNode,o=s.anchorOffset;
+    if(dir<0&&o>0&&n.data[o-1]===ZW)s.collapse(n,o-1);
+    else if(dir>0&&n.data[o]===ZW)s.collapse(n,o+1);
+  };
+  rv.addEventListener('keydown',e=>{
+    if(e.isComposing||R.comp)return;
+    if(e.key==='Enter'&&!e.ctrlKey&&!e.metaKey&&!e.altKey){e.preventDefault();if(isTa)document.execCommand('insertLineBreak');return;}
+    if((e.ctrlKey||e.metaKey)&&!e.altKey&&(e.key==='b'||e.key==='B'||e.key==='u'||e.key==='U')){
+      e.preventDefault();richSyncSel(ta);
+      ta.dispatchEvent(new KeyboardEvent('keydown',{key:e.key,ctrlKey:e.ctrlKey,metaKey:e.metaKey,shiftKey:e.shiftKey,bubbles:true,cancelable:true}));return;
+    }
+    if(e.key==='Backspace'||e.key==='ArrowLeft')skipZw(-1);
+    else if(e.key==='Delete'||e.key==='ArrowRight')skipZw(1);
+  });
+  /* 點數學式：開視覺編輯器 */
+  rv.addEventListener('mousedown',e=>{
+    const m=e.target.closest&&e.target.closest('.rtm');if(!m||!rv.contains(m))return;
+    e.preventDefault();
+    const st=richOff(rv,m.parentNode,[...m.parentNode.childNodes].indexOf(m));
+    const w=ta.value[st+1]==='$'?2:1;
+    ta.setSelectionRange(st+w,st+w);
+    if(typeof openMM==='function'&&mmBox){mmEdit=null;mmClearVal();mmDisp=false;openMM(ta);}
+  });
+  /* 程式碼對原輸入框 focus() 時（面板插入、粗體鈕），轉到可編輯的框裡 */
+  ta.addEventListener('focus',()=>{
+    if(!richOn(ta)||R.redir)return;
+    R.redir=true;
+    try{rv.focus({preventScroll:true});richSetSel(ta,ta.selectionStart,ta.selectionEnd);}finally{R.redir=false;}
+  });
+}
+document.addEventListener('selectionchange',()=>{
+  const a=document.activeElement;
+  if(a&&a._rteTa&&a._rteTa._rich&&!a._rteTa._rich.hold&&!a._rteTa._rich.redir)richSyncSel(a._rteTa);
+});
+function edSet(m){
+  edMode=m;tokOn=m==='tok';try{localStorage.setItem('exam-ed',m);}catch(e){}
+  document.querySelectorAll('.mm-target').forEach(t=>{
+    if(t._tok){if(tokOn){if(document.activeElement===t)t._tok.load();}else t._tok.commit();}
+    if(t._rtv&&t.closest('[data-qid]')&&!t.dataset.nodollar){if(!richOn(t)&&t._rtv.dataset.rich)richDetach(t);t.value=t.value;rtRender(t);if(!richOn(t))rtOff(t);}
+  });
+}
+setTimeout(()=>{const c=document.getElementById('edMode');if(c){c.value=edMode;c.addEventListener('change',()=>edSet(c.value));}},0);
 function rtAttach(ta){
   if(ta.dataset.rt)return;
   tokAttach(ta);
@@ -4656,6 +4864,7 @@ function rtAttach(ta){
   ta.addEventListener('blur',()=>rtRender(ta));
   ta.addEventListener('input',()=>{if(document.activeElement!==ta)rtRender(ta);});
   rv.addEventListener('mousedown',e=>{
+    if(richOn(ta))return;
     e.preventDefault();
     const m=e.target.closest&&e.target.closest('.rtm');
     if(m){
