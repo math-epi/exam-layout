@@ -128,6 +128,10 @@ input.mono{font-family:var(--font-mono);font-size:13.5px}
 .paperwrap{display:flex}
 .rzh{position:absolute;left:0;top:0;bottom:0;width:9px;cursor:col-resize;z-index:6;background:transparent;transition:background .12s}
 .optrow>.rtv{flex:1 1 0;min-width:0}
+.tokprev{margin-top:6px;padding:7px 10px;border:1px dashed var(--line);border-radius:8px;background:var(--soft);font-size:15px;line-height:1.9;white-space:pre-wrap;word-break:break-word}
+.tokprev .tkl{display:block;font-size:12px;color:var(--muted);margin-bottom:2px;white-space:normal}
+.tokprev .rtm{cursor:pointer;border-radius:4px;background:#E6EEF9;padding:0 3px}
+.tokprev .rtm:hover{background:#D3E2F7}
 .rtv{overflow-x:auto;flex:none;min-width:0;width:100%;border:1px solid var(--line);border-radius:7px;padding:6px 10px;background:var(--panel);font-size:15px;line-height:1.85;white-space:pre-wrap;word-break:break-word;cursor:text;overflow-wrap:anywhere}
 .rtv:hover{border-color:#9db4dd}
 .rtv .rtm{cursor:pointer;border-radius:5px;padding:0 2px;transition:background .1s}
@@ -264,7 +268,8 @@ input.sw:checked+.swstate::after{content:'開'}
   <div style="margin-top:6px">按「列印 / 存檔」再選「存成考卷檔」，可存成考卷檔（下次用「開啟舊檔」接著改）；熟悉 LaTeX 的老師可以下載 <b>Overleaf 專案 zip</b>（含 main.tex 與 examsheet.cls，上傳後用 <b>XeLaTeX</b> 編譯兩次）。
   選填題的解答直接輸入答案（如 <code>-56/7</code>、<code>\sqrt{27}</code>），數字與正負號會自動變成答案卡的圈圈格子。圖形請先放進「圖庫」，再到每題「附圖」選用。<br>
   版面、題型預設、圖庫、行距與字型等設定，請按題目區上方的「⚙ 設定」按鈕，從下拉選單選一項，會浮出設定視窗（按「關閉」或 Esc 關掉）。要勾選這份考卷的題型，請按「本試卷題型」標籤。<br>
-  <label class="swrow" title="按一下切換開／關"><input type="checkbox" id="rtToggle" class="sw" checked><span class="swstate" aria-hidden="true"></span><span><b>顯示排版後的數學式</b>：左邊欄位沒在編輯時，以排版後的樣子顯示（點公式可用數學符號修改，點文字回到輸入）；關閉則顯示原始文字。</span></label></div>
+  <label class="swrow" title="按一下切換開／關"><input type="checkbox" id="rtToggle" class="sw" checked><span class="swstate" aria-hidden="true"></span><span><b>顯示排版後的數學式</b>：左邊欄位沒在編輯時，以排版後的樣子顯示（點公式可用數學符號修改，點文字回到輸入）；關閉則顯示原始文字。</span></label>
+  <label class="swrow" title="按一下切換開／關"><input type="checkbox" id="tokToggle" class="sw" checked><span class="swstate" aria-hidden="true"></span><span><b>編輯時把數學式收成〔數學式1〕</b>：點進題目、選項、詳解編輯時，<code>$…$</code> 會暫時顯示成〔數學式1〕，文字照一般方式修改，下方即時顯示排版預覽，點預覽裡的數學式可用視覺編輯器修改；關閉則顯示 LaTeX 原始碼。</span></label></div>
   </details>
 </div>
 <div class="layout">
@@ -1520,10 +1525,10 @@ function bindInput(obj,key,o){
     el.addEventListener('change',()=>{obj[key]=el.checked;(o.after||changed)();});
   }else if(o.type==='textarea'){
     el=h('textarea',{id:o.id,rows:o.rows||3,spellcheck:false,placeholder:o.placeholder||'',class:o.mm?'mm-target':''});el.value=obj[key];
-    el.addEventListener('input',()=>{obj[key]=el.value;(o.after||changed)();});
+    el.addEventListener('input',()=>{if(el._tok)el._tok.sync();obj[key]=el._tok?el._tok.get():el.value;(o.after||changed)();});
   }else{
     el=h('input',{type:o.type||'text',id:o.id,class:(o.mono?'mono ':'')+(o.mm?'mm-target':''),placeholder:o.placeholder||'',spellcheck:false,min:o.min,max:o.max});el.value=obj[key];
-    el.addEventListener('input',()=>{obj[key]=o.type==='number'?(o.int?parseInt(el.value||'0',10):el.value):el.value;(o.after||changed)();});
+    el.addEventListener('input',()=>{if(el._tok)el._tok.sync();const rv=el._tok?el._tok.get():el.value;obj[key]=o.type==='number'?(o.int?parseInt(el.value||'0',10):el.value):rv;(o.after||changed)();});
   }
   return el;
 }
@@ -1829,10 +1834,11 @@ function qCard(s,q){
       h('b',{style:'font-size:13px;color:#6B4E00;white-space:nowrap'},'⚠ 數學式裡有中文'),mcMsg,mcBtn,mcUndo);
     let mcPrev=null,mcAutoN=0,mcSkip=false;
     const setVal=(e,v)=>{
-      if(e.value===v)return;
+      if(e._tok&&e._tok.on)e._tok.commit();
+      if(e.value===v){if(e._tok&&document.activeElement===e)e._tok.load();return;}
       const a=document.activeElement===e,p=a?e.selectionStart:0,old=e.value.length;
       e.value=v;
-      if(a){const np=Math.max(0,Math.min(v.length,p+v.length-old));e.setSelectionRange(np,np);}
+      if(a){const np=Math.max(0,Math.min(v.length,p+v.length-old));e.setSelectionRange(np,np);if(e._tok)e._tok.load();}
     };
     const mcSetFields=()=>{
       setVal(stem,q.stem||'');
@@ -4372,6 +4378,7 @@ function mmRender(){
 }
 function openMM(ta){
   if(ta)lastTa=ta;
+  if(ta&&ta._tok&&ta._tok.on)ta._tok.editAt(false);
   mmBox.hidden=false;$('#mmLaunch').hidden=true;mmRender();
   const d=mmDraftEl();
   if(ta&&d&&!mmGet().trim()&&ta.selectionStart!==ta.selectionEnd){mmSetVal(ta.value.slice(ta.selectionStart,ta.selectionEnd).trim().replace(/^\$\$?|\$\$?$/g,''));}
@@ -4507,8 +4514,140 @@ function rtCaret(e,ta){
   if(node&&node.nodeType===3){const sp=node.parentElement&&node.parentElement.closest('.rts');if(sp)return Math.min(ta.value.length,(+sp.dataset.s)+off);}
   return ta.value.length;
 }
+/* ====== 編輯時把 $…$ 暫時收成〔數學式N〕（不熟 LaTeX 的老師不會看到一堆語法） ======
+   欄位聚焦時：value 裡的數學式是標記，對照表在 ta._tok.map；模型（q.stem 等）永遠存展開後的真正文字。
+   失焦或要開數學符號面板時（commit）展開回 $…$。 */
+let tokOn=true;try{tokOn=localStorage.getItem('exam-tok')!=='off';}catch(e){}
+const TOK_RE=/〔數學式(\d+)〕/g;
+function tokExpand(v,map){return v.replace(TOK_RE,(m,id)=>map[id]!=null?map[id]:m);}
+/* 把 v（裡面可能有標記與還沒收起的 $…$）整理成：全部數學式都是標記、編號依出現順序。caret 一併換算 */
+function tokNorm(v,caret,map){
+  if(!autoFieldSafe(v))return {v,c:caret,map};
+  const segs=rtSegs(v);
+  let out='',nc=null,n=0;const nm={};
+  const put=(a,b,str,atomic)=>{
+    if(nc===null&&caret>=a&&caret<=b)nc=atomic?(caret<=a?out.length:out.length+str.length):out.length+(caret-a);
+    out+=str;
+  };
+  const textPart=(a,b)=>{
+    const t=v.slice(a,b);let last=0,m;TOK_RE.lastIndex=0;
+    while((m=TOK_RE.exec(t))){
+      if(map[m[1]]==null)continue;
+      if(m.index>last)put(a+last,a+m.index,t.slice(last,m.index),false);
+      n++;nm[n]=map[m[1]];put(a+m.index,a+m.index+m[0].length,'〔數學式'+n+'〕',true);last=m.index+m[0].length;
+    }
+    if(last<t.length||!t.length)put(a+last,b,t.slice(last),false);
+  };
+  if(!segs.length)textPart(0,v.length);
+  segs.forEach(g=>{
+    if(g.t==='text')textPart(g.s,g.e);
+    else{n++;nm[n]=v.slice(g.s,g.e);put(g.s,g.e,'〔數學式'+n+'〕',true);}
+  });
+  return {v:out,c:nc===null?out.length:nc,map:nm};
+}
+function tokAttach(ta){
+  if(ta._tok||!ta.closest('[data-qid]')||ta.dataset.nodollar)return;
+  const T=ta._tok={map:{},on:false,comp:false};
+  let prev=null,pt=0;
+  const caretMap=(v,c)=>tokExpand(v.slice(0,c),T.map).length;
+  T.get=()=>tokExpand(ta.value,T.map);
+  const run=()=>{
+    if(!tokOn)return;
+    const v=ta.value,a=document.activeElement===ta,s=ta.selectionStart,e=ta.selectionEnd;
+    const r1=tokNorm(v,s,T.map);
+    if(r1.v!==v){
+      const r2=tokNorm(v,e,T.map);
+      ta.value=r1.v;if(a)ta.setSelectionRange(r1.c,r2.c);
+    }
+    T.map=r1.map;T.on=true;T.render();
+  };
+  T.load=()=>{if(T.skip)return;run();};
+  T.sync=()=>{if(T.comp)return;run();};
+  T.commit=()=>{
+    if(!T.on&&!/〔數學式\d+〕/.test(ta.value)){T.hide();return;}
+    const v=ta.value,a=document.activeElement===ta,s=ta.selectionStart,e=ta.selectionEnd;
+    const real=tokExpand(v,T.map),cs=caretMap(v,s),ce=caretMap(v,e);
+    if(real!==v){ta.value=real;if(a)ta.setSelectionRange(cs,ce);}
+    T.map={};T.on=false;T.hide();
+  };
+  T.hide=()=>{if(prev){prev.remove();prev=null;}clearTimeout(pt);};
+  T.render=()=>{
+    clearTimeout(pt);
+    if(!T.on||!Object.keys(T.map).length||!mmReady){if(prev){prev.hidden=true;}return;}
+    pt=setTimeout(()=>{
+      if(document.activeElement!==ta||!T.on)return;
+      const real=T.get(),segs=rtSegs(real);
+      const box=h('div',{class:'tokprev'},h('span',{class:'tkl'},'排版預覽（點藍色的數學式，用視覺編輯器修改）'),
+        ...segs.map(g=>g.t==='text'?h('span',{},real.slice(g.s,g.e)):h(g.w===2?'div':'span',{class:'rtm','data-s':g.s,'data-e':g.e,title:'點一下，用數學符號修改這個數學式'},g.w===2?'\\['+g.body+'\\]':'\\('+g.body+'\\)')));
+      box.addEventListener('mousedown',ev=>{
+        const m=ev.target.closest&&ev.target.closest('.rtm');if(!m)return;
+        ev.preventDefault();
+        const st=+m.dataset.s;T.commit();
+        const w=ta.value[st+1]==='$'?2:1;ta.setSelectionRange(st+w,st+w);
+        if(typeof openMM==='function'&&mmBox){mmEdit=null;mmClearVal();mmDisp=false;openMM(ta);}
+      });
+      box.hidden=true;
+      (prev?prev:ta._rtv||ta).after(box);
+      typeset(box);
+      mjQ=mjQ.then(()=>{if(prev&&prev!==box)prev.remove();prev=box;box.hidden=false;});
+    },120);
+  };
+  /* 游標在標記裡：雙擊或開面板時，展開並把游標放進該數學式 */
+  T.editAt=(inclusive)=>{
+    if(!T.on)return false;
+    const v=ta.value,c=ta.selectionStart;let m;TOK_RE.lastIndex=0;
+    while((m=TOK_RE.exec(v))){
+      const a=m.index,b=a+m[0].length;
+      if(inclusive?(c>=a&&c<=b):(c>a&&c<b)){
+        if(T.map[m[1]]==null)continue;
+        const st=caretMap(v,a);ta.setSelectionRange(a,a);T.commit();
+        const w=ta.value[st+1]==='$'?2:1;ta.setSelectionRange(st+w,st+w);return true;
+      }
+    }
+    return false;
+  };
+  const snap=()=>{ // 游標落在標記中間：移到標記邊緣
+    if(!T.on||ta.selectionStart!==ta.selectionEnd)return;
+    const v=ta.value,c=ta.selectionStart;let m;TOK_RE.lastIndex=0;
+    while((m=TOK_RE.exec(v))){const a=m.index,b=a+m[0].length;if(c>a&&c<b){const np=(c-a<b-c)?a:b;ta.setSelectionRange(np,np);return;}}
+  };
+  ta.addEventListener('focus',()=>T.load());
+  ta.addEventListener('blur',()=>T.commit());
+  ta.addEventListener('input',()=>{if(!T.comp)T.sync();});
+  ta.addEventListener('compositionstart',()=>{T.comp=true;});
+  ta.addEventListener('compositionend',()=>{T.comp=false;T.sync();});
+  ta.addEventListener('click',snap);ta.addEventListener('keyup',e=>{if(e.key.startsWith('Arrow')||e.key==='Home'||e.key==='End')snap();});
+  ta.addEventListener('dblclick',()=>{if(T.editAt(true)&&typeof openMM==='function'&&mmBox){mmEdit=null;mmClearVal();mmDisp=false;openMM(ta);}});
+  /* Backspace／Delete 緊貼標記時，整個標記一起刪 */
+  ta.addEventListener('keydown',e=>{
+    if(!T.on||T.comp||e.isComposing||(e.key!=='Backspace'&&e.key!=='Delete')||ta.selectionStart!==ta.selectionEnd)return;
+    const v=ta.value,c=ta.selectionStart;let m;TOK_RE.lastIndex=0;
+    while((m=TOK_RE.exec(v))){
+      const a=m.index,b=a+m[0].length;
+      if((e.key==='Backspace'&&c===b)||(e.key==='Delete'&&c===a)){
+        e.preventDefault();ta.setRangeText('',a,b,'end');ta.dispatchEvent(new Event('input',{bubbles:true}));return;
+      }
+    }
+  });
+  /* 複製、剪下：給別處的是展開後的真正文字 */
+  const cp=(e,cut)=>{
+    if(!T.on||ta.selectionStart===ta.selectionEnd)return;
+    const sel=ta.value.slice(ta.selectionStart,ta.selectionEnd);
+    if(!/〔數學式\d+〕/.test(sel))return;
+    e.clipboardData.setData('text/plain',tokExpand(sel,T.map));e.preventDefault();
+    if(cut){ta.setRangeText('',ta.selectionStart,ta.selectionEnd,'end');ta.dispatchEvent(new Event('input',{bubbles:true}));}
+  };
+  ta.addEventListener('copy',e=>cp(e,false));ta.addEventListener('cut',e=>cp(e,true));
+  if(document.activeElement===ta)T.load();
+}
+function tokToggle(on){
+  tokOn=!!on;try{localStorage.setItem('exam-tok',on?'on':'off');}catch(e){}
+  document.querySelectorAll('.mm-target').forEach(t=>{if(!t._tok)return;if(tokOn){if(document.activeElement===t)t._tok.load();}else t._tok.commit();});
+}
+setTimeout(()=>{const c=document.getElementById('tokToggle');if(c){c.checked=tokOn;c.addEventListener('change',()=>tokToggle(c.checked));}},0);
 function rtAttach(ta){
   if(ta.dataset.rt)return;
+  tokAttach(ta);
   ta.dataset.rt='1';
   const rv=h('div',{class:'rtv',hidden:true});ta._rtv=rv;ta.after(rv);
   if(ta.tagName==='TEXTAREA'){ta.addEventListener('input',()=>rtGrow(ta));if(rtGO)rtGO.observe(ta);rtGrow(ta);}
@@ -4535,7 +4674,9 @@ function rtAttach(ta){
       return;
     }
     const pos=rtCaret(e,ta);
+    if(ta._tok)ta._tok.skip=true;
     ta.focus();ta.setSelectionRange(pos,pos);
+    if(ta._tok){ta._tok.skip=false;ta._tok.load();}
   });
   rtRender(ta);
 }
