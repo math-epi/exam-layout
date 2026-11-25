@@ -522,7 +522,7 @@ function save(){
   clearTimeout(saveT);
   saveT=setTimeout(()=>{
     try{localStorage.setItem(LS_KEY,JSON.stringify(S));localStorage.setItem(LS_CHG,String(lastChange));$('#saveWarn').hidden=true;autoOk=true;lastAuto=Date.now();}
-    catch(e){autoOk=false;const w=$('#saveWarn');w.hidden=false;w.textContent='瀏覽器無法儲存（可能被停用或已滿）。請定期按「匯出專案」另存。';}
+    catch(e){autoOk=false;const w=$('#saveWarn');w.hidden=false;w.textContent='瀏覽器無法儲存（可能被停用或已滿）。請定期按「列印 / 存檔」→「存成考卷檔」另存。';}
     updateSaveStatus();
   },300);
 }
@@ -1591,7 +1591,7 @@ function buildSettings(){
     h('div',{class:'grid2'},
       field('多選題預設選項數',bindInput(C,'multiN',{id:'cfg_multiN',type:'number',int:true,min:2,max:9,after:changed})),
       field('單選題預設選項數',bindInput(C,'singleN',{id:'cfg_singleN',type:'number',int:true,min:2,max:9,after:changed}))),
-    field('填空題的大題名稱',bindInput(C,'fillName',{id:'cfg_fillName',type:'select',options:[['填充題','填充題'],['選填題','選填題']],after:()=>{S.sections.forEach(s=>{if(s.type==='fill'&&(s.name==='填充題'||s.name==='選填題'))s.name=C.fillName;});rerender(true);}}),'填空題型的名稱（② 的勾選項與浮動按鈕也會一起改）；已加入的填空題型區塊會一起改名。'),
+    field('填空題的大題名稱',bindInput(C,'fillName',{id:'cfg_fillName',type:'select',options:[['填充題','填充題'],['選填題','選填題']],after:()=>{S.sections.forEach(s=>{if(s.type==='fill'&&(s.name==='填充題'||s.name==='選填題'))s.name=C.fillName;});rerender(true);}}),'填空題型的名稱（「本試卷題型」的勾選項與浮動按鈕也會一起改）；已加入的填空題型區塊會一起改名。'),
     h('div',{class:'grid3'},
       field('多選題每題配分',bindInput(C,'multiPts',{id:'cfg_multiPts'})),field('單選題每題配分',bindInput(C,'singlePts',{id:'cfg_singlePts'})),field('填空題每題配分',bindInput(C,'fillPts',{id:'cfg_fillPts'}))),
     field('題目文字：離開欄位或貼上時，直接修正輸入的文字',bindInput(C,'autoFixCjk',{id:'cfg_autoFixCjk',type:'select',options:[['true','開（預設）'],['false','關']],after:()=>{C.autoFixCjk=($('#cfg_autoFixCjk').value==='true');changed();rerender();}}),'例如 $x 的最大值為M$ 會改成 $x$ 的最大值為 $M$，「設 x,y 為實數」會改成「設 $x,y$ 為實數」（與預覽相同規則，只處理題幹與選項，「題目文字：自動把數字…」關閉的題目不改）；也會處理貼上、手寫辨識、LaTeX 匯入的文字。每一題也可以單獨取消；改完可按「復原」。'),
@@ -1613,7 +1613,7 @@ function buildSettings(){
       field('填空題的小題之間（pt）',bindInput(C,'fillSkip',{id:'cfg_fillSkip',placeholder:'26',after:changed})),
       field('題幹與選項之間（pt）',bindInput(C,'stemSkip',{id:'cfg_stemSkip',placeholder:'0',after:changed}))),
     field('題目內段落與段落之間（pt）',bindInput(C,'paraSkip',{id:'cfg_paraSkip',placeholder:'0',after:changed}),'題目裡空一行分段時，段與段之間多加的距離。'),
-    h('span',{class:'hint'},'全部留空＝預設（行距 1.5、大題 7／8、選擇題 6、填空題 20、其餘 0）。數字越大空白越多；填空題留比較大是給學生計算。預覽是近似的，以 PDF／Overleaf 編譯結果為準。'),
+    h('span',{class:'hint'},'全部留空＝預設（行距 1.5、大題 14／8、選擇題 10、填空題 26、其餘 0）。數字越大空白越多；填空題留比較大是給學生計算。預覽是近似的，以 PDF／Overleaf 編譯結果為準。'),
     h('hr',{style:'border:none;border-top:1px solid var(--line);margin:10px 0'}),
     h('b',{style:'font-size:13px'},'字型'),
     h('span',{class:'hint'},'字型留空就用範本預設（標頭 PingFang TC、內文儷宋、英數 Times New Roman）。可填多個，用逗號分隔，依序找系統裡有的。'),
