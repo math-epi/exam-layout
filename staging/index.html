@@ -1737,11 +1737,17 @@ function toggleCollapse(o,sel){
   const ab=()=>{stop=true;};
   const evs=['wheel','touchstart','keydown','mousedown'];
   evs.forEach(ev=>window.addEventListener(ev,ab,{passive:true}));
+  /* 重建當下左邊還沒捲到位，預覽可能先跟到別題；位置定下來之後（前幾格畫面、以及結束時）再把預覽對到這題 */
+  const isQ=sel.startsWith('[data-qid');
+  const syncPv=()=>{if(isQ&&document.contains(el)){lastFocusQ=o.id;userScrolled=false;lastPvQ=null;try{markPv();}catch(e){}}};
+  let n=0;
   const step=()=>{
-    if(stop||performance.now()-t0>2000||!document.contains(el)){evs.forEach(ev=>window.removeEventListener(ev,ab));return;}
+    const end=stop||performance.now()-t0>2000||!document.contains(el);
+    if(end){evs.forEach(ev=>window.removeEventListener(ev,ab));if(!stop)syncPv();return;}
     markProg();
     const d=el.getBoundingClientRect().top-target;
     if(Math.abs(d)>1)window.scrollTo(0,window.scrollY+d);
+    n++;if(n===3||n===40)syncPv();
     requestAnimationFrame(step);
   };
   step();
