@@ -241,7 +241,7 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 .noteacts{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
 .notedemo{border:1px dashed #9aa5b8;border-radius:6px;background:#fff;color:#111;font-size:13px;padding:6px 10px;display:flex;flex-direction:column}
 .notedemo .q,.notedemo .f{text-align:center;color:#8a93a6;padding:3px 0}.notedemo .q{border-bottom:1px solid #eee}.notedemo .f{border-top:1px solid #eee}
-.notedemo .gap{position:relative;height:110px;overflow:hidden}.notedemo .t{position:absolute;left:0;right:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.notedemo .gap{position:relative;height:110px;overflow:hidden}.notedemo .t{position:absolute;left:0;right:0;line-height:1.7}.notedemo .t.none{font-weight:600}
 .pv-sec{font-family:'Noto Sans TC','PingFang TC',sans-serif;margin:.75em 0 .55em;display:flex}
 .pv-sec .n{flex:none;width:2em}
 .pvq{position:relative;display:flex;align-items:baseline;margin:0 0 .35em 1.65em;line-height:var(--lh,1.75)}
@@ -512,9 +512,10 @@ function hfEditor(C){
 const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD；開新版號時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.1';
-const APP_BUILD='2026-11-26 22:15';
+const APP_BUILD='2026-11-26 22:30';
 const APP_LOG=[
   {v:'1.1',items:[
+    '修正：卷尾提醒設定下方的示意圖，現在會顯示底線、外框、字級與多段內容。',
     '頁首頁尾與版頭的文字欄位，也會直接顯示粗體、底線、外框等效果；頁首頁尾下方新增格式按鈕。',
     '格式按鈕會顯示選取文字目前套用了哪些格式（按下的樣子），再按一次取消。',
     '修正：「版頭與版面」設定視窗往下捲後，標題列和「關閉」按鈕不見、回不到上面的問題。',
@@ -1004,8 +1005,14 @@ function noteEditor(C,k){
     function demo(){
       if(!dm)return;const p=cleanPos(C.endPos),n=cleanBlocks(list).filter(b=>b.t.trim());
       dm.label.textContent=`上下位置：${p===0?'緊接最後一題':p===50?'置中':p===100?'貼近頁尾':'由上往下'}（${p}%）`;
-      dm.text.style.top=p+'%';dm.text.style.transform=`translateY(-${p}%)`;dm.text.textContent=n.length?noBox(stripFmt(n[0].t.split('\n')[0]))+(n.length>1||n[0].t.includes('\n')?' …':''):'（卷尾提醒的位置）';
-      dm.text.style.textAlign={l:'left',c:'center',r:'right'}[(n[0]||list[0]).align];
+      /* 和右邊預覽用同一套畫法，分段、對齊、字級、粗體、底線、外框都看得到 */
+      const t=dm.text;t.classList.toggle('none',!n.length);
+      if(n.length)t.replaceChildren(...noteEls(n));else t.textContent='（卷尾提醒的位置）';
+      t.style.textAlign=n.length?'':{l:'left',c:'center',r:'right'}[list[0].align];
+      t.style.top=p+'%';t.style.transform=`translateY(-${p}%)`;
+      const fit=()=>{if(t.offsetHeight)t.parentNode.style.height=Math.max(110,t.offsetHeight+16)+'px';};
+      fit();requestAnimationFrame(fit);
+      if(n.length&&mmReady&&t.textContent.includes('\\('))typeset(t),mjQ=mjQ.then(fit);
     }
     if(!isTop){
       const r=h('input',{type:'range',id:'note_endpos',min:0,max:100,step:5,value:cleanPos(C.endPos),'aria-label':'卷尾提醒上下位置'});
