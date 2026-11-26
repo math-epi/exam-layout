@@ -97,6 +97,7 @@ input.mono{font-family:var(--font-mono);font-size:13.5px}
 .optrow{display:flex;align-items:center;gap:6px}
 .optmv{flex:none;display:flex;flex-direction:column;gap:2px}
 .optmv .btn{min-width:30px;padding:0 6px;line-height:19px;min-height:0;font-size:13px}
+.optmv .btn:disabled{visibility:hidden}
 .optrow.moved{animation:optmoved 1.2s ease-out}@keyframes optmoved{from{background:#DCE8FB}to{background:transparent}}
 .ocrbtn{flex:none;padding:3px 8px;font-size:12px}
 .ocr-modal{position:fixed;inset:0;z-index:80;background:rgba(15,20,35,.5);display:flex;align-items:center;justify-content:center;padding:14px}
@@ -515,10 +516,10 @@ function hfEditor(C){
 const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD；開新版號時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.1';
-const APP_BUILD='2026-11-26 22:36';
+const APP_BUILD='2026-11-26 22:43';
 const APP_LOG=[
   {v:'1.1',items:[
-    '單選題、多選題的每個選項新增上移、下移按鈕；附圖一起移動，解答編號自動跟著更新。',
+    '單選題、多選題的每個選項新增上移、下移按鈕（第一個只有下移、最後一個只有上移）；附圖一起移動，解答編號自動跟著更新。',
     '修正：卷尾提醒設定下方的示意圖，現在會顯示底線、外框、字級與多段內容。',
     '頁首頁尾與版頭的文字欄位，也會直接顯示粗體、底線、外框等效果；頁首頁尾下方新增格式按鈕。',
     '格式按鈕會顯示選取文字目前套用了哪些格式（按下的樣子），再按一次取消。',
