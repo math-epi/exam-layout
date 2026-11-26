@@ -522,9 +522,10 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.3';
-const APP_BUILD='2026-11-27 06:30';
+const APP_BUILD='2026-11-27 07:40';
 const APP_LOG=[
   {v:'1.3',items:[
+    '數學符號面板換新外觀（沉穩淺色），右上角可切換深色；按鈕改名為「插入並關閉」「連續插入」。',
     '修正：ℝ、ℕ、ℤ 等雙線字母（\\mathbb）及部分少用符號在網頁上排不出來。',
     '新增「安裝工作台」按鈕：裝好後從桌面、Dock 或開始功能表點圖示就能開，不用記網址。安裝後第一次請連網開啟。'
   ]},
@@ -5551,7 +5552,7 @@ function mmCommit(close){
   }
   mmEdit=null;
   const ta=lastTa;
-  if(!ta||!document.contains(ta)){mmMsg('請先點一下講義裡要插入的欄位，再按「插入到考卷」。',true);return;}
+  if(!ta||!document.contains(ta)){mmMsg('請先點一下講義裡要插入的欄位，再按「插入並關閉」。',true);return;}
   const mode=mmBox.querySelector('#mmMode').value;
   const v=ta.value;const s=ta.selectionStart,e=ta.selectionEnd;
   const inMath=inMathAt(v,s);let wrap='$';
@@ -5594,7 +5595,7 @@ function openMM(ta){
   mmEdit=null;
   if(ta&&d&&!mmGet().trim()&&ta.selectionStart===ta.selectionEnd&&!ta.dataset.nodollar){
     const r=mathRangeAt(ta.value,ta.selectionStart);
-    if(r&&r.body.trim()){mmEdit={ta,start:r.start,end:r.end,wrap:r.wrap,orig:ta.value.slice(r.start,r.end)};mmSetVal(r.body.trim());mmMsg('正在修改游標所在的公式，按「插入到考卷」會取代原本的；按「清除」則改成新增公式。');}
+    if(r&&r.body.trim()){mmEdit={ta,start:r.start,end:r.end,wrap:r.wrap,orig:ta.value.slice(r.start,r.end)};mmSetVal(r.body.trim());mmMsg('正在修改游標所在的公式，按「插入並關閉」或「連續插入」會取代原本的；按「清除」則改成新增公式。');}
   }
   mmPrev();mmFocus();
   if(!mlEl&&mlState!=='loading'){let pref='visual';try{pref=localStorage.getItem('exam-mm-mode')||'visual';}catch(e){}if(pref==='visual')mmSetMode('visual',true);}
@@ -5620,10 +5621,53 @@ function initMM(){
 .mm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px;padding:8px 12px;overflow:auto;flex:1;min-height:120px}
 .mm-b{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:58px;padding:4px;border:1px solid var(--line);background:var(--panel);border-radius:8px;min-width:0}
 .mm-b:hover{border-color:var(--accent);background:var(--soft)}.mm-x{font-size:15px;line-height:1.3;max-width:100%;overflow:hidden}.mm-t{font-size:13px;text-align:center}.mm-n{font-size:10.5px;color:var(--muted);line-height:1.2;text-align:center}
-.mm-f{padding:6px 12px 10px;font-size:12px;color:var(--muted);border-top:1px solid var(--line)}.mm-launch{position:fixed;right:16px;bottom:16px;z-index:39;box-shadow:0 4px 14px rgba(0,0,0,.2)}`;
+.mm-f{padding:6px 12px 10px;font-size:12px;color:var(--muted);border-top:1px solid var(--line)}.mm-launch{position:fixed;right:16px;bottom:16px;z-index:39;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+/* ===== 面板外觀：A 沉穩淺色（預設）／B 專業深色（.mm-dark）。顏色只改面板內的變數，不影響其他畫面 ===== */
+.mm{--bg:#F7F9FC;--panel:#FFFFFF;--soft:#EDF1F8;--ink:#1A2233;--muted:#53607A;--line:#D8DEE8;--accent:#1E407C;--accent-ink:#FFFFFF;--danger:#A4332A;--mm-head:#14274A;--mm-btn:#1E407C;background:var(--bg);color:var(--ink);width:min(440px,calc(100vw - 32px));max-height:min(calc(100dvh - 32px),800px);border-radius:14px;overflow:auto;box-shadow:0 16px 44px rgba(12,22,44,.28)}
+.mm.mm-dark{--bg:#111827;--panel:#1A2336;--soft:#202B42;--ink:#E8EEF9;--muted:#A3B1CC;--line:#2E3B57;--accent:#8FB4F0;--accent-ink:#0B1120;--danger:#FF9C90;--mm-head:#0B1120;--mm-btn:#2F5FB3;color-scheme:dark;box-shadow:0 16px 44px rgba(0,0,0,.55)}
+.mm>*{flex-shrink:0}
+.mm-h{position:sticky;top:0;z-index:2;background:var(--mm-head);color:#fff;border:0;padding:0 10px 0 14px;min-height:48px;gap:10px}
+.mm-logo{width:26px;height:26px;border:1px solid #8FB4F0;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#BFD6FF;font:17px/1 'STIX Two Text','Times New Roman',serif}
+.mm-h b{font-size:15px;letter-spacing:.08em}.mm-h .mm-sp{flex:1}
+.mm-h button{font:inherit;font-size:12.5px;background:transparent;color:#E4ECFA;border:1px solid #5A7099;border-radius:7px;padding:3px 10px;cursor:pointer}
+.mm-h button:hover{background:rgba(255,255,255,.12)}
+.mm-h .mm-close{border-color:transparent;font-size:20px;line-height:1;padding:6px 10px}
+.mm-kbd{font:11px ui-monospace,'JetBrains Mono',Menlo,monospace;color:#C5D3EA;border:1px solid #5A7099;border-radius:5px;padding:1px 7px}
+.mm .btn{background:var(--panel);color:var(--ink);border-color:var(--line);border-radius:8px}
+.mm .btn:hover{border-color:var(--accent)}
+.mm input,.mm select,.mm textarea{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:9px}
+.mm .hint{color:var(--muted)}
+.mm-ed{padding:12px 16px 0}.mm-edl{display:none}
+.mm-modes{display:inline-flex;gap:2px;padding:3px;background:var(--soft);border-radius:10px;margin-bottom:10px}
+.mm .mm-modes .btn{border:0;background:transparent;color:var(--muted);border-radius:7px;padding:4px 14px}
+.mm .mm-modes .btn[aria-pressed="true"]{background:var(--panel);color:var(--accent);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.16)}
+.mm #mmVisWrap math-field{min-height:76px;font-size:24px;padding:10px 12px;border:1.5px solid var(--accent);border-radius:10px;background:var(--panel);color:var(--ink);--caret-color:var(--accent);--selection-background-color:#2F5FB3;--selection-color:#fff;--contains-highlight-background-color:var(--soft);--placeholder-color:var(--accent);display:flex;align-items:center;justify-content:center}
+.mm textarea#mmDraft{border:1.5px solid var(--accent);font-family:ui-monospace,'JetBrains Mono',Menlo,monospace;font-size:13.5px;padding:8px 10px}
+.mm-lx{margin-top:6px;padding:5px 10px;background:var(--soft);border-radius:7px;font-size:11px}.mm-lx:empty{display:none}
+.mm-pv{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.mm-act{gap:8px;margin-top:10px;flex-wrap:nowrap}
+.mm .mm-act .btn{min-height:40px;white-space:nowrap}
+.mm .mm-act .btn.primary{flex:1;background:var(--mm-btn);border-color:var(--mm-btn);color:#fff;font-weight:700}
+.mm .mm-act .mm-clr{background:transparent;border-color:transparent;color:var(--muted)}
+.mm-act .mm-key{font:10.5px ui-monospace,'JetBrains Mono',Menlo,monospace;border:1px solid currentColor;border-radius:4px;padding:0 4px;opacity:.7}
+.mm-c{margin-top:12px;padding:12px 16px 0;border-top:1px solid var(--line);gap:8px}.mm-c input{flex:1;min-width:0}
+.mm-tabs{gap:2px;padding:6px 12px 0;border-bottom:1px solid var(--line)}
+.mm .mm-tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:var(--muted);padding:6px 9px 7px;cursor:pointer}
+.mm .mm-tabs button[aria-selected]:not([aria-selected="false"]){background:transparent;color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+.mm-grid{grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:minmax(66px,max-content);gap:8px;padding:12px 16px;min-height:160px;flex:1 1 160px}
+.mm-b{color:var(--ink);border-radius:10px;cursor:pointer}.mm-x{font-size:16px}
+.mm .mm-2 button{color:var(--ink)}
+.mm-f{padding:9px 16px;font-size:11.5px}
+.mm #mmVisWrap math-field:focus,.mm #mmVisWrap math-field:focus-within,.mm textarea#mmDraft:focus{outline:2px solid var(--accent);outline-offset:1px}
+.mm{overflow-x:hidden}
+@media (max-width:460px){.mm .mm-act{flex-wrap:wrap}.mm .mm-act .btn.primary{flex:1 1 100%}.mm-act .mm-key{display:none}}`;
   document.head.append(style);
-  const close=h('button',{type:'button',class:'btn small','aria-label':'關閉數學符號面板',onclick:closeMM},'關閉');
-  const hd=h('div',{class:'mm-h'},h('b',{},'∑ 數學符號'),h('span',{class:'hint'},'可拖曳移動'),close);
+  const close=h('button',{type:'button',class:'mm-close','aria-label':'關閉數學符號面板',title:'關閉（Esc）',onclick:closeMM},'×');
+  /* 外觀：預設淺色，老師切換後記在這台電腦 */
+  const themeBtn=h('button',{type:'button',id:'mmTheme',onmousedown:e=>e.preventDefault()});
+  const setTheme=(dark,save)=>{mmBox.classList.toggle('mm-dark',dark);themeBtn.textContent=dark?'淺色':'深色';themeBtn.title='切換成'+(dark?'淺色':'深色')+'外觀';themeBtn.setAttribute('aria-label',themeBtn.title);if(save){try{localStorage.setItem('exam-mm-theme',dark?'dark':'light');}catch(e){}}};
+  themeBtn.addEventListener('click',()=>setTheme(!mmBox.classList.contains('mm-dark'),true));
+  const hd=h('div',{class:'mm-h',title:'按住這一列可以拖曳移動'},h('span',{class:'mm-logo','aria-hidden':'true'},'Σ'),h('b',{},'數學符號'),h('span',{class:'mm-sp'}),h('span',{class:'mm-kbd'},KEY_ALT+'+M'),themeBtn,close);
   const search=h('input',{type:'text',id:'mmSearch',placeholder:'搜尋，例如：分數、根號、alpha','aria-label':'搜尋符號'});
   search.oninput=()=>{mmQuery=search.value;mmRender();};
   const mode=h('select',{id:'mmMode','aria-label':'公式符號'},h('option',{value:'auto'},'插入時自動加 $…$'),h('option',{value:'inline'},'一律行內 $…$'),h('option',{value:'display'},'一律獨立 $$…$$'),h('option',{value:'raw'},'不加 $（已在公式內）'));
@@ -5631,9 +5675,9 @@ function initMM(){
   const pv=h('div',{id:'mmPrev',class:'mm-pv empty'},'（公式預覽會顯示在這裡）');
   const er=h('div',{id:'mmErr',class:'mm-err',hidden:true});
   const K1=IS_MAC?'⌘+Enter':'Ctrl+Enter',K2=KEY_ALT+'+Enter';
-  const ins=h('button',{type:'button',class:'btn primary small',title:'快速鍵 '+K1,onclick:()=>mmCommit(true)},'插入到考卷並關閉',h('span',{class:'mm-key'},K1));
-  const ins2=h('button',{type:'button',class:'btn small',title:'快速鍵 '+K2,onclick:()=>mmCommit(false)},'插入，繼續輸入',h('span',{class:'mm-key'},K2));
-  const clr=h('button',{type:'button',class:'btn small',onclick:()=>{mmEdit=null;mmClearVal();mmDisp=false;mmPrev();mmFocus();}},'清除');
+  const ins=h('button',{type:'button',class:'btn primary small',title:'快速鍵 '+K1,onclick:()=>mmCommit(true)},'插入並關閉',h('span',{class:'mm-key'},K1));
+  const ins2=h('button',{type:'button',class:'btn small',title:'快速鍵 '+K2,onclick:()=>mmCommit(false)},'連續插入',h('span',{class:'mm-key'},K2));
+  const clr=h('button',{type:'button',class:'btn small mm-clr',onclick:()=>{mmEdit=null;mmClearVal();mmDisp=false;mmPrev();mmFocus();}},'清除');
   const mB=(m,n)=>{const b=h('button',{type:'button',class:'btn small','data-m':m,onmousedown:e=>e.preventDefault(),onclick:()=>mmSetMode(m)},n);return b;};
   const modes=h('div',{class:'mm-modes'},mB('visual','視覺輸入'),mB('text','LaTeX 文字'));
   const ctl=(n,cmd,tip)=>h('button',{type:'button',class:'btn small',title:tip,onmousedown:e=>e.preventDefault(),onclick:()=>{if(mlEl){mlEl.focus();mlEl.executeCommand(cmd);mmPrev();}}},n);
@@ -5642,7 +5686,7 @@ function initMM(){
     h('div',{id:'mmLx',class:'mm-lx'}));
   const ed=h('div',{class:'mm-ed'},h('div',{class:'mm-edl'},'公式輸入框（不用打 $）'),modes,visWrap,draft,pv,er,h('div',{class:'mm-act'},ins,ins2,clr));
   mmBox=h('div',{id:'mm',class:'mm',hidden:true,role:'dialog','aria-label':'數學符號'},hd,ed,h('div',{class:'mm-c'},search,mode),h('div',{class:'mm-tabs',role:'tablist'}),h('div',{class:'mm-grid'}),
-    h('div',{class:'mm-f'},'步驟：先點考卷裡要插入的欄位（題目或選項）→ 按符號，直接在方框裡輸入（視覺輸入；打 x^2、1/3、sqrt 也會自動排好）→ 按「插入到考卷」。快速鍵：'+KEY_ALT+'+M 開啟；'+(IS_MAC?'⌘':'Ctrl')+'+Enter 插入並關閉；'+KEY_ALT+'+Enter 插入並繼續；Esc 關閉。'));
+    h('div',{class:'mm-f',title:'視覺輸入時，打 x^2、1/3、sqrt 也會自動排好。'+KEY_ALT+'+M 開啟；'+(IS_MAC?'⌘':'Ctrl')+'+Enter 插入並關閉；'+KEY_ALT+'+Enter 連續插入；Esc 關閉。'},'點考卷欄位 → 選符號或直接輸入 → 插入　·　Esc 關閉'));
   hd.addEventListener('pointerdown',e=>{
     if(e.target.closest('button'))return;
     const r=mmBox.getBoundingClientRect(),dx=e.clientX-r.left,dy=e.clientY-r.top;
@@ -5654,6 +5698,8 @@ function initMM(){
   const launch=h('button',{type:'button',id:'mmLaunch',class:'btn primary mm-launch',onmousedown:e=>e.preventDefault(),onclick:()=>openMM()},'∑ 數學符號',h('span',{class:'mm-key'},'（'+KEY_ALT+'+M）'));
   launch.title='快速鍵 '+KEY_ALT+'+M';
   document.body.append(mmBox,launch);
+  let th='light';try{th=localStorage.getItem('exam-mm-theme')||'light';}catch(e){}
+  setTheme(th==='dark',false);
   mmCat=mmRecent.length?'recent':'c0';
 }
 window.__mjReady=()=>{try{MathJax.startup.promise.then(()=>{mmReady=true;mmRender();mmPrev();rtAll();if(outTab==='preview')renderOut();});}catch(e){}};
@@ -6183,7 +6229,7 @@ function rtAttach(ta){
         if(typeof openMM==='function'&&mmBox){
           mmEdit=null;mmClearVal();mmDisp=false;openMM(ta);
           mmEdit={ta,start:st,end:en,wrap:'',orig:ta.value.slice(st,en)};mmSetVal(ta.value.slice(st,en));
-          mmMsg('正在修改這一段答案，按「插入到考卷」會取代原本的；按「清除」則改成新增。');mmPrev();mmFocus();
+          mmMsg('正在修改這一段答案，按「插入並關閉」或「連續插入」會取代原本的；按「清除」則改成新增。');mmPrev();mmFocus();
         }
         return;
       }
