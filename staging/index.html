@@ -517,11 +517,12 @@ function hfEditor(C){
     demo,dup);
 }
 const OFFLINE=true;
-/* ===== 版號：每次推上測試站都要改 APP_BUILD；開新版號時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
-const APP_VER='1.1';
-const APP_BUILD='2026-11-26 22:59';
+/* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
+   每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
+const APP_VER='1.2';
+const APP_BUILD='2026-11-26 23:34';
 const APP_LOG=[
-  {v:'1.1',items:[
+  {v:'1.2',items:[
     '修正：同一段文字套了兩種格式（例如底線再加外框）時，按鈕只亮其中一個、再按反而重複套用的問題。',
     '選項的附圖選單縮成小圖示（附圖後顯示「圖 N」），選項輸入框變寬。',
     '單選題、多選題的每個選項新增上移、下移按鈕（第一個只有下移、最後一個只有上移）；附圖一起移動，解答編號自動跟著更新。',
@@ -6251,7 +6252,7 @@ async function figFromHash(){
 }
 function verLabel(){
   const [d,t]=APP_BUILD.split(' ');
-  return STAGING?`GitHub版・測試 v${APP_VER}（${d.slice(5).replace('-','/')} ${t}）`:`GitHub版 v${APP_VER}（${d}）`;
+  return STAGING?`GitHub版・測試 v${APP_VER}（${d.slice(5).replace('-','/')} ${t}）`:`GitHub版 v${APP_VER}`;
 }
 function openVerDlg(){
   if(document.getElementById('verDlg'))return;
