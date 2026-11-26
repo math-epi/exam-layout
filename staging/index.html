@@ -107,6 +107,8 @@ input.mono{font-family:var(--font-mono);font-size:13.5px}
 .fb{display:inline-block;border:1px solid currentColor;padding:0 .18em;margin:0 .05em;line-height:1.35;text-indent:0}
 #boxFab{position:fixed;z-index:100001;display:none;padding:3px 10px;font-size:13px;box-shadow:0 3px 12px rgba(0,0,0,.28);background:#fff}
 .hfbox{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0;grid-column:1/-1}
+.hfask,.hfdup{margin:6px 0;padding:7px 10px;border-radius:8px;background:#FFF4D6;border:1px solid #E8C66A;color:#6B4A00;font-size:13px}
+.hfask{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.hfask[hidden],.hfdup[hidden]{display:none}
 .hfdemo{border:1px dashed #9aa5b8;border-radius:6px;padding:6px 10px;font-size:13px;background:#fff;color:#111}
 .hfdemo>div{display:grid;grid-template-columns:1fr 1fr 1fr;min-height:1.6em}.hfdemo>div>span:nth-child(2){text-align:center}.hfdemo>div>span:nth-child(3){text-align:right}
 .hfdemo .mid{color:#8a93a6;text-align:center;display:block;padding:8px 0;border-block:1px solid #eee;margin:4px 0}
@@ -407,22 +409,56 @@ function hfTex(F){
 function hfEditor(C){
   const F=getHF(C),inputs={};let last='fc';
   const demo=h('div',{class:'hfdemo',id:'hfDemo','aria-label':'頁首頁尾示意（第 1 頁，共 3 頁）'});
+  const dup=h('div',{class:'hfdup',id:'hfDup',hidden:true});
   const draw=()=>{
     const row=ks=>h('div',{},ks.map(k=>h('span',{},...(hfText(F,k,1,3)?freeNodes(hfText(F,k,1,3)):[]))));
+    const used=HF_SLOTS.filter(([k])=>String(F[k]||'').includes('【頁碼】'));
+    const total=used.reduce((n,[k])=>n+String(F[k]).split('【頁碼】').length-1,0);
+    dup.hidden=total<2;
+    dup.textContent=total<2?'':`提醒：目前有 ${total} 個頁碼（${used.map(x=>x[1]).join('、')}），每一頁都會印出 ${total} 次頁碼。如果是故意的，不用理會。`;
     demo.replaceChildren(row(['hl','hc','hr']),h('span',{class:'mid'},'考卷內容（示意：第 1 頁，共 3 頁）'),row(['fl','fc','fr']));
   };
   const cell=([k,label])=>{
     const i=h('input',{type:'text',id:'hf_'+k,spellcheck:false,placeholder:'（空白）'});i.value=F[k]||'';i.dataset.box='1';inputs[k]=i;
     i.addEventListener('focus',()=>{last=k;});
-    i.addEventListener('input',()=>{F[k]=i.value;draw();changed();});
+    i.addEventListener('input',()=>{F[k]=i.value;if(typeof closeAsk==='function')closeAsk();draw();changed();});
     return field(label,i);
   };
+  const NO='【頁碼】',name=k=>HF_SLOTS.find(x=>x[0]===k)[1];
+  const countNo=k=>String(F[k]||'').split(NO).length-1;
+  const ask=h('div',{class:'hfask',id:'hfAsk',role:'alert',hidden:true});
+  const closeAsk=()=>{ask.hidden=true;ask.replaceChildren();};
+  const setSlot=(k,v)=>{F[k]=v;inputs[k].value=v;};
+  const done=(k,pos)=>{closeAsk();draw();changed();inputs[k].focus();inputs[k].setSelectionRange(pos,pos);};
+  const putAt=(k,token,a,b)=>{const i=inputs[k];i.setRangeText(token,a,b,'end');const p=i.selectionStart;setSlot(k,i.value);done(k,p);};
+  /* 把頁碼移到 k 這一格的游標位置：別格整格是常用格式就清掉（目標是空的就整句搬過去），否則只拿掉頁碼那一段 */
+  const moveNo=(k,a,b)=>{
+    const v=inputs[k].value,cut=t=>t.split(NO).join('');
+    const head=cut(v.slice(0,a)),tail=cut(v.slice(b));
+    let phrase=NO;
+    HF_SLOTS.forEach(([o])=>{
+      const t=String(F[o]||'');if(o===k||!t.includes(NO))return;
+      if(Object.values(HF_PRESET).includes(t.trim())){if(!v.trim())phrase=t.trim();setSlot(o,'');}
+      else setSlot(o,t.replace(/第\s*【頁碼】\s*頁|-\s*【頁碼】\s*-|【頁碼】/g,'').trim());
+    });
+    setSlot(k,head+phrase+tail);done(k,(head+phrase).length);
+  };
   const ins=(token,id)=>h('button',{type:'button',class:'btn small',id,onmousedown:e=>e.preventDefault(),onclick:()=>{
-    const i=inputs[last],a=i.selectionStart??i.value.length,b=i.selectionEnd??a;
-    i.setRangeText(token,a,b,'end');i.focus();i.dispatchEvent(new Event('input',{bubbles:true}));}},'插入'+token);
+    const k=last,i=inputs[k],a=i.selectionStart??i.value.length,b=i.selectionEnd??a;
+    closeAsk();
+    const has=HF_SLOTS.map(x=>x[0]).filter(countNo);
+    /* 把原本的頁碼整個選起來再插入，只是換掉它 */
+    if(token!==NO||!has.length||(has.length===1&&has[0]===k&&countNo(k)===1&&i.value.slice(a,b).includes(NO))){putAt(k,token,a,b);return;}
+    const others=has.filter(o=>o!==k),btn=(label,bid,fn)=>h('button',{type:'button',class:'btn small',id:bid,onclick:fn},label);
+    ask.replaceChildren(h('span',{},others.length?`「${others.map(name).join('」「')}」已經有頁碼。要把頁碼移到「${name(k)}」嗎？`:`「${name(k)}」已經有頁碼了。`),
+      btn(others.length?'移到這一格':'移到游標位置','hfMove',()=>moveNo(k,a,b)),
+      btn('保留兩個','hfKeep',()=>putAt(k,token,a,b)),
+      btn('取消','hfCancel',()=>{closeAsk();i.focus();}));
+    ask.hidden=false;
+  }},'插入'+token);
   const preset=h('select',{id:'hf_preset','aria-label':'常用頁碼格式'},h('option',{value:''},'常用頁碼格式（放到頁尾置中）…'),
     PAGEFMT.map(x=>h('option',{value:x[0]},x[0]==='none'?'頁尾置中清空':x[1])));
-  preset.addEventListener('change',()=>{if(!preset.value)return;F.fc=HF_PRESET[preset.value];inputs.fc.value=F.fc;preset.value='';draw();changed();});
+  preset.addEventListener('change',()=>{if(!preset.value)return;F.fc=HF_PRESET[preset.value];inputs.fc.value=F.fc;preset.value='';closeAsk();draw();changed();});
   const one=h('input',{type:'checkbox',id:'hf_one'});one.checked=!!F.onePage;one.addEventListener('change',()=>{F.onePage=one.checked;draw();changed();});
   draw();
   return h('div',{class:'hfbox',id:'hfBox'},h('b',{},'頁首與頁尾'),
@@ -430,13 +466,14 @@ function hfEditor(C){
     h('div',{class:'grid3'},HF_SLOTS.slice(0,3).map(cell)),
     h('div',{class:'grid3'},HF_SLOTS.slice(3).map(cell)),
     h('div',{class:'addrow'},ins('【頁碼】','hf_no'),ins('【總頁數】','hf_total'),preset),
+    ask,
     h('label',{class:'chk',style:'padding:4px 0'},one,'考卷只有一頁時，也印含頁碼的欄位'),
-    demo);
+    demo,dup);
 }
 const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD；開新版號時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.1';
-const APP_BUILD='2026-11-26 19:39';
+const APP_BUILD='2026-11-26 19:49';
 const APP_LOG=[
   {v:'1.1',items:[
     '版頭可選三種版型：三列版型、一列版型（大標題＋班級座號姓名）、自訂版型。',
@@ -449,7 +486,7 @@ const APP_LOG=[
     '版頭下方的畫卡注意事項可以改文字或不顯示。',
     '新增「全域設定」：整張紙四周的試卷邊線（預設關閉）。',
     '網頁顯示版號，考卷檔會記錄是用哪一版存的。',
-    '新增頁首、頁尾（左中右三格），頁碼要印在哪裡在這裡決定。',
+    '新增頁首、頁尾（左中右三格），頁碼要印在哪裡在這裡決定；重複放頁碼時會詢問與提醒。',
     '會印出來的文字，選取後可以加外框。',
     '「輸出版本」改名「預設輸出的版本」；下載 zip、main.tex 時也能另選版本。']},
   {v:'1.0',items:['開始編版號以前的正式版。']}
