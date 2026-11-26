@@ -183,6 +183,25 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 #hdDlg .pick:hover,#hdDlg .pick.cur{border:2px solid #1E407C;padding:11px 13px}
 #hdDlg .mini{margin-top:8px;border:1.5px solid #3A5896;font-size:12px;text-align:center}
 #hdDlg .mini div{display:flex}#hdDlg .mini div+div{border-top:1.5px solid #3A5896}
+#hdDlg .hdtop{display:flex;align-items:center;gap:10px;position:sticky;top:-20px;background:#fff;z-index:2;margin:-20px 0 4px;padding:14px 0 8px}
+#hdDlg .hdtop h3{flex:1;margin:0}#hdDlg h4{margin:18px 0 6px;padding-top:12px;border-top:1px solid var(--line)}
+#hdDlg .blank{margin-top:8px;border:2px dashed #9FB0CE;border-radius:4px;min-height:52px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);letter-spacing:.2em}
+.tpl{border:1px solid #C9D0DC;border-radius:10px;padding:10px 12px;margin-top:10px}
+.tplname{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.tplname .tplren{width:auto;flex:1 1 12em}
+.tpldef{font-size:12px;background:var(--accent);color:#fff;border-radius:999px;padding:0 9px}
+.tplpick{cursor:pointer;margin:8px 0;border:1px solid var(--line);border-radius:6px;padding:6px 8px;overflow:hidden}
+.tplpick:hover,.tplpick:focus-visible{border-color:var(--accent);background:var(--soft)}
+.paper.tplthumb{--pf:9px;font-size:9px;box-shadow:none;background:#fff;pointer-events:none}
+.tplacts,.tplrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tplsave{margin:14px 0 10px;padding:10px 12px;background:var(--soft);border-radius:8px}.tplsave .tplrow{margin:6px 0 2px}.tplsave input{width:auto;flex:1 1 14em}
+.tplrow{margin-bottom:6px}
+.hdbar{display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;margin:0 auto 7px;max-width:100%}
+.hdtip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--accent);background:var(--soft);border:1px solid #CBD7EC;border-radius:999px;padding:2px 6px 2px 12px}
+.hdtip button{border:0;background:none;cursor:pointer;color:var(--muted);font-size:15px;line-height:1;padding:0 4px}
+#outMain .paper [data-ph]{cursor:pointer;border-radius:2px}
+#outMain .paper [data-ph]:hover{outline:2px dashed var(--accent);outline-offset:4px;background:#EDF1F8}
+@media print{.hdbar{display:none!important}}
+#hdDlg .mini.solo div+div{border-top:0}
 #hdDlg .mini span{flex:1;padding:3px 6px}#hdDlg .mini span+span{border-left:1.5px solid #3A5896}
 #hdDlg .mini.solo{border:0;font-weight:700;font-size:13px;padding:6px}
 .tokbtns{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 6px}
@@ -479,13 +498,15 @@ function hfEditor(C){
 const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD；開新版號時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.1';
-const APP_BUILD='2026-11-26 20:04';
+const APP_BUILD='2026-11-26 20:30';
 const APP_LOG=[
   {v:'1.1',items:[
     '畫面配色調整（考卷輸出不受影響），並加上「選取文字加外框」的說明。',
-    '版頭可選三種版型：三列版型、一列版型（大標題＋班級座號姓名）、自訂版型。',
+    '不再一開始就跳出選版型視窗；要換版型請按預覽上方的「更換／自訂版型」或直接點版頭。「一列版型」改稱「兩列版型」。',
+    '版型可以存成「我的版型」：叫出、改名、刪除、設為新考卷預設，也能匯出、匯入版型檔。',
+    '版頭可選三種版型：三列版型、兩列版型（大標題＋班級座號姓名）、自訂版型。',
     '自訂版型：1～5 列、每列 1～8 欄，內容、對齊、字級與框線都能自己設定。',
-    '自訂版型有「套用三列版型」「套用一列版型」「自行設計」三種起點，可以來回切換；每列可按「＋增加欄」。',
+    '自訂版型有「套用三列版型」「套用兩列版型」「自行設計」三種起點，可以來回切換；每列可按「＋增加欄」。',
     '自訂版型的欄寬可以用滑鼠拖拉，也可以一鍵均分；版頭文字可插入【讀卡方式】，自動塗黑選到的方框。',
     '讀卡方式與數學卡格數改在「全域設定」選擇。',
     '大標題可用選單填空或自己打字；校名沒填時印「○○高級中學」，開新考卷不再沿用舊版預設校名。',
@@ -556,7 +577,7 @@ function applyAutoTerm(C){
   if(!C.yearUser){C.yearMode='auto';C.year=String(autoYear());}
   if(!C.semUser){C.semMode='auto';C.semester=autoSem();}
 }
-const HD_STYLES=[['three','三列版型'],['title','一列版型'],['custom','自訂版型']];
+const HD_STYLES=[['three','三列版型'],['title','兩列版型'],['custom','自訂版型']];
 /* ===== 自訂版型 ===== */
 const HD_TYPES=[['title','大標題'],['free','自己打字'],['scope','命題範圍'],['name','班級座號姓名'],['pages','共幾頁'],['note','備註'],['blank','空白']];
 const LINE_STYLES=[['solid','單線'],['double','雙線'],['dashed','虛線']];
@@ -572,7 +593,7 @@ function newCust(base){
   const rows=base==='own'?[title()]:base==='title'?[title(),r([c('name',100,'r')])]:[title(),r([c('scope',52),c('name',48)]),r([c('free',39.5,'l','M',false,'是否電腦讀卡：'+CARD_TOKEN),c('free',30,'l','M',false,recycleText()),c('pages',8.5,'c'),c('note',22)])];
   return {src:base,rows,spare:[],base:base==='title'?'none':'all',over:{},style:'solid',width:'thick',color:'blue',nid:id};
 }
-const CU_SRC=[['three','套用三列版型'],['title','套用一列版型'],['own','自行設計']];
+const CU_SRC=[['three','套用三列版型'],['title','套用兩列版型'],['own','自行設計']];
 const MAX_COLS=8;
 /* 切換起點：目前這份先收起來，之後切回來內容還在 */
 function switchCust(src){
@@ -1997,15 +2018,17 @@ function manualCopyDlg(name,data){
   const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;margin-top:10px;justify-content:flex-end;align-items:center';
   const st=document.createElement('span');st.style.cssText='font-size:13px;color:#157347;margin-right:auto';
   const b1=document.createElement('button');b1.className='btn primary';b1.type='button';b1.textContent='全選並複製';
-  b1.onclick=async()=>{ta.focus();ta.select();let ok=false;try{await navigator.clipboard.writeText(data);ok=true;}catch(e){try{ok=document.execCommand('copy');}catch(e2){}}if(ok&&/\.json$/i.test(name))markExported();st.textContent=ok?'已複製到剪貼簿':'已全選，請按 Ctrl/Cmd+C 複製';st.style.color=ok?'#157347':'#9A6700';};
+  b1.onclick=async()=>{ta.focus();ta.select();let ok=false;try{await navigator.clipboard.writeText(data);ok=true;}catch(e){try{ok=document.execCommand('copy');}catch(e2){}}if(ok&&isExamFile(name))markExported();st.textContent=ok?'已複製到剪貼簿':'已全選，請按 Ctrl/Cmd+C 複製';st.style.color=ok?'#157347':'#9A6700';};
   const b2=document.createElement('button');b2.className='btn';b2.type='button';b2.textContent='關閉';b2.onclick=()=>ov.remove();
   row.append(st,b1,b2);card.append(t,d,ta,row);ov.append(card);document.body.append(ov);
   setTimeout(()=>{ta.focus();ta.select();},50);
 }
+/* 版型檔不算「考卷已存檔」 */
+const isExamFile=n=>/\.json$/i.test(n)&&!/^(版型_|我的版型)/.test(n);
 async function saveFile(name,data){
-  if(OFFLINE){anchorSave(name,new Blob([data],{type:'text/plain;charset=utf-8'}));if(/\.json$/i.test(name))markExported();flashMsg('已下載：'+name+'（在瀏覽器的下載資料夾）');return;}
+  if(OFFLINE){anchorSave(name,new Blob([data],{type:'text/plain;charset=utf-8'}));if(isExamFile(name))markExported();flashMsg('已下載：'+name+'（在瀏覽器的下載資料夾）');return;}
   let dl=null;try{dl=await window.claude.use('downloads');}catch(e){}
-  if(dl){try{await dl.save({filename:name,data});if(/\.json$/i.test(name))markExported();flashMsg('已送出下載：'+name);return;}catch(e){if(e&&e.code==='declined')return;}}
+  if(dl){try{await dl.save({filename:name,data});if(isExamFile(name))markExported();flashMsg('已送出下載：'+name);return;}catch(e){if(e&&e.code==='declined')return;}}
   manualCopyDlg(name,data);
 }
 let msgT=0;
@@ -2036,7 +2059,8 @@ function renderOut(){
     const pw=h('div',{class:'paperwrap'});const p=buildPreview();
     const w=Math.round(Math.max(320,Math.min(860,main.clientWidth-28))*pvZoom);
     p.style.width=w+'px';p.style.margin='0 auto';p.style.flexShrink='0';p.style.setProperty('--pf',(w/60.7)+'px');
-    pw.append(p);wrap.append(pw);
+    const ph=p.querySelector('[data-ph]');if(ph)ph.title='按一下更換或自訂版型';
+    pw.append(p);wrap.append(hdBar(w),pw);
     /* 重建預覽用「雙緩衝」：新預覽先在背後（看不見）排好數學式與圖，排完再一次換掉舊的，並保住捲動位置。
        這樣打字時預覽不會先閃出未排版的文字，也不會因為暫時變矮而位置跳動。縮放與第一次顯示則直接換。 */
     const oldWrap=main.querySelector('.paperwrap')?main.firstElementChild:null;
@@ -2151,20 +2175,168 @@ function titleFields(C){
       pickField(C,'卷別','titleSuffix',SUFFIXES,'suffixCustom','cfg_titleSuffix')));
   return out;
 }
-/* 第一次進工作台、開新考卷時選版型 */
+/* ===== 我的版型：只存版頭、頁首頁尾與邊線，不含題目；存在這個瀏覽器 ===== */
+const TPL_KEY=STAGING?'exam-hd-templates-staging':'exam-hd-templates';
+const HDTIP_KEY=STAGING?'exam-hdtip-staging':'exam-hdtip';
+const TPL_STR=['school','titleMode','titleText','year','semester','yearMode','semMode','examType','grade','subject','titleSuffix','hdRows','noticeMode','noticeText','noticeExtra','pageFmt','frameStyle','frameW','frameColor'];
+const TPL_BOOL=['schoolHide','schoolUser','yearUser','semUser','examCustom','gradeCustom','subjectCustom','suffixCustom','recycle','hdRepeat','frameOn'];
+const clone=o=>JSON.parse(JSON.stringify(o));
+const isObj=o=>!!o&&typeof o==='object'&&!Array.isArray(o);
+function validCust(c){
+  return isObj(c)&&Array.isArray(c.rows)&&c.rows.length>=1&&c.rows.length<=5&&c.rows.every(r=>isObj(r)&&Array.isArray(r.cells)&&r.cells.length>=1&&r.cells.length<=MAX_COLS&&r.cells.every(x=>isObj(x)&&typeof x.type==='string'&&Number.isFinite(x.w)&&(x.text==null||typeof x.text==='string')));
+}
+/* 讀進來的版型只留認得、型別正確的欄位 */
+function cleanTpl(d){
+  if(!isObj(d)||!HD_STYLES.some(x=>x[0]===d.hdStyle))return null;
+  const o={hdStyle:d.hdStyle};
+  TPL_STR.forEach(k=>{if(typeof d[k]==='string')o[k]=d[k].slice(0,5000);});
+  TPL_BOOL.forEach(k=>{if(typeof d[k]==='boolean')o[k]=d[k];});
+  if(isObj(d.hf)){o.hf={onePage:d.hf.onePage===true};HF_SLOTS.forEach(([k])=>{o.hf[k]=typeof d.hf[k]==='string'?d.hf[k].slice(0,500):'';});}
+  if(o.hdStyle==='custom'){
+    if(!validCust(d.custom))return null;
+    o.custom=clone(d.custom);o.customDrafts={};
+    if(isObj(d.customDrafts))CU_SRC.forEach(([k])=>{if(validCust(d.customDrafts[k]))o.customDrafts[k]=clone(d.customDrafts[k]);});
+    const keep=S.cfg;
+    try{S.cfg=Object.assign({},keep,clone(o));customHdEl(false);}catch(e){return null;}finally{S.cfg=keep;}
+  }
+  return o;
+}
+function currentTpl(){
+  const C=S.cfg;if(C.hdStyle==='custom')getCust();
+  const d={hdStyle:C.hdStyle,hf:clone(getHF(C))};
+  [...TPL_STR,...TPL_BOOL].forEach(k=>{if(C[k]!=null)d[k]=C[k];});
+  if(C.hdStyle==='custom'){d.custom=clone(C.custom);d.customDrafts=clone(C.customDrafts||{});}
+  return d;
+}
+function readTpls(){
+  try{const t=JSON.parse(localStorage.getItem(TPL_KEY)||'null');
+    if(isObj(t)&&Array.isArray(t.list))return {v:1,def:t.def||null,list:t.list.filter(x=>isObj(x)&&typeof x.name==='string'&&isObj(x.data))};}catch(e){}
+  return {v:1,def:null,list:[]};
+}
+function writeTpls(T){try{localStorage.setItem(TPL_KEY,JSON.stringify(T));return true;}catch(e){return false;}}
+const tplId=()=>'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+function freeName(list,name){let n=name,i=2;while(list.some(x=>x.name===n))n=`${name}（${i++}）`;return n;}
+/* 把版型的設定放進目前這份考卷；題目、命題範圍、備註、讀卡方式、紙張都不動 */
+function putTpl(data){
+  const d=cleanTpl(data);if(!d)return false;
+  const C=S.cfg;Object.assign(C,d);
+  if(C.yearMode==='auto')C.year=String(autoYear());
+  if(C.semMode==='auto')C.semester=autoSem();
+  return true;
+}
+/* 換版型（可復原） */
+function swapHead(fn,msg){
+  const keys=['hdStyle','custom','customDrafts','hf',...TPL_STR,...TPL_BOOL],before={};
+  keys.forEach(k=>{if(S.cfg[k]!==undefined)before[k]=clone(S.cfg[k]);});
+  if(fn()===false)return false;
+  const redraw=()=>{settingsBuilt=false;rerender();drawHdEdit();};
+  redraw();
+  toast(msg,()=>{keys.forEach(k=>{if(k in before)S.cfg[k]=before[k];else delete S.cfg[k];});redraw();});
+  return true;
+}
+function tplThumb(data){
+  const keep=S.cfg;let el=null;
+  try{S.cfg=Object.assign({},keep,clone(data));el=buildPreview().querySelector('[data-ph]');}catch(e){}finally{S.cfg=keep;}
+  if(!el)return h('div',{class:'hint'},'（無法顯示縮圖）');
+  el.removeAttribute('data-ph');el.querySelectorAll('[title]').forEach(x=>x.removeAttribute('title'));
+  return h('div',{class:'paper tplthumb'},el);
+}
+function hdTipDone(){try{localStorage.setItem(HDTIP_KEY,'1');}catch(e){}document.querySelectorAll('.hdtip').forEach(e=>e.remove());}
+/* 預覽上方：換版型的按鈕（第一次附一句提示） */
+function hdBar(width){
+  let seen=false;try{seen=localStorage.getItem(HDTIP_KEY)==='1';}catch(e){}
+  return h('div',{class:'hdbar',style:`width:${width}px`},
+    seen?null:h('span',{class:'hdtip'},'版頭可以更換，也可以自己設計 →',h('button',{type:'button',title:'不再顯示這句提示','aria-label':'關閉提示',onclick:hdTipDone},'×')),
+    h('button',{type:'button',class:'btn small primary',id:'pvHdBtn',onclick:openHdDlg},'更換／自訂版型'));
+}
+/* 選版型：內建三種＋我的版型 */
 function openHdDlg(){
   const old=$('#hdDlg');if(old)old.remove();
+  hdTipDone();
   const close=()=>{d.remove();document.removeEventListener('keydown',key,true);};
-  const key=e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();}};
+  const key=e=>{if(!d.isConnected){document.removeEventListener('keydown',key,true);return;}if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();}};
   const mini=(cls,rows)=>h('div',{class:'mini'+cls},rows.map(r=>h('div',{},r.map(t=>h('span',{},t)))));
   const T='○○高級中學　'+autoYear()+' 學年度第'+autoSem()+'學期 第一次段考　二年級 數學A 試題';
-  const card=(k,name,desc,demo)=>h('button',{type:'button',class:'pick'+(S.cfg.hdStyle===k?' cur':''),'data-hd':k,onclick:()=>{S.cfg.hdStyle=k;close();buildSettings();changed();openCfg('head');}},h('b',{},name),h('div',{class:'hint'},desc),demo);
-  const d=h('div',{id:'hdDlg',role:'dialog','aria-modal':'true','aria-label':'選擇版型'},h('div',{class:'box'},
-    h('h3',{},'請選擇版頭的版型'),h('div',{class:'hint'},'之後可在「⚙ 設定」→「標頭與版面」更換。'),
-    card('three','三列版型','大標題、命題範圍與班級座號姓名、讀卡與備註，固定有框線。',mini('',[[T],['命題範圍：','班級：　座號：　姓名：'],['是否電腦讀卡','是否回收題目卷','共 2 頁','備註：']])),
-    card('title','一列版型','大標題，下一列是靠右的班級、座號、姓名；沒有框線。',mini(' solo',[[T],['班級：　　座號：　　姓名：　　　']])),
-    card('custom','自訂版型','列數、欄數、每欄內容、框線自己決定。',h('div',{class:'hint'},'進入後在「自訂版頭」調整。')),
-    h('div',{style:'text-align:right;margin-top:12px'},h('button',{type:'button',class:'btn small',id:'hdDlgX',onclick:close},'先不選，照目前的版型'))));
+  const pickStyle=k=>{
+    close();
+    if(S.cfg.hdStyle!==k)swapHead(()=>{
+      S.cfg.hdStyle=k;
+      if(k==='custom'&&!S.cfg.custom){S.cfg.custom=newCust('own');S.cfg.custom.rows.forEach(evenRow);}
+    },`版頭已換成「${HD_STYLES.find(x=>x[0]===k)[1]}」。`);
+    if(k==='custom'){openCfg('head');setTimeout(()=>{const e=document.querySelector('.hdedit');if(e)e.scrollIntoView({block:'start'});},60);}
+  };
+  const card=(k,name,desc,demo)=>h('button',{type:'button',class:'pick'+(S.cfg.hdStyle===k?' cur':''),'data-hd':k,onclick:()=>pickStyle(k)},h('b',{},name),h('div',{class:'hint'},desc),demo);
+  const mine=h('div',{id:'tplList'}),msg=h('div',{class:'hint',id:'tplMsg',role:'status'});
+  const say=(t,bad)=>{msg.textContent=t;msg.style.color=bad?'var(--danger)':'var(--ok)';};
+  const commit=(T2,ok)=>{if(writeTpls(T2)){if(ok)say(ok);draw();return true;}say('瀏覽器無法儲存（可能被停用或已滿）。',true);return false;};
+  const edit=(id,fn,ok)=>{const T2=readTpls(),x=T2.list.find(y=>y.id===id);if(x){fn(T2,x);commit(T2,ok);}else draw();};
+  const exportTpls=(list,file)=>saveFile(file,JSON.stringify({type:'exam-header-templates',v:1,templates:list.map(x=>({name:x.name,data:x.data}))},null,1));
+  const fileName=n=>noBox(n).replace(/[\\/:*?"<>|\n]+/g,'_').slice(0,40);
+  const apply=x=>{if(!cleanTpl(x.data)){say('這個版型的資料有問題，無法套用。',true);return;}close();swapHead(()=>putTpl(x.data),`已套用版型「${x.name}」，題目沒有更動。`);};
+  const draw=()=>{
+    const T2=readTpls();
+    $x.disabled=!T2.list.length;
+    if(!T2.list.length){mine.replaceChildren(h('div',{class:'hint'},'還沒有存過版型。把版頭調好之後，在下面取個名字存起來，下次就能直接叫出來。'));return;}
+    mine.replaceChildren(...T2.list.map(x=>{
+      const isDef=T2.def===x.id;
+      const title=h('div',{class:'tplname'},h('b',{},x.name),isDef?h('span',{class:'tpldef'},'預設'):null);
+      const btn=(label,act,fn,extra)=>h('button',Object.assign({type:'button',class:'btn small','data-act':act,onclick:fn},extra||{}),label);
+      const rename=()=>{
+        const i=h('input',{type:'text',class:'tplren',value:x.name,maxlength:40,'data-nobox':'1'});i.value=x.name;
+        const ok=()=>{const v=i.value.trim();if(!v){say('名稱不能空白。',true);return;}
+          edit(x.id,(t,y)=>{y.name=freeName(t.list.filter(z=>z.id!==y.id),v);},'已改名。');};
+        i.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)ok();});
+        title.replaceChildren(i,btn('確定','renok',ok),btn('取消','rencancel',draw));i.focus();i.select();
+      };
+      const del=btn('刪除','del',()=>{},{class:'btn small danger'});
+      twoClick(del,()=>edit(x.id,(t,y)=>{t.list=t.list.filter(z=>z.id!==y.id);if(t.def===y.id)t.def=null;},`已刪除「${x.name}」。`),'再按一次刪除');
+      const thumb=h('div',{class:'tplpick',role:'button',tabindex:'0',title:'按一下套用這個版型',onclick:()=>apply(x),onkeydown:e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();apply(x);}}},tplThumb(x.data));
+      return h('div',{class:'tpl','data-tpl':x.id},title,thumb,h('div',{class:'tplacts'},
+        btn('套用','apply',()=>apply(x),{class:'btn small primary'}),btn('改名','ren',rename),
+        btn(isDef?'取消預設':'設為預設','def',()=>edit(x.id,(t,y)=>{t.def=isDef?null:y.id;},isDef?'已取消預設。':`之後按「新考卷」會用「${x.name}」。`)),
+        btn('匯出','exp',()=>exportTpls([x],`版型_${fileName(x.name)}.json`)),del));
+    }));
+  };
+  const nameIn=h('input',{type:'text',id:'tplName',placeholder:'版型名稱，例如：段考用',maxlength:40,'data-nobox':'1'});
+  let over='';
+  const saveBtn=h('button',{type:'button',class:'btn small primary',id:'tplSave'},'存成我的版型');
+  const reset=()=>{over='';saveBtn.textContent='存成我的版型';};
+  const doSave=()=>{
+    const name=nameIn.value.trim();if(!name){say('請先幫版型取個名字。',true);nameIn.focus();return;}
+    const T2=readTpls(),same=T2.list.find(x=>x.name===name);
+    if(same&&over!==name){over=name;saveBtn.textContent='同名，再按一次覆蓋';say(`已經有「${name}」。要覆蓋請再按一次，不覆蓋就換個名字。`,true);return;}
+    if(same)same.data=currentTpl();else T2.list.push({id:tplId(),name,data:currentTpl()});
+    if(commit(T2,same?`已覆蓋「${name}」。`:`已存成「${name}」。`))nameIn.value='';
+    reset();
+  };
+  saveBtn.onclick=doSave;nameIn.addEventListener('input',reset);
+  nameIn.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)doSave();});
+  const file=h('input',{type:'file',id:'tplFile',accept:'.json,application/json',hidden:true});
+  file.addEventListener('change',async()=>{
+    const f=file.files[0];file.value='';if(!f)return;
+    try{
+      const j=JSON.parse(await f.text());
+      if(!j||j.type!=='exam-header-templates'||!Array.isArray(j.templates)){say('這不是版型檔。考卷檔請用上方的「開啟舊檔」。',true);return;}
+      const T2=readTpls();let n=0,bad=0;
+      j.templates.slice(0,100).forEach(x=>{const data=x&&cleanTpl(x.data),name=x&&typeof x.name==='string'?x.name.trim().slice(0,40):'';
+        if(data&&name){T2.list.push({id:tplId()+n,name:freeName(T2.list,name),data});n++;}else bad++;});
+      if(!n){say('檔案裡沒有可用的版型。',true);return;}
+      commit(T2,`已匯入 ${n} 個版型`+(bad?`，另有 ${bad} 個無法讀取`:'')+'。');
+    }catch(e){say('讀不出這個檔案。',true);}
+  });
+  const $x=h('button',{type:'button',class:'btn small',id:'tplExport',onclick:()=>exportTpls(readTpls().list,'我的版型.json')},'匯出全部版型檔');
+  const d=h('div',{id:'hdDlg',role:'dialog','aria-modal':'true','aria-label':'版頭版型',onclick:e=>{if(e.target===d)close();}},h('div',{class:'box'},
+    h('div',{class:'hdtop'},h('h3',{},'版頭版型'),h('button',{type:'button',class:'btn small',id:'hdDlgX',onclick:close},'關閉')),
+    h('div',{class:'hint'},'點一下就套用，打好的題目不會動。'),
+    card('three','三列版型（有框線）','大標題、命題範圍與班級座號姓名、讀卡與備註。',mini('',[[T],['命題範圍：','班級：　座號：　姓名：'],['是否電腦讀卡','是否回收題目卷','共 2 頁','備註：']])),
+    card('title','兩列版型（無框線）','大標題，下一列是靠右的班級、座號、姓名。',mini(' solo',[[T],['班級：　　座號：　　姓名：　　　']])),
+    card('custom','自訂版型',S.cfg.custom?'列數、欄數、內容與框線自己決定；之前設計的內容還在。':'從空白開始，列數、欄數、內容與框線自己決定。',h('div',{class:'blank'},'自訂版型')),
+    h('h4',{},'我的版型'),mine,
+    h('div',{class:'tplsave'},h('div',{class:'hint'},'把目前這份考卷的版頭（含校名、頁首頁尾、試卷邊線）存起來：'),h('div',{class:'tplrow'},nameIn,saveBtn),msg),
+    h('div',{class:'tplrow'},$x,h('button',{type:'button',class:'btn small',id:'tplImport',onclick:()=>file.click()},'匯入版型檔'),file),
+    h('div',{class:'hint'},'版型存在這台電腦的這個瀏覽器；換電腦或清除瀏覽資料就看不到，請用匯出／匯入帶過去（也可以分享給同事）。'),
+    h('div',{style:'text-align:right;margin-top:10px'},h('button',{type:'button',class:'btn small',id:'hdEditNow',onclick:()=>{close();openCfg('head');}},'修改目前版型的文字與欄位 →'))));
+  draw();
   document.body.append(d);document.addEventListener('keydown',key,true);
 }
 function buildSettings(){
@@ -2172,6 +2344,7 @@ function buildSettings(){
   const head=$('#setHead'),solo=C.hdStyle==='title',cust=C.hdStyle==='custom';
   head.replaceChildren(
     field('版型',bindInput(C,'hdStyle',{id:'cfg_hdStyle',type:'select',options:HD_STYLES,after:rebuildHead}),solo?'大標題下面是靠右的班級、座號、姓名，沒有框線。':cust?'列數、欄數、內容與框線都自己決定（在下面的「自訂版頭」）。':'版頭固定三列、有框線。'),
+    h('div',{},h('button',{type:'button',class:'btn small',id:'cfg_hdPick',onclick:openHdDlg},'我的版型：儲存／叫出…')),
     ...(cust?[hdEditor()]:[]),
     ...titleFields(C),
     field('命題範圍',bindInput(C,'scope',{id:'cfg_scope',mm:true})),
@@ -2205,7 +2378,7 @@ function buildSettings(){
   $('#setAll').replaceChildren(
     field('讀卡方式',bindInput(C,'card',{id:'cfg_card',type:'select',options:[['math','數學卡（選項 (1)(2)…，題號從 1 起算）'],['general','一般卡（選項 (A)(B)…）'],['none','不讀卡']],after:()=>{rerender();rebuildHead();}}),'決定選項怎麼編號、版頭的讀卡方框塗黑哪一個、以及畫卡注意事項。'),
     ...(C.card==='math'?[field('數學卡格數（題號上限）',bindInput(C,'cardSlots',{id:'cfg_cardSlots',type:'number',int:true,min:1,max:999,after:changed}),'選「數學卡」時使用，預設 50（有些學校的數學卡是 40 格或更多）；選擇題與選填格子超過這個格數時，上方會提醒。')]:[]),
-    field('試卷邊線（整張紙四周的框）',bindInput(C,'frameOn',{id:'cfg_frameOn',type:'select',options:[['false','關閉（預設）'],['true','開啟']],after:()=>{C.frameOn=($('#cfg_frameOn').value==='true');rebuildHead();}}),'三列版型、一列版型、自訂版型都適用；開啟後每一頁都會印。'),
+    field('試卷邊線（整張紙四周的框）',bindInput(C,'frameOn',{id:'cfg_frameOn',type:'select',options:[['false','關閉（預設）'],['true','開啟']],after:()=>{C.frameOn=($('#cfg_frameOn').value==='true');rebuildHead();}}),'三列版型、兩列版型、自訂版型都適用；開啟後每一頁都會印。'),
     ...(C.frameOn?[h('div',{class:'grid3'},
       field('邊線線型',bindInput(C,'frameStyle',{id:'cfg_frameStyle',type:'select',options:LINE_STYLES})),
       field('邊線粗細',bindInput(C,'frameW',{id:'cfg_frameW',type:'select',options:LINE_WIDTHS})),
@@ -2925,7 +3098,7 @@ function initPvClick(){
         setTimeout(()=>{const el=document.querySelector(`[data-sid="${s.id}"]`);if(el){markProg();el.scrollIntoView({behavior:'smooth',block:'start'});el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),1500);}},30);
         return;
       }
-      openCfg('head');
+      openHdDlg();
     },260);
   });
 }
@@ -4626,7 +4799,10 @@ async function texImportFiles(fileList){
   }catch(e){flashMsg('讀取失敗：'+(e&&e.message||e),true);}
 }
 
-twoClick($('#btnNew'),()=>{blankState();settingsBuilt=false;rerender();openHdDlg();},'清空？再按一次');
+twoClick($('#btnNew'),()=>{blankState();
+  const T=readTpls(),d=T.list.find(x=>x.id===T.def),used=d&&putTpl(d.data);
+  settingsBuilt=false;rerender();
+  if(used)toast(`新考卷已套用你的預設版型「${d.name}」。`);},'清空？再按一次');
 twoClick($('#btnReset'),()=>{sampleState();settingsBuilt=false;rerender();},'目前內容將被取代，再按一次');
 $('#btnPrint').onclick=openSave;
 $('#btnImport').onclick=()=>$('#fileImport').click();
@@ -5637,7 +5813,6 @@ async function importFromHash(){
   }catch(e){flashMsg('帶入考卷內容失敗，請回到原本的頁面再按一次。',true);}
   try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
 }
-if(firstVisit&&!/^#(import|fig)=/.test(location.hash))openHdDlg();
 importFromHash();
 /* 從 Claude版專用頁帶回「一張圖」：網址 #fig=（壓縮的圖形資料）。只把這張圖加進圖庫，不動考卷內容。
    若原本的考卷分頁還開著，圖直接交給那個分頁（BroadcastChannel），這個分頁只顯示提示。 */
