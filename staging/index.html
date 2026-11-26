@@ -519,9 +519,10 @@ function hfEditor(C){
 const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD；開新版號時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.1';
-const APP_BUILD='2026-11-26 22:49';
+const APP_BUILD='2026-11-26 22:59';
 const APP_LOG=[
   {v:'1.1',items:[
+    '修正：同一段文字套了兩種格式（例如底線再加外框）時，按鈕只亮其中一個、再按反而重複套用的問題。',
     '選項的附圖選單縮成小圖示（附圖後顯示「圖 N」），選項輸入框變寬。',
     '單選題、多選題的每個選項新增上移、下移按鈕（第一個只有下移、最後一個只有上移）；附圖一起移動，解答編號自動跟著更新。',
     '修正：卷尾提醒設定下方的示意圖，現在會顯示底線、外框、字級與多段內容。',
@@ -2617,6 +2618,11 @@ function stripFmt(s){
   }
   return s;
 }
+/* 拿掉字串裡某一種格式指令（內容保留） */
+function dropFmt(t,match){
+  const cuts=fmtGroups(t).filter(match).flatMap(g=>[[g.o,g.cs],[g.c,g.c+1]]).sort((x,y)=>y[0]-x[0]);
+  return cuts.reduce((o,[x,y])=>o.slice(0,x)+o.slice(y),t);
+}
 /* 選取範圍切到格式指令中間時，調整成完整的一段 */
 function fmtSnap(groups,s,e){
   if(s===e)return [s,e];
@@ -2660,6 +2666,13 @@ function applyFmt(el,key){
   /* 已經在同一種格式裡面 → 取消 */
   const same=g=>'\\'+g.cmd===F.cmd||(key==='u'&&g.cmd==='underline')||(key==='b'&&g.cmd==='textbf');
   const around=groups.filter(g=>g.cs<=s&&e<=g.c),G=around.filter(same).pop();
+  /* 同一種格式整個在選取範圍裡面（例如底線包在外框裡，或外框包著底線），而且選到的字全都有它 → 把它拿掉 */
+  if(!G&&sel){
+    const inside=groups.filter(g=>same(g)&&g.o>=s&&g.c+1<=e),c=fmtCover(v,s,e);
+    if(inside.length&&c&&c.has(key)){
+      const out=dropFmt(sel,same);put(out,s,e,s,s+out.length);return;
+    }
+  }
   if(G){
     const head=G.cs-G.o,inner=v.slice(G.cs,G.c),left=v.slice(G.cs,s),right=v.slice(e,G.c),innermost=around[around.length-1]===G;
     if(!sel){
@@ -2673,12 +2686,15 @@ function applyFmt(el,key){
     if(key!=='f'&&innermost&&stripFmt(sel)!==stripFmt(inner)){
       const L=left?open+left+'}':'',R=right?open+right+'}':'';put(L+sel+R,G.o,G.c+1,G.o+L.length,G.o+L.length+sel.length);return;
     }
+    /* 整段取消時，裡面重複套的同一種格式也一起拿掉 */
+    if(sel&&stripFmt(sel)===stripFmt(inner)){const out=dropFmt(inner,same);put(out,G.o,G.c+1,G.o,G.o+out.length);return;}
     put(inner,G.o,G.c+1,s-head,e-head);return;
   }
   if(!sel){done(open+'}',s,e);const p=s+open.length;el.setSelectionRange(p,p);return;}
   // 已經包著 → 拿掉（再按一次＝取消）
   if(sel.startsWith(open)&&matchBrace(sel,open.length-1)===sel.length-1){const inner=sel.slice(open.length,-1);done(inner,s,e);el.setSelectionRange(s,s+inner.length);el.dispatchEvent(new Event('input',{bubbles:true}));return;}
-  done(open+sel+'}',s,e);el.setSelectionRange(s+open.length,s+open.length+sel.length);el.dispatchEvent(new Event('input',{bubbles:true}));
+  const body=dropFmt(sel,same);   // 裡面已經有一部分套過同樣格式 → 併成一個
+  done(open+body+'}',s,e);el.setSelectionRange(s+open.length,s+open.length+body.length);el.dispatchEvent(new Event('input',{bubbles:true}));
 }
 /* 任何會印出來的文字欄位：選取文字後，欄位上方出現「加外框」 */
 function boxTarget(){
@@ -2714,13 +2730,26 @@ function fmtKeys(el){
     else if(k==='u'){ev.preventDefault();applyFmt(el,ev.shiftKey?'d':'u');}
   });
 }
-/* 選取的文字（或游標）目前套用了哪些格式 */
+/* 選取的文字（或游標）目前套用了哪些格式。
+   有選取時看「看得到的字」：每個字都在某種格式裡，就算套用中（不管指令包在內層或外層、選取起點落在哪個指令邊界） */
+const fmtKeyOf=cmd=>cmd==='underline'?'u':Object.keys(FMT_DEF).find(k=>FMT_DEF[k].cmd==='\\'+cmd);
+function fmtCover(v,s,e){
+  let common=null;
+  const take=keys=>{common=common?new Set([...common].filter(k=>keys.has(k))):new Set(keys);};
+  const walk=(list,keys)=>list.forEach(g=>{
+    if(g.t==='fmt'){const k=fmtKeyOf(g.cmd);walk(g.kids,k?new Set([...keys,k]):keys);}
+    else if(g.t==='math'){if(g.s<e&&g.e>s)take(keys);}
+    else if(/\S/.test(v.slice(Math.max(g.s,s),Math.min(g.e,e))))take(keys);
+  });
+  walk(richParse(v,0,v.length),new Set());
+  return common;
+}
 function fmtActive(el){
   const out=new Set();if(!el)return out;
   const v=el.value,groups=fmtGroups(v);
   const [s,e]=fmtSnap(groups,el.selectionStart||0,el.selectionEnd||0);
-  const keyOf=cmd=>cmd==='underline'?'u':Object.keys(FMT_DEF).find(k=>FMT_DEF[k].cmd==='\\'+cmd);
-  groups.forEach(g=>{if((g.cs<=s&&e<=g.c)||(s<e&&s===g.o&&e===g.c+1)){const k=keyOf(g.cmd);if(k)out.add(k);}});
+  if(s<e){const c=fmtCover(v,s,e);if(c)return c;}
+  groups.forEach(g=>{if(g.cs<=s&&e<=g.c){const k=fmtKeyOf(g.cmd);if(k)out.add(k);}});
   return out;
 }
 const fmtFocus=()=>{const a=document.activeElement;return a?(a._rteTa||a):null;};
