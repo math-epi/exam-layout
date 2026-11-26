@@ -95,6 +95,9 @@ input.mono{font-family:var(--font-mono);font-size:13.5px}
 .flash{animation:fl 1.1s ease-out}@keyframes fl{from{box-shadow:0 0 0 3px var(--accent)}to{box-shadow:0 0 0 0 transparent}}
 @media(prefers-reduced-motion:reduce){.flash{animation:none}}
 .optrow{display:flex;align-items:center;gap:6px}
+.optmv{flex:none;display:flex;flex-direction:column;gap:2px}
+.optmv .btn{min-width:30px;padding:0 6px;line-height:19px;min-height:0;font-size:13px}
+.optrow.moved{animation:optmoved 1.2s ease-out}@keyframes optmoved{from{background:#DCE8FB}to{background:transparent}}
 .ocrbtn{flex:none;padding:3px 8px;font-size:12px}
 .ocr-modal{position:fixed;inset:0;z-index:80;background:rgba(15,20,35,.5);display:flex;align-items:center;justify-content:center;padding:14px}
 .ocr-box{background:var(--panel);border-radius:14px;max-width:700px;width:100%;max-height:92vh;overflow:auto;padding:14px 16px;box-shadow:0 16px 50px rgba(0,0,0,.35)}
@@ -512,9 +515,10 @@ function hfEditor(C){
 const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD；開新版號時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.1';
-const APP_BUILD='2026-11-26 22:30';
+const APP_BUILD='2026-11-26 22:36';
 const APP_LOG=[
   {v:'1.1',items:[
+    '單選題、多選題的每個選項新增上移、下移按鈕；附圖一起移動，解答編號自動跟著更新。',
     '修正：卷尾提醒設定下方的示意圖，現在會顯示底線、外框、字級與多段內容。',
     '頁首頁尾與版頭的文字欄位，也會直接顯示粗體、底線、外框等效果；頁首頁尾下方新增格式按鈕。',
     '格式按鈕會顯示選取文字目前套用了哪些格式（按下的樣子），再按一次取消。',
@@ -1237,6 +1241,15 @@ function optLabel(i){return '('+(optStyle()==='letter'?LETTERS[i-1]:i)+')';}
 function parseChoiceAns(a){
   const r=[];for(const c of a){if(/[0-9]/.test(c))r.push(+c);else if(/[A-Za-z]/.test(c))r.push(c.toUpperCase().charCodeAt(0)-64);}
   return r;
+}
+/* 第 a、b 個選項對調後的解答字串（數字或 A、B…，分隔符號保留；原本由小到大的維持由小到大） */
+function swapChoiceAns(ans,a,b){
+  const v=String(ans||''),re=/[0-9A-Za-z]/g,tok=v.match(re);if(!tok)return v;
+  const num1=c=>/[0-9]/.test(c)?+c:c.toUpperCase().charCodeAt(0)-64;
+  const to=c=>{const n=num1(c),m=n===a?b:n===b?a:n;if(m===n)return c;if(/[0-9]/.test(c))return String(m);const L=String.fromCharCode(64+m);return c===c.toLowerCase()?L.toLowerCase():L;};
+  let out=tok.map(to);
+  if(tok.every((c,i)=>!i||num1(tok[i-1])<num1(c)))out.sort((x,y)=>num1(x)-num1(y));
+  let i=0;return v.replace(re,()=>out[i++]);
 }
 function ptsOf(q,s){return q.pts!==''?num(q.pts):(s.pts!==''?num(s.pts):0);}
 function partialAuto(s){
@@ -2804,6 +2817,25 @@ function qCard(s,q){
   b.append(ocrBlock(q,card,stem));
   if(q.kind==='single'||q.kind==='multi'){
     const box=h('div',{style:'display:flex;flex-direction:column;gap:6px'});
+    let ansIn=null;
+    /* 選項上移／下移：文字、附圖一起搬，解答的編號跟著內容走 */
+    const moveOpt=(i,d)=>{
+      const j=i+d;if(j<0||j>=q.opts.length)return;
+      const y=scrollY,a=optFigsGet(q,i),b2=optFigsGet(q,j);
+      [q.opts[i],q.opts[j]]=[q.opts[j],q.opts[i]];
+      if(a!==''||b2!==''){optFigsSet(q,i,b2);optFigsSet(q,j,a);}
+      const before=q.ans;q.ans=swapChoiceAns(q.ans,i+1,j+1);
+      if(ansIn&&q.ans!==before)ansIn.value=q.ans;
+      card.dispatchEvent(new Event('input'));
+      drawOpts();rtScan();changed();scrollTo(scrollX,y);
+      const row=box.querySelector(`.optrow[data-opt="${j}"]`);
+      if(row){const x=row.querySelector(`[data-mv="${d}"]`),other=row.querySelector(`[data-mv="${-d}"]`);(x.disabled?other:x).focus({preventScroll:true});row.classList.add('moved');}
+      const msg=[];
+      if(q.ans!==before)msg.push(`解答已跟著改成 ${q.ans}`);
+      if(String(q.sol||'').trim())msg.push('詳解裡如果提到選項編號，請自己確認');
+      if(msg.length)toast('選項已移動；'+msg.join('；')+'。');
+    };
+    const mvBtn=(i,d)=>h('button',{type:'button',class:'btn small','data-mv':d,disabled:i+d<0||i+d>=q.opts.length,title:d<0?'這個選項往上移':'這個選項往下移','aria-label':`第 ${i+1} 個選項${d<0?'上移':'下移'}`,onclick:()=>moveOpt(i,d)},d<0?'↑':'↓');
     const drawOpts=()=>{
       box.replaceChildren(h('div',{class:'stepper'},h('span',{class:'lb hint'},'選項數'),
         h('button',{class:'btn small',type:'button',onclick:()=>{if(q.opts.length>2){q.opts.pop();if(q.optFigs)q.optFigs.length=Math.min(q.optFigs.length,q.opts.length);drawOpts();changed();}}},'－'),h('b',{},q.opts.length),
@@ -2816,11 +2848,12 @@ function qCard(s,q){
           fs.value=optFigsGet(q,i);
           fs.addEventListener('change',()=>{optFigsSet(q,i,fs.value);fs.classList.toggle('on',fs.value!=='');changed();});
           fs.classList.toggle('on',fs.value!=='');
-          return h('div',{class:'optrow','data-opt':i},h('span',{class:'ol','data-ol':i},optLabel(i+1)),ip,fs,ocrIconBtn(q,'opt'+i,'手寫／拍照辨識，放進這個選項'));
+          return h('div',{class:'optrow','data-opt':i},h('span',{class:'ol','data-ol':i},optLabel(i+1)),ip,fs,ocrIconBtn(q,'opt'+i,'手寫／拍照辨識，放進這個選項'),h('span',{class:'optmv'},mvBtn(i,-1),mvBtn(i,1)));
         }));
     };
     drawOpts();b.append(box);
     const ans=bindInput(q,'ans',{type:'text',mono:true,after:changed,placeholder:q.kind==='multi'?'例如 2,3,5':'例如 3'});
+    ansIn=ans;
     b.append(h('div',{class:'grid2'},field('解答（正確選項）',ans,q.kind==='multi'?'填選項編號，多個用逗號隔開；一般卡可填 B,D。':'填選項編號。'),
       field('這題配分（留空＝用大題的）',bindInput(q,'pts',{type:'text',after:changed}))));
     const more=h('details',{},h('summary',{class:'hint',style:'cursor:pointer'},'更多：選項分欄排列'),
