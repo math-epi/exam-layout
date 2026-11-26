@@ -277,7 +277,10 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 .opts .ol{flex:none}.opts .ot{min-width:0}
 .opts.auto{display:flex;flex-wrap:nowrap;align-items:baseline;gap:0 1.1em}
 .opts.grid,.opts.auto.stk{display:grid;align-items:baseline;gap:0 .5em}
-.optfig{max-width:132px;flex:none;font-size:12px}.optfig.on{border-color:var(--accent,#2f6fd6);background:#eef4ff}
+.figpick{position:relative;flex:none;display:flex;align-items:center;justify-content:center;box-sizing:border-box;min-width:46px;height:34px;padding:0 6px;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:13px;white-space:nowrap}
+.figpick:hover{border-color:#9db4dd}.figpick:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px rgba(60,110,200,.25)}
+.figpick.on{border-color:var(--accent,#2f6fd6);background:#eef4ff;color:var(--accent);font-weight:700}
+.figpick .optfig{position:absolute;left:0;top:0;width:100%;height:100%;min-width:0;margin:0;padding:0;opacity:0;cursor:pointer;font-size:13px}
 .opts .opfx{flex:none;display:inline-flex;align-items:center;margin-right:.1em}
 .opts.grid .opfx,.opts.auto.stk .opfx{grid-column:1/-1}
 .ans{color:#B01E2E;margin-left:1em;font-family:'Times New Roman',serif;white-space:nowrap}
@@ -516,9 +519,10 @@ function hfEditor(C){
 const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD；開新版號時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.1';
-const APP_BUILD='2026-11-26 22:43';
+const APP_BUILD='2026-11-26 22:49';
 const APP_LOG=[
   {v:'1.1',items:[
+    '選項的附圖選單縮成小圖示（附圖後顯示「圖 N」），選項輸入框變寬。',
     '單選題、多選題的每個選項新增上移、下移按鈕（第一個只有下移、最後一個只有上移）；附圖一起移動，解答編號自動跟著更新。',
     '修正：卷尾提醒設定下方的示意圖，現在會顯示底線、外框、字級與多段內容。',
     '頁首頁尾與版頭的文字欄位，也會直接顯示粗體、底線、外框等效果；頁首頁尾下方新增格式按鈕。',
@@ -2847,9 +2851,15 @@ function qCard(s,q){
           const fs=h('select',{class:'optfig',title:S.figs.some(f=>f.kind!=='table')?'這個選項要附的圖（來自圖庫）':'圖庫還沒有圖：先到上方「⚙ 設定」→「圖庫」加入圖片或向量圖'},
             h('option',{value:''},'🖼 無圖'),...S.figs.filter(f=>f.kind!=='table').map(f=>h('option',{value:String(f.id)},'圖 '+f.id+'｜'+(f.name||''))));
           fs.value=optFigsGet(q,i);
-          fs.addEventListener('change',()=>{optFigsSet(q,i,fs.value);fs.classList.toggle('on',fs.value!=='');changed();});
-          fs.classList.toggle('on',fs.value!=='');
-          return h('div',{class:'optrow','data-opt':i},h('span',{class:'ol','data-ol':i},optLabel(i+1)),ip,fs,ocrIconBtn(q,'opt'+i,'手寫／拍照辨識，放進這個選項'),h('span',{class:'optmv'},mvBtn(i,-1),mvBtn(i,1)));
+          /* 平常只露出小圖示（或「圖 N」），下拉清單疊在上面，點下去看得到完整名稱 */
+          const face=h('span',{class:'figface','aria-hidden':'true'}),fp=h('span',{class:'figpick'},face,fs),tip0=fs.title;
+          fs.setAttribute('aria-label',`第 ${i+1} 個選項的附圖`);
+          const showFig=()=>{const f=fs.value===''?null:S.figs.find(x=>String(x.id)===fs.value);
+            face.textContent=fs.value===''?'🖼':'圖 '+fs.value;fp.classList.toggle('on',fs.value!=='');
+            fs.title=fs.value===''?(S.figs.some(x=>x.kind!=='table')?'附圖：目前沒有，點一下從圖庫選':tip0):`附圖：圖 ${fs.value}${f&&f.name?'｜'+f.name:''}（點一下更換或移除）`;};
+          fs.addEventListener('change',()=>{optFigsSet(q,i,fs.value);showFig();changed();});
+          showFig();
+          return h('div',{class:'optrow','data-opt':i},h('span',{class:'ol','data-ol':i},optLabel(i+1)),ip,fp,ocrIconBtn(q,'opt'+i,'手寫／拍照辨識，放進這個選項'),h('span',{class:'optmv'},mvBtn(i,-1),mvBtn(i,1)));
         }));
     };
     drawOpts();b.append(box);
