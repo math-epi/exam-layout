@@ -110,7 +110,7 @@ async function go(){
       pdfUrl=URL.createObjectURL(new Blob([r.pdf],{type:'application/pdf'}));
       $('pdf').src=pdfUrl;$('pdf').hidden=false;
       const dl=$('btnDl');dl.href=pdfUrl;dl.download='考卷.pdf';dl.style.display='';
-      bar(100);stat('完成 ✓（編譯 '+sec+' 秒）');sub('PDF 檔 '+(r.pdf.length/1024).toFixed(0)+' KB。這是 XeLaTeX 編譯出來的，和 Overleaf 同一套排版引擎。');
+      bar(100);stat('完成 ✓（編譯 '+sec+' 秒）');sub('PDF 檔 '+(r.pdf.length/1024).toFixed(0)+' KB。這是 XeLaTeX 編譯出來的，和 Overleaf 同一套排版引擎。'+(lastLog.includes('ExamEndNote: moved to next page')?'卷尾提醒放不下原本的最後一頁，已移到下一頁。':''));
     }else{
       bar(0);stat('編譯失敗');sub('展開「看編譯記錄」查看原因（通常是題目裡有 LaTeX 不認得的指令）。');
       $('pdf').hidden=true;
