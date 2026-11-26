@@ -4,9 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>考卷排版工作台</title>
+<meta name="theme-color" content="#1E407C"><link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
-<script>window.MathJax={loader:{load:['[tex]/enclose','[tex]/mathtools']},tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']],processEnvironments:true,packages:{'[+]':['enclose','mathtools']},macros:{vv:['\\overset{\\rightharpoonup}{#1}',1]}},output:{font:'https://cdn.jsdelivr.net/npm/@mathjax/mathjax-stix2-font@4.1.3'},svg:{fontCache:'none'},options:{skipHtmlTags:['script','noscript','style','textarea','pre','input']},startup:{typeset:false}};</script>
+<script>window.MathJax={loader:{load:['[tex]/enclose','[tex]/mathtools'],paths:{'mathjax-stix2':'https://cdn.jsdelivr.net/npm/@mathjax/mathjax-stix2-font@4.1.3'}},tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']],processEnvironments:true,packages:{'[+]':['enclose','mathtools']},macros:{vv:['\\overset{\\rightharpoonup}{#1}',1]}},output:{font:'mathjax-stix2',fontPath:'https://cdn.jsdelivr.net/npm/@mathjax/mathjax-stix2-font@4.1.3'},svg:{fontCache:'none'},options:{skipHtmlTags:['script','noscript','style','textarea','pre','input']},startup:{typeset:false}};</script>
 <script async src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-svg-nofont.js" onload="window.__mjReady&&window.__mjReady()"></script>
 <style>
 /* 考卷排版工作台：靛藍、冷灰；左欄編輯、右欄預覽與輸出 */
@@ -350,6 +351,7 @@ input.sw:checked+.swstate::after{content:'開'}
   <button class="btn small" id="btnImport" type="button" title="開啟之前存的考卷檔">開啟舊檔</button>
   <button class="btn small" id="btnImportTex" type="button" title="匯入其他老師用 LaTeX 打的題目（.tex 或 .zip），自動分到各題型">匯入 LaTeX</button>
   <button class="btn small danger" id="btnReset" type="button">載入範例</button>
+  <button class="btn small" id="btnInstall" type="button" title="把工作台裝在這台電腦，之後點圖示就能開，不用記網址" hidden>安裝工作台</button>
   <a class="btn small" id="lnkManual" href="manual.html" target="_blank" rel="noopener" style="text-decoration:none">使用手冊</a>
   <span id="saveStatus" aria-live="polite" style="font-size:12px;margin-left:10px;padding:3px 10px;border-radius:999px;background:#EAF0FA;color:#5B6577;white-space:nowrap"></span>
   <input type="file" id="fileImport" accept=".json,.zip,application/json,application/zip" hidden>
@@ -519,9 +521,13 @@ function hfEditor(C){
 const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
-const APP_VER='1.2';
-const APP_BUILD='2026-11-26 23:34';
+const APP_VER='1.3';
+const APP_BUILD='2026-11-27 06:30';
 const APP_LOG=[
+  {v:'1.3',items:[
+    '修正：ℝ、ℕ、ℤ 等雙線字母（\\mathbb）及部分少用符號在網頁上排不出來。',
+    '新增「安裝工作台」按鈕：裝好後從桌面、Dock 或開始功能表點圖示就能開，不用記網址。安裝後第一次請連網開啟。'
+  ]},
   {v:'1.2',items:[
     '修正：同一段文字套了兩種格式（例如底線再加外框）時，按鈕只亮其中一個、再按反而重複套用的問題。',
     '選項的附圖選單縮成小圖示（附圖後顯示「圖 N」），選項輸入框變寬。',
@@ -5081,6 +5087,42 @@ twoClick($('#btnNew'),()=>{blankState();
   if(used)toast(`新考卷已套用你的預設版型「${d.name}」。`);},'清空？再按一次');
 twoClick($('#btnReset'),()=>{sampleState();settingsBuilt=false;rerender();},'目前內容將被取代，再按一次');
 $('#btnPrint').onclick=openSave;
+/* ===== 安裝工作台（PWA）：只給 GitHub版（http/https）；單機版、Claude版不啟用 ===== */
+(function initInstall(){
+  if(!OFFLINE||!/^https?:$/.test(location.protocol)||!('serviceWorker' in navigator))return;
+  const link=document.createElement('link');link.rel='manifest';link.href=STAGING?'manifest-test.webmanifest':'manifest.webmanifest';document.head.append(link);
+  /* 每次開啟都請它檢查有沒有漏掉的套件（上次網路中斷時） */
+  navigator.serviceWorker.register('sw.js').then(()=>navigator.serviceWorker.ready).then(r=>{if(r.active)r.active.postMessage('fill');}).catch(()=>{});
+  const btn=document.getElementById('btnInstall');if(!btn)return;
+  const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+  if(standalone())return;
+  let ev=null;btn.hidden=false;
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();ev=e;});
+  window.addEventListener('appinstalled',()=>{ev=null;btn.hidden=true;});
+  btn.addEventListener('click',async()=>{
+    if(ev){const e=ev;ev=null;try{await e.prompt();return;}catch(err){}}
+    installHelp();
+  });
+  function installHelp(){
+    if(document.getElementById('installDlg'))return;
+    const ov=h('div',{id:'installDlg',style:'position:fixed;inset:0;background:rgba(24,30,46,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px'});
+    const close=()=>{ov.remove();document.removeEventListener('keydown',onKey);};
+    const onKey=e=>{if(e.key==='Escape')close();};document.addEventListener('keydown',onKey);
+    const bc=h('button',{class:'btn primary',type:'button'},'關閉');bc.addEventListener('click',close);
+    const li=(a,b)=>h('li',{style:'margin:6px 0'},h('b',null,a),'：'+b);
+    ov.append(h('div',{role:'dialog','aria-label':'安裝工作台',style:'background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:100%;overflow:auto;padding:18px 22px;line-height:1.7;font-size:14px'},
+      h('div',{style:'font-weight:700;font-size:16px'},'安裝工作台'),
+      h('div',null,'請依你用的瀏覽器操作。如果已經裝過，直接從桌面、Dock 或開始功能表開啟。'),
+      h('ul',{style:'padding-left:20px'},
+        li('Chrome','網址列右邊的安裝圖示；或右上角「⋮」→「投放、儲存及分享」→「安裝網頁應用程式」'),
+        li('Edge','右上角「…」→「應用程式」→「將此網站安裝為應用程式」'),
+        li('Mac 的 Safari','上方選單「檔案」→「加入 Dock」'),
+        li('iPad、iPhone','分享按鈕 →「加入主畫面」')),
+      h('div',{class:'hint'},'注意：用 Safari 或 iPad 安裝時，裝好的工作台看不到原本網頁裡暫存的考卷。請先按「列印 / 存檔」存成考卷檔，再到裝好的工作台按「開啟舊檔」。'),
+      h('div',{style:'text-align:right;margin-top:10px'},bc)));
+    document.body.append(ov);
+  }
+})();
 $('#btnImport').onclick=()=>$('#fileImport').click();
 $('#fileImport').onchange=e=>{if(e.target.files[0])importProject(e.target.files[0]);e.target.value='';};
 $('#btnImportTex').onclick=()=>$('#fileTex').click();
