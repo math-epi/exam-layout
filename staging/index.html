@@ -287,7 +287,7 @@ input.sw:checked+.swstate::after{content:'開'}
 </head>
 <body>
 <div class="top">
-  <h1>考卷排版工作台<small>輸出 XeLaTeX 考卷</small><span style="margin-left:10px;font-size:12px;padding:2px 10px;border-radius:999px;background:#1E407C;color:#fff;font-weight:600;vertical-align:middle">GitHub版</span></h1>
+  <h1>考卷排版工作台<small>輸出 XeLaTeX 考卷</small><button type="button" id="verBtn" title="看這一版改了什麼" style="margin-left:10px;font-family:inherit;font-size:12px;font-weight:600;line-height:1.6;padding:2px 10px;border:0;border-radius:999px;background:#1E407C;color:#fff;vertical-align:middle;cursor:pointer">GitHub版</button></h1>
   <button class="btn small primary" id="btnPrint" type="button" title="列印、存成 PDF，或存成考卷檔／Overleaf 專案">列印 / 存檔</button>
   <button class="btn small" id="btnNew" type="button">新考卷</button>
   <button class="btn small" id="btnImport" type="button" title="開啟之前存的考卷檔">開啟舊檔</button>
@@ -371,6 +371,22 @@ let mjQ=Promise.resolve();
 const PAGEFMT=[['p','第 1 頁'],['pt','第 1 頁，共 3 頁'],['sl','1 / 3'],['dash','- 1 -'],['num','1'],['none','不顯示頁碼']];
 function pageText(fmt,i,n){return ({p:`第 ${i} 頁`,pt:`第 ${i} 頁，共 ${n} 頁`,sl:`${i} / ${n}`,dash:`- ${i} -`,num:String(i),none:''})[fmt]??`第 ${i} 頁`;}
 const OFFLINE=true;
+/* ===== 版號：每次推上測試站都要改 APP_BUILD；開新版號時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
+const APP_VER='1.1';
+const APP_BUILD='2026-11-26 15:36';
+const APP_LOG=[
+  {v:'1.1',items:[
+    '版頭可選三種版型：三列版型、只有大標題、自訂版型。',
+    '自訂版型：1～5 列、每列 1～4 欄，內容、對齊、字級與框線都能自己設定。',
+    '大標題可用選單填空或自己打字；校名預設空白。',
+    '學年度、學期自動帶入，也可以自行輸入；舊考卷檔保留原本的值。',
+    '版頭下方的畫卡注意事項可以改文字或不顯示。',
+    '新增「全域設定」：整張紙四周的試卷邊線（預設關閉）。',
+    '網頁顯示版號，考卷檔會記錄是用哪一版存的。']},
+  {v:'1.0',items:['開始編版號以前的正式版。']}
+];
+/* 存成考卷檔時附上版號 */
+function projectJson(indent){return JSON.stringify(Object.assign({},S,{app:APP_VER}),null,indent);}
 /* 有沒有「瀏覽器內編譯」（需要同目錄的 wasm/ 資料夾）：只有 GitHub版有；轉成 Claude版、單機版時改 false */
 const CAN_COMPILE=true;
 const AI_FIG_URL='https://claude.ai/artifact/56eVkXvhqNSSEhcP3tvxmn#fig-convert';  // Claude版的手繪圖轉向量圖專用頁
@@ -3876,7 +3892,7 @@ function buildOverleafZip(){
   files.push({name:'main.tex',data:enc.encode(genTex())},{name:'examsheet.cls',data:enc.encode(EXAM_CLS)});
   const seen=new Set();
   S.sections.forEach(s=>s.qs.forEach(q=>{if(q.inc===false)return;eachFigRef(q,id=>{const f=findFig(id);if(f&&f.kind==='image'&&f.file&&!seen.has(f.file)){seen.add(f.file);const b=dataUrlBytes(f.data);if(b)files.push({name:f.file,data:b});}});}));
-  files.push({name:'exam-project.json',data:enc.encode(JSON.stringify(S))});
+  files.push({name:'exam-project.json',data:enc.encode(projectJson())});
   return makeZip(files);
 }
 function openSave(){
@@ -3911,7 +3927,7 @@ function openSave(){
     }catch(e){say('瀏覽器不讓這個頁面暫存資料，無法開啟編譯。',true);return;}
     window.open('wasm/compile.html','_blank');say('已在新分頁開啟編譯。第一次要下載約 110 MB（約 1 分鐘），之後只要幾秒。');
   });
-  b3.addEventListener('click',async()=>{await saveFile('exam-project.json',JSON.stringify(S,null,1));});
+  b3.addEventListener('click',async()=>{await saveFile('exam-project.json',projectJson(1));});
   const card=h('div',{style:'background:#fff;border-radius:12px;max-width:640px;width:100%;padding:16px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)'},
     h('div',{style:'font-weight:700;font-size:16px;margin-bottom:6px'},'列印 / 存檔'),
     h('div',{class:'hint'},(CAN_COMPILE?'要印出正式考卷，請用第一項（或第二項）':'要印出正式考卷，請用「下載 Overleaf 專案」')+'；要之後接著改，存成「考卷檔」就夠了。「列印 / 另存 PDF」是備用，由瀏覽器排版，結果和 LaTeX 編譯有差異。'),
@@ -3925,7 +3941,7 @@ function openSave(){
 }
 
 /* ================= 專案：新增、匯出、匯入、重設 ================= */
-function exportProject(){saveFile('exam-project.json',JSON.stringify(S,null,1));}
+function exportProject(){saveFile('exam-project.json',projectJson(1));}
 function importProject(file){
   const bad=()=>flashMsg('這不是有效的考卷檔。',true);
   const load=txt=>{try{const st=JSON.parse(txt);if(!st||st.v!==1||!st.cfg||!Array.isArray(st.sections))throw 0;S=migrate(st);settingsBuilt=false;rerender();markExported();flashMsg('已開啟考卷');}catch(e){bad();}};
@@ -5397,6 +5413,24 @@ async function figFromHash(){
   }
   if(!figInbox(text))figToast('這份資料裡沒有可用的圖。',true);
 }
+function verLabel(){
+  const [d,t]=APP_BUILD.split(' ');
+  return STAGING?`GitHub版・測試 v${APP_VER}（${d.slice(5).replace('-','/')} ${t}）`:`GitHub版 v${APP_VER}（${d}）`;
+}
+function openVerDlg(){
+  if(document.getElementById('verDlg'))return;
+  const close=()=>{ov.remove();document.removeEventListener('keydown',key,true);$('#verBtn').focus();};
+  const key=e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();}};
+  const x=h('button',{type:'button',class:'btn small',id:'verDlgX',onclick:close},'關閉');
+  const ov=h('div',{id:'verDlg',role:'dialog','aria-modal':'true','aria-label':'版本與更新紀錄',style:'position:fixed;inset:0;background:rgba(24,30,46,.7);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px',onclick:e=>{if(e.target===ov)close();}},
+    h('div',{style:'background:#fff;color:#1f2430;border-radius:12px;max-width:560px;width:100%;max-height:85vh;overflow:auto;padding:16px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)'},
+      h('div',{style:'font-weight:700;font-size:16px'},'版本與更新紀錄'),
+      h('div',{class:'hint',style:'margin:4px 0 10px'},'目前版本：'+verLabel()),
+      ...APP_LOG.map(r=>h('div',{style:'margin-bottom:10px'},h('div',{style:'font-weight:700'},'v'+r.v),h('ul',{style:'margin:4px 0 0;padding-left:20px;line-height:1.7'},r.items.map(t=>h('li',{},t))))),
+      h('div',{style:'text-align:right'},x)));
+  document.body.append(ov);document.addEventListener('keydown',key,true);x.focus();
+}
+function initVersion(){const b=$('#verBtn');if(!b)return;b.textContent=verLabel();b.addEventListener('click',openVerDlg);}
 figFromHash();
 if(STAGING){
   document.title='【測試】'+document.title;
@@ -5405,8 +5439,8 @@ if(STAGING){
   bar.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99998;background:#C2410C;color:#fff;text-align:center;font:600 13px/1.4 "Noto Sans TC","Microsoft JhengHei",sans-serif;padding:3px 8px;pointer-events:none';
   bar.textContent='測試版（非正式）：資料與正式版分開存放，不會影響線上的老師';
   document.body.append(bar);
-  const bd=document.querySelector('h1 span');if(bd)bd.textContent='GitHub版・測試';
 }
+initVersion();
 </script>
 </body>
 </html>
