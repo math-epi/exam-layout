@@ -108,6 +108,7 @@ input.mono{font-family:var(--font-mono);font-size:13.5px}
 .tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .fmtbar .fl{font-size:12px;color:var(--muted)}
 .fmtbar .btn{min-width:30px}
+.fmtbar .btn[aria-pressed=true],.fmtbar .btn[aria-pressed=true]:hover,#boxFab[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:inset 0 2px 4px rgba(0,0,0,.3)}
 .fu{text-decoration:underline;text-underline-offset:.2em}
 .fd{text-decoration:underline double;text-underline-offset:.2em}
 .fw{text-decoration:underline wavy;text-underline-offset:.2em}
@@ -456,8 +457,8 @@ function hfEditor(C){
     demo.replaceChildren(row(['hl','hc','hr']),h('span',{class:'mid'},'考卷內容（示意：第 1 頁，共 3 頁）'),row(['fl','fc','fr']));
   };
   const cell=([k,label])=>{
-    const i=h('input',{type:'text',id:'hf_'+k,spellcheck:false,placeholder:'（空白）'});i.value=F[k]||'';i.dataset.box='1';inputs[k]=i;
-    i.addEventListener('focus',()=>{last=k;});
+    const i=h('input',{type:'text',id:'hf_'+k,spellcheck:false,placeholder:'（空白）'});i.value=F[k]||'';i.dataset.box='1';i.dataset.fmt='1';inputs[k]=i;
+    ['focus','rtfocus'].forEach(ev=>i.addEventListener(ev,()=>{last=k;}));
     i.addEventListener('input',()=>{F[k]=i.value;if(typeof closeAsk==='function')closeAsk();draw();changed();});
     return field(label,i);
   };
@@ -475,10 +476,10 @@ function hfEditor(C){
     let phrase=NO;
     HF_SLOTS.forEach(([o])=>{
       const t=String(F[o]||'');if(o===k||!t.includes(NO))return;
-      if(Object.values(HF_PRESET).includes(t.trim())){if(!v.trim())phrase=t.trim();setSlot(o,'');}
-      else setSlot(o,t.replace(/第\s*【頁碼】\s*頁|-\s*【頁碼】\s*-|【頁碼】/g,'').trim());
+      if(Object.values(HF_PRESET).includes(stripFmt(t).trim())){if(!v.trim())phrase=t.trim();setSlot(o,'');}
+      else setSlot(o,dropEmptyFmt(t.replace(/第\s*【頁碼】\s*頁|-\s*【頁碼】\s*-|【頁碼】/g,'')).trim());
     });
-    setSlot(k,head+phrase+tail);done(k,(head+phrase).length);
+    setSlot(k,dropEmptyFmt(head+phrase+tail));done(k,Math.min((head+phrase).length,inputs[k].value.length));
   };
   const ins=(token,id)=>h('button',{type:'button',class:'btn small',id,onmousedown:e=>e.preventDefault(),onclick:()=>{
     const k=last,i=inputs[k],a=i.selectionStart??i.value.length,b=i.selectionEnd??a;
@@ -503,6 +504,7 @@ function hfEditor(C){
     h('div',{class:'grid3'},HF_SLOTS.slice(0,3).map(cell)),
     h('div',{class:'grid3'},HF_SLOTS.slice(3).map(cell)),
     h('div',{class:'addrow'},ins('【頁碼】','hf_no'),ins('【總頁數】','hf_total'),preset),
+    h('div',{class:'fmtbar tools',id:'hfFmt'},...fmtButtons(()=>inputs[last])),
     ask,
     h('label',{class:'chk',style:'padding:4px 0'},one,'考卷只有一頁時，也印含頁碼的欄位'),
     demo,dup);
@@ -510,9 +512,11 @@ function hfEditor(C){
 const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD；開新版號時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.1';
-const APP_BUILD='2026-11-26 22:03';
+const APP_BUILD='2026-11-26 22:15';
 const APP_LOG=[
   {v:'1.1',items:[
+    '頁首頁尾與版頭的文字欄位，也會直接顯示粗體、底線、外框等效果；頁首頁尾下方新增格式按鈕。',
+    '格式按鈕會顯示選取文字目前套用了哪些格式（按下的樣子），再按一次取消。',
     '修正：「版頭與版面」設定視窗往下捲後，標題列和「關閉」按鈕不見、回不到上面的問題。',
     '題目、選項、詳解和試卷提醒／卷尾提醒的欄位，會直接顯示粗體、底線、雙底線、波浪線、著重點和外框的效果，不再看到指令。',
     '劃卡提醒改成「試卷提醒」，由老師自己填（新考卷預設空白，可插入範例）；新增「卷尾提醒」，可調上下位置。兩者都能分段設定對齊、字級、粗體、底線與外框。',
@@ -660,8 +664,8 @@ function cardChoices(){
 }
 /* 自己打字的欄位：■□ 畫成方框，【讀卡方式】換成讀卡選項 */
 function freeNodes(text){
-  const parts=boxSplit(text);
-  if(parts.some(x=>x.box))return parts.flatMap(x=>x.box?[h('span',{class:'fb'},...freeNodes(x.t))]:freeNodes(x.t));
+  const parts=fmtSplit(text);
+  if(parts.some(x=>x.cmd))return parts.flatMap(x=>x.cmd?[h({textbf:'b',textit:'i'}[x.cmd]||'span',{class:FMT_CLS[x.cmd]},...freeNodes(x.t))]:freeNodes(x.t));
   const frag=[];
   String(text||'').split(CARD_TOKEN).forEach((part,i)=>{
     if(i)frag.push(cardChoices());
@@ -674,7 +678,7 @@ function freeNodes(text){
 }
 function freeTex(text){
   const card=CARD_OPTS.map(([k,n])=>`\\mbox{\\ExamHdBox{${S.cfg.card===k?1:0}}${n}}`).join('\\hspace{0.4em}');
-  return String(text||'').split(/\n/).map(line=>line.split(CARD_TOKEN).map(p=>
+  return splitFmtLines(String(text||'')).map(line=>line.split(CARD_TOKEN).map(p=>
     plainEsc(p).replace(/ /g,'\\ ').replace(/([■□])([\u3400-\u9fffA-Za-z0-9])/g,(m,b,c)=>`\\mbox{\\ExamHdBox{${b==='■'?1:0}}${c}}`).replace(/■/g,'\\ExamHdBox{1}').replace(/□/g,'\\ExamHdBox{0}')).join(card)||'\\strut').join('\\par ');
 }
 /* 版頭自己打的卡別和設定不一致時提醒（有打方框或用【讀卡方式】的不判斷） */
@@ -872,11 +876,11 @@ function hdEditor(){
         const bold=h('input',{type:'checkbox',id:id+'_b'});bold.checked=!!c.bold;bold.addEventListener('change',()=>{c.bold=bold.checked;changed();});
         let txt=null;
         if(c.type==='free'){
-          const ta=h('textarea',{id:id+'_x',rows:2,placeholder:'這一欄要印的文字，例如：命題教師：　　審題教師：','aria-label':pre+'文字'});ta.value=c.text||'';ta.dataset.box='1';ta.addEventListener('input',()=>{c.text=ta.value;changed();});
+          const ta=h('textarea',{id:id+'_x',rows:2,placeholder:'這一欄要印的文字，例如：命題教師：　　審題教師：','aria-label':pre+'文字'});ta.value=c.text||'';ta.dataset.box='1';ta.dataset.fmt='1';ta.addEventListener('input',()=>{c.text=ta.value;changed();});
           const ins=(label,str,fid,tip)=>h('button',{type:'button',class:'btn small',id:fid,title:tip,onclick:()=>{
             const p=ta.selectionStart??ta.value.length,q=ta.selectionEnd??p;
             ta.value=ta.value.slice(0,p)+str+ta.value.slice(q);c.text=ta.value;changed();ta.focus();ta.setSelectionRange(p+str.length,p+str.length);}},label);
-          txt=h('div',{class:'freebox'},ta,h('div',{class:'bar'},ins('插入【讀卡方式】',CARD_TOKEN,id+'_ins','印出「數學卡、一般卡、不讀卡」三個方框；'+CARD_TIP),ins('插入 □',' □',id+'_box0','空白方框'),ins('插入 ■',' ■',id+'_box1','塗黑方框')));
+          txt=h('div',{class:'freebox'},ta,h('div',{class:'bar'},ins('插入【讀卡方式】',CARD_TOKEN,id+'_ins','印出「數學卡、一般卡、不讀卡」三個方框；'+CARD_TIP),ins('插入 □',' □',id+'_box0','空白方框'),ins('插入 ■',' ■',id+'_box1','塗黑方框')),h('div',{class:'fmtbar tools'},...fmtButtons(ta)));
         }
         return h('div',{class:'cell'},h('span',{class:'hint'},`第 ${j+1} 欄`),
           sel(HD_TYPES,c.type,v=>{c.type=v;rebuildHead();},id+'_t',pre+'內容'),
@@ -937,6 +941,9 @@ function legacyTop(o,card){
 /* 分行；粗體等指令跨行時，每一行各自收尾再重開（LaTeX 的格式指令不能跨段落） */
 function noteLines(t){
   t=String(t||'').replace(/\r/g,'').replace(/^\n+|\s+$/g,'');
+  return t?splitFmtLines(t):[];
+}
+function splitFmtLines(t){
   const out=[],stk=[];let cur='',d=0;
   for(let i=0;i<t.length;i++){
     const c=t[i];
@@ -946,7 +953,7 @@ function noteLines(t){
     if(c==='\n'){out.push(cur+'}'.repeat(stk.length));cur=stk.map(x=>x[1]).join('');continue;}
     cur+=c;
   }
-  if(t)out.push(cur);
+  out.push(cur);
   return out;
 }
 const noteList=k=>cleanBlocks(S.cfg[k]).filter(b=>b.t.trim());
@@ -1379,20 +1386,22 @@ function calcRows(q){
   if(v==='')return Math.max(0,parseInt(S.cfg.calcRows,10)||6);
   const n=parseInt(v,10);return isNaN(n)?6:Math.max(0,n);
 }
-/* 把文字切成「一般」與「外框」兩種片段 */
-function boxSplit(t){
-  const K='\\ExamFrame{',out=[];let rest=String(t==null?'':t);
-  for(let g=0;g<200;g++){
-    const i=rest.indexOf(K);if(i<0)break;
-    const c=matchBrace(rest,i+K.length-1);if(c<0)break;
-    if(i)out.push({t:rest.slice(0,i)});
-    out.push({t:rest.slice(i+K.length,c),box:true});rest=rest.slice(c+1);
+/* 把文字切成「一般」與「格式指令」片段（只切最外層，內層由呼叫端遞迴） */
+function fmtSplit(t){
+  const v=String(t==null?'':t),out=[];let last=0,i=0;
+  while(i<v.length){
+    if(v[i]!=='\\'){i++;continue;}
+    const m=v.slice(i,i+24).match(FMT_RE);
+    if(m){const cl=matchBrace(v,i+m[0].length-1);
+      if(cl>=0){if(i>last)out.push({t:v.slice(last,i)});out.push({t:v.slice(i+m[0].length,cl),cmd:m[1]});i=last=cl+1;continue;}}
+    i+=2;
   }
-  if(rest||!out.length)out.push({t:rest});
+  if(last<v.length||!out.length)out.push({t:v.slice(last)});
   return out;
 }
-const noBox=t=>boxSplit(t).map(x=>x.box?noBox(x.t):x.t).join('');
-function plainField(t){return boxSplit(t).map(x=>x.box?'<span class="fb">'+plainField(x.t)+'</span>':plainText(x.t)).join('');}
+function dropEmptyFmt(v){let w;do{w=v;v=v.replace(/\\(?:textbf|textit|underline|CJKunderline|CJKunderdblline|CJKunderwave|CJKunderdot|ExamFrame)\{\}/g,'');}while(v!==w);return v;}
+const noBox=t=>stripFmt(String(t==null?'':t));
+function plainField(t){return fmtSplit(t).map(x=>x.cmd?FMT_TAGS[x.cmd][0]+plainField(x.t)+FMT_TAGS[x.cmd][1]:plainText(x.t)).join('');}
 function plainText(t){return esc(t).replace(/\\textasciitilde\s?(\{\})?/g,'~').replace(/\\%/g,'%');}
 
 /* ================= 預覽 ================= */
@@ -2221,6 +2230,7 @@ function bindInput(obj,key,o){
     el.addEventListener('input',()=>{if(el._tok)el._tok.sync();const rv=el._tok?el._tok.get():el.value;obj[key]=o.type==='number'?(o.int?parseInt(el.value||'0',10):el.value):rv;(o.after||changed)();});
   }
   if(o.type!=='select'&&o.type!=='check'&&o.type!=='number'&&(['school','titleText','scope','note','grade','subject','examType','titleSuffix','year','semester'].includes(key)||((key==='name'||key==='desc')&&obj.qs)))el.dataset.box='1';
+  if(el.dataset.box&&!obj.qs)el.dataset.fmt='1';
   return el;
 }
 function field(label,el,hint){return h('div',{class:'f'},h('label',{for:el.id||null},label),el,hint?h('span',{class:'hint'},hint):null);}
@@ -2659,6 +2669,8 @@ function initBoxFab(){
   let target=null,t=0;
   const update=()=>{t=0;target=boxTarget();
     if(!target){b.style.display='none';return;}
+    const framed=fmtActive(target.el).has('f');
+    if(b._framed!==framed){b._framed=framed;b.classList.toggle('on',framed);b.setAttribute('aria-pressed',framed?'true':'false');b.innerHTML='<span class="fb">框</span> '+(framed?'取消外框':'加外框');}
     const r=target.view.getBoundingClientRect();b.style.display='block';
     b.style.left=Math.max(4,Math.min(innerWidth-b.offsetWidth-4,r.right-b.offsetWidth))+'px';
     b.style.top=(r.top-b.offsetHeight-3>4?r.top-b.offsetHeight-3:r.bottom+3)+'px';};
@@ -2669,6 +2681,7 @@ function initBoxFab(){
   document.body.append(b);
 }
 function fmtKeys(el){
+  if(el._fmtKeys)return;el._fmtKeys=true;
   el.addEventListener('keydown',ev=>{
     if(!(ev.ctrlKey||ev.metaKey)||ev.altKey)return;
     const k=ev.key.toLowerCase();
@@ -2676,10 +2689,37 @@ function fmtKeys(el){
     else if(k==='u'){ev.preventDefault();applyFmt(el,ev.shiftKey?'d':'u');}
   });
 }
+/* 選取的文字（或游標）目前套用了哪些格式 */
+function fmtActive(el){
+  const out=new Set();if(!el)return out;
+  const v=el.value,groups=fmtGroups(v);
+  const [s,e]=fmtSnap(groups,el.selectionStart||0,el.selectionEnd||0);
+  const keyOf=cmd=>cmd==='underline'?'u':Object.keys(FMT_DEF).find(k=>FMT_DEF[k].cmd==='\\'+cmd);
+  groups.forEach(g=>{if((g.cs<=s&&e<=g.c)||(s<e&&s===g.o&&e===g.c+1)){const k=keyOf(g.cmd);if(k)out.add(k);}});
+  return out;
+}
+const fmtFocus=()=>{const a=document.activeElement;return a?(a._rteTa||a):null;};
+function fmtSync(){
+  const el=fmtFocus(),btns=document.querySelectorAll('button[data-fk]');if(!btns.length)return;
+  let on=null;
+  btns.forEach(b=>{
+    const t=b._fmtEl&&b._fmtEl();let x=false;
+    if(t&&t===el){on=on||fmtActive(el);x=on.has(b.dataset.fk);}
+    b.classList.toggle('on',x);b.setAttribute('aria-pressed',x?'true':'false');
+  });
+}
+(function(){let t=0;const q=()=>{if(!t)t=requestAnimationFrame(()=>{t=0;fmtSync();});};
+  ['selectionchange','select','mouseup','keyup','input','focusin','focusout','click'].forEach(ev=>document.addEventListener(ev,q,true));})();
 function fmtButtons(el){
-  fmtKeys(el);
+  const get=typeof el==='function'?el:()=>el;
+  if(typeof el!=='function')fmtKeys(el);
   const mk=(key,html,title)=>{const b=h('button',{class:'btn small',type:'button',title},'');b.innerHTML=html;
-    b.addEventListener('mousedown',ev=>ev.preventDefault());b.addEventListener('click',()=>applyFmt(el,key));return b;};
+    if(key!=='x'){b.dataset.fk=key;b._fmtEl=get;b.setAttribute('aria-pressed','false');}
+    b.addEventListener('mousedown',ev=>ev.preventDefault());
+    b.addEventListener('click',()=>{const t=get();
+      if(typeof el==='function'&&fmtFocus()!==t){toast('請先點進某一格，選取要套用格式的文字。');return;}
+      applyFmt(t,key);});
+    return b;};
   return [h('span',{class:'fl'},'選取文字後套用：'),
     mk('b','<b>B</b>','粗體（Ctrl/⌘＋B）'),
     mk('u','<span class="fu">U</span>','底線（Ctrl/⌘＋U）'),
@@ -5573,6 +5613,7 @@ function rtRender(ta){
   if(rv.dataset.rich)richDetach(ta);
   const v=ta.value;
   const nd=!!ta.dataset.nodollar;
+  if(richPlain(ta)){rtOff(ta);return;}
   if(!rtOn||!mmReady||document.activeElement===ta||(nd?!v.trim():v.indexOf('$')<0)){rtOff(ta);return;}
   const segs=nd?rtSegsAns(v):rtSegs(v);
   if(!segs.some(g=>g.t==='math')){rtOff(ta);return;}
@@ -5723,7 +5764,9 @@ function tokAttach(ta){
    文字照一般方式打；數學式是一個整塊的排版方塊（點一下用視覺編輯器修改，Backspace 整個刪）。
    rv → ta：輸入後序列化成真正文字（$…$）；ta → rv：外部改了 ta.value（數學符號面板、粗體鍵、自動修正）就重排。 */
 const ZW='​';
-const richOn=ta=>edMode==='rich'&&rtOn&&!!ta&&!!ta._rtv&&!ta.dataset.nodollar&&!!ta.closest('[data-qid],.notebox');
+const richOn=ta=>edMode==='rich'&&rtOn&&!!ta&&!!ta._rtv&&!ta.dataset.nodollar&&(!!ta.dataset.fmt||!!ta.closest('[data-qid],.notebox'));
+/* 版頭、頁首頁尾這類欄位：只顯示文字格式，$ 照原樣 */
+const richPlain=ta=>!ta.classList.contains('mm-target');
 /* DOM → 文字。stop={node,off} 時回傳該位置在文字裡的字元位置 */
 function richScan(root,partial,stop){
   let out='',at=-1;
@@ -5843,7 +5886,7 @@ function richBuild(ta){
     const addText=t=>{if(!t)return;t.split('\n').forEach((p,i)=>{if(i>0)ns.push(document.createElement('br'));if(p)ns.push(document.createTextNode(p));});};
     list.forEach(g=>{
       if(g.t==='text')addText(v.slice(g.s,g.e));
-      else if(g.t==='math')ns.push(mk(g));
+      else if(g.t==='math'){if(richPlain(ta))addText(v.slice(g.s,g.e));else ns.push(mk(g));}
       else{const f=h('span',{class:'rtf '+FMT_CLS[g.cmd],'data-cmd':g.cmd});const k=build(g.kids);f.append(...(k.length?k:[document.createTextNode(ZW)]));ns.push(f);}
     });
     /* 零寬字元：讓游標能停在數學式前後、格式文字之後 */
@@ -5870,7 +5913,7 @@ function R_guard(ta,f){const R=ta._rich;R.hold=true;try{f();}finally{R.hold=fals
 function richInSync(ta){
   const rv=ta._rtv;if(rv.dataset.rich!=='1')return false;
   const v=ta.value;if(richSer(rv)!==v)return false;
-  const want=richMathN(richParse(v,0,v.length)),chips=[...rv.querySelectorAll('.rtm')];
+  const want=richPlain(ta)?0:richMathN(richParse(v,0,v.length)),chips=[...rv.querySelectorAll('.rtm')];
   if(want!==chips.length||fmtGroups(v).length!==rv.querySelectorAll('.rtf').length)return false;
   return !mmReady||chips.every(c=>c.dataset.ok==='1');
 }
@@ -5924,9 +5967,9 @@ function richInit(ta){
   rv.addEventListener('input',()=>{if(R.hold||R.batch)return;push();});
   rv.addEventListener('compositionstart',()=>{R.comp=true;});
   rv.addEventListener('compositionend',()=>{R.comp=false;push();});
-  rv.addEventListener('focus',()=>{try{lastTa=ta;}catch(e){}});
+  rv.addEventListener('focus',()=>{if(!richPlain(ta))try{lastTa=ta;}catch(e){}ta.dispatchEvent(new Event('rtfocus'));});
   rv.addEventListener('blur',()=>{setTimeout(()=>{if(document.activeElement!==rv){R.comp=false;
-    let v=ta.value,w;do{w=v;v=v.replace(/\\(?:textbf|textit|underline|CJKunderline|CJKunderdblline|CJKunderwave|CJKunderdot|ExamFrame)\{\}/g,'');}while(v!==w);
+    const v=dropEmptyFmt(ta.value);
     if(v!==ta.value){ta.value=v;ta.dispatchEvent(new Event('input',{bubbles:true}));}
     rtRender(ta);}},0);});
   rv.addEventListener('beforeinput',e=>{if(/^format/.test(e.inputType))e.preventDefault();});
@@ -5991,15 +6034,15 @@ document.addEventListener('selectionchange',()=>{
 });
 function edSet(m){
   edMode=m;tokOn=m==='tok';try{localStorage.setItem('exam-ed',m);}catch(e){}
-  document.querySelectorAll('.mm-target').forEach(t=>{
+  document.querySelectorAll('.mm-target,[data-fmt]').forEach(t=>{
     if(t._tok){if(tokOn){if(document.activeElement===t)t._tok.load();}else t._tok.commit();}
-    if(t._rtv&&t.closest('[data-qid],.notebox')&&!t.dataset.nodollar){if(!richOn(t)&&t._rtv.dataset.rich)richDetach(t);t.value=t.value;rtRender(t);if(!richOn(t))rtOff(t);}
+    if(t._rtv&&(t.dataset.fmt||t.closest('[data-qid],.notebox'))&&!t.dataset.nodollar){if(!richOn(t)&&t._rtv.dataset.rich)richDetach(t);t.value=t.value;rtRender(t);if(!richOn(t))rtOff(t);}
   });
 }
 setTimeout(()=>{const c=document.getElementById('edMode');if(c){c.value=edMode;c.addEventListener('change',()=>edSet(c.value));}},0);
 function rtAttach(ta){
   if(ta.dataset.rt)return;
-  tokAttach(ta);
+  if(!richPlain(ta))tokAttach(ta);
   ta.dataset.rt='1';
   const rv=h('div',{class:'rtv',hidden:true});ta._rtv=rv;ta.after(rv);
   if(ta.tagName==='TEXTAREA'){ta.addEventListener('input',()=>rtGrow(ta));if(rtGO)rtGO.observe(ta);rtGrow(ta);}
@@ -6031,14 +6074,20 @@ function rtAttach(ta){
     ta.focus();ta.setSelectionRange(pos,pos);
     if(ta._tok){ta._tok.skip=false;ta._tok.load();}
   });
+  if(ta.dataset.fmt){
+    /* 程式直接改欄位內容（插入、搬移頁碼、常用格式）時，畫面跟著更新 */
+    const d=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(ta),'value');
+    Object.defineProperty(ta,'value',{configurable:true,get(){return d.get.call(this);},set(x){d.set.call(this,x);const R=this._rich;if(!(R&&(R.self||R.hold)))rtRender(this);}});
+    fmtKeys(ta);
+  }
   rtRender(ta);
 }
 setTimeout(()=>{const c=document.getElementById('rtToggle');if(c){c.checked=rtOn;c.addEventListener('change',()=>rtToggle(c.checked));}},0);
-function rtScan(){document.querySelectorAll('.mm-target:not([data-rt])').forEach(rtAttach);}
-function rtAll(){rtScan();document.querySelectorAll('.mm-target[data-rt]').forEach(rtRender);}
+function rtScan(){document.querySelectorAll('.mm-target:not([data-rt]),[data-fmt]:not([data-rt])').forEach(rtAttach);}
+function rtAll(){rtScan();document.querySelectorAll('[data-rt]:is(input,textarea)').forEach(rtRender);}
 function rtToggle(on){
   rtOn=!!on;try{localStorage.setItem('exam-rt',on?'on':'off');}catch(e){}
-  document.querySelectorAll('.mm-target[data-rt]').forEach(t=>{if(rtOn)rtRender(t);else rtOff(t);});
+  document.querySelectorAll('[data-rt]:is(input,textarea)').forEach(t=>{if(rtOn)rtRender(t);else rtOff(t);});
 }
 (function(){let t=0;const q=()=>{if(t)return;t=requestAnimationFrame(()=>{t=0;rtScan();});};
   new MutationObserver(q).observe(document.body,{childList:true,subtree:true});q();})();
