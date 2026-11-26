@@ -185,6 +185,7 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 .hdedit .hit.drag{cursor:col-resize;touch-action:none}
 .hdedit .hit.drag::after{content:'';position:absolute;left:3px;top:50%;width:6px;height:16px;margin-top:-8px;border-radius:3px;background:#3B6E8F;opacity:.55}
 .hdedit .freebox{flex-basis:100%;display:flex;flex-direction:column;gap:4px}.hdedit .freebox textarea{width:100%}
+.hdedit button[data-start].cur{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
 .cardsw{cursor:help}.nw{white-space:nowrap}
 .hdedit .bar{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:6px 0}
 .hdedit .bar label{display:flex;gap:4px;align-items:center;font-size:13px;margin:0}
@@ -377,14 +378,15 @@ function pageText(fmt,i,n){return ({p:`第 ${i} 頁`,pt:`第 ${i} 頁，共 ${n}
 const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD；開新版號時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.1';
-const APP_BUILD='2026-11-26 18:49';
+const APP_BUILD='2026-11-26 19:18';
 const APP_LOG=[
   {v:'1.1',items:[
     '版頭可選三種版型：三列版型、一列版型（大標題＋班級座號姓名）、自訂版型。',
-    '自訂版型：1～5 列、每列 1～4 欄，內容、對齊、字級與框線都能自己設定。',
+    '自訂版型：1～5 列、每列 1～8 欄，內容、對齊、字級與框線都能自己設定。',
+    '自訂版型有「套用三列版型」「套用一列版型」「自行設計」三種起點，可以來回切換；每列可按「＋增加欄」。',
     '自訂版型的欄寬可以用滑鼠拖拉，也可以一鍵均分；版頭文字可插入【讀卡方式】，自動塗黑選到的方框。',
     '讀卡方式與數學卡格數改在「全域設定」選擇。',
-    '大標題可用選單填空或自己打字；校名沒填時印「○○高級中學」。',
+    '大標題可用選單填空或自己打字；校名沒填時印「○○高級中學」，開新考卷不再沿用舊版預設校名。',
     '學年度、學期自動帶入，也可以自行輸入；舊考卷檔保留原本的值。',
     '版頭下方的畫卡注意事項可以改文字或不顯示。',
     '新增「全域設定」：整張紙四周的試卷邊線（預設關閉）。',
@@ -462,12 +464,21 @@ function newCust(base){
   const c=(type,w,align,size,bold,text)=>({id:id++,type,w,align:align||'l',size:size||'M',bold:!!bold,text:text||''});
   const r=cells=>({id:id++,cells,spare:[]});
   const title=()=>r([c('title',100,'c','L',true)]);
-  const rows=base==='title'?[title(),r([c('name',100,'r')])]:[title(),r([c('scope',52),c('name',48)]),r([c('free',39.5,'l','M',false,'是否電腦讀卡：'+CARD_TOKEN),c('free',30,'l','M',false,recycleText()),c('pages',8.5,'c'),c('note',22)])];
-  return {rows,spare:[],base:base==='title'?'none':'all',over:{},style:'solid',width:'thick',color:'blue',nid:id};
+  const rows=base==='own'?[title()]:base==='title'?[title(),r([c('name',100,'r')])]:[title(),r([c('scope',52),c('name',48)]),r([c('free',39.5,'l','M',false,'是否電腦讀卡：'+CARD_TOKEN),c('free',30,'l','M',false,recycleText()),c('pages',8.5,'c'),c('note',22)])];
+  return {src:base,rows,spare:[],base:base==='title'?'none':'all',over:{},style:'solid',width:'thick',color:'blue',nid:id};
+}
+const CU_SRC=[['three','套用三列版型'],['title','套用一列版型'],['own','自行設計']];
+const MAX_COLS=8;
+/* 切換起點：目前這份先收起來，之後切回來內容還在 */
+function switchCust(src){
+  const C=S.cfg,U=getCust();if(U.src===src)return;
+  const D=Object.assign({},C.customDrafts);D[U.src]=U;
+  C.custom=D[src]||newCust(src);delete D[src];C.customDrafts=D;
 }
 function getCust(){
   const C=S.cfg;
   if(!C.custom||!Array.isArray(C.custom.rows)||!C.custom.rows.length){C.custom=newCust('three');C.custom.rows.forEach(evenRow);}
+  if(!CU_SRC.some(x=>x[0]===C.custom.src))C.custom.src='own';
   return textCells(C.custom);
 }
 /* 這一列的欄位均分 */
@@ -689,10 +700,13 @@ function hdEditor(){
     rebuildHead();
   };
   const move=(i,d)=>{const j=i+d;if(j<0||j>=U.rows.length)return;[U.rows[i],U.rows[j]]=[U.rows[j],U.rows[i]];U.over={};rebuildHead();};
-  const start=(base,name)=>{const b=h('button',{type:'button',class:'btn small','data-start':base},name);twoClick(b,()=>{S.cfg.custom=newCust(base);rebuildHead();},'取代目前的自訂版頭？再按一次');return b;};
+  const start=([src,name])=>h('button',{type:'button',class:'btn small'+(U.src===src?' cur':''),'data-start':src,'aria-pressed':String(U.src===src),onclick:()=>{switchCust(src);rebuildHead();}},name);
+  const reset=h('button',{type:'button',class:'btn small',id:'cu_reset',title:'只把目前選的這一個回到剛開始的樣子'},'這一個重新開始');
+  twoClick(reset,()=>{S.cfg.custom=newCust(U.src);rebuildHead();},'清掉目前這一個的修改？再按一次');
   return h('div',{class:'hdedit',id:'hdEdit'},
     h('b',{},'自訂版頭'),
-    h('div',{class:'bar'},h('span',{class:'hint'},'從現成版型開始改：'),start('three','套用三列版型'),start('title','套用一列版型')),
+    h('div',{class:'bar'},...CU_SRC.map(start),reset),
+    h('div',{class:'hint'},'三個可以來回切換，各自保留你改過的內容；考卷印的是目前選到的那一個。'),
     h('div',{class:'hint'},'點線段可單獨加上或取消（灰色點線代表沒有線，印出來是空白）；按住欄與欄之間的界線左右拖拉可調整欄寬；版頭上的字照打的印；讀卡方式到「全域設定」選。'),
     h('div',{class:'stage',id:'hdStage'}),
     h('div',{class:'bar'},h('span',{},'框線：'),quick('all','全部有框'),quick('none','不要框線'),quick('outer','只留外框'),quick('hline','只留橫線')),
@@ -703,7 +717,8 @@ function hdEditor(){
       lab('列數',sel(counts(5),String(U.rows.length),v=>setRows(+v),'cu_rows','版頭列數'))),
     ...U.rows.map((row,i)=>h('div',{class:'row'},
       h('div',{class:'bar'},h('b',{},`第 ${i+1} 列`),
-        lab('欄數',sel(counts(4),String(row.cells.length),v=>setCells(row,+v),`cu_n${i}`,`第 ${i+1} 列欄數`)),
+        lab('欄數',sel(counts(MAX_COLS),String(row.cells.length),v=>setCells(row,+v),`cu_n${i}`,`第 ${i+1} 列欄數`)),
+        h('button',{type:'button',class:'btn small',id:`cu_add${i}`,disabled:row.cells.length>=MAX_COLS,title:`在這一列右邊加一欄，加完先均分（最多 ${MAX_COLS} 欄）`,onclick:()=>{setCells(row,row.cells.length+1);$(`#cu_add${i}`)?.focus();}},'＋增加欄'),
         row.cells.length>1?h('button',{type:'button',class:'btn small',id:`cu_even${i}`,onclick:()=>{evenRow(row);rebuildHead();}},'均分此列'):null,
         h('button',{type:'button',class:'btn small','aria-label':'這一列往上移',onclick:()=>move(i,-1)},'↑'),
         h('button',{type:'button',class:'btn small','aria-label':'這一列往下移',onclick:()=>move(i,1)},'↓')),
@@ -738,7 +753,7 @@ const TITLE_TOKENS=[['學校','school'],['學年度','year'],['學期','semester
 const DEFAULT_TITLE='【學校】　【學年度】 學年度第【學期】學期 【考試類別】　【年級】 【科目】 【卷別】';
 const NOTICE_PLAIN='請將答案劃記於答案卡上，交卷時，請繳回答案卡。答案卡上請記得寫上班級、座號和姓名並清楚劃記。';
 const cval=v=>String(v==null?'':v).trim();
-const SCHOOL_DEF='○○高級中學';
+const SCHOOL_DEF='○○高級中學',OLD_SCHOOL_DEF='國立羅東高級中學';
 const schoolOf=C=>C.schoolHide?'':cval(C.school)||SCHOOL_DEF;
 /* 填空式大標題分三組：校名／學年度學期考試類別／年級科目卷別；空白的欄位整個不印 */
 function titleGroups(C){
@@ -851,6 +866,7 @@ function blankState(){
   const keep=S&&S.cfg?JSON.parse(JSON.stringify(S.cfg)):null;
   S={v:1,nextId:1,nextFig:1,figs:[],cfg:keep||defaultCfg(),sections:[]};
   Object.assign(S.cfg,{scope:'',note:''});
+  if(!S.cfg.schoolUser&&cval(S.cfg.school)===OLD_SCHOOL_DEF)S.cfg.school='';
   applyAutoTerm(S.cfg);
 }
 function migrate(st){
@@ -1990,6 +2006,7 @@ function termField(C,label,key,modeKey,userKey,now,choices,id){
 }
 function titleFields(C){
   const school=bindInput(C,'school',{id:'cfg_school',placeholder:'○○高級中學（請輸入學校名稱）'});
+  school.addEventListener('input',()=>{C.schoolUser=true;});
   const hide=h('label',{class:'chk',style:'padding:4px 0'},bindInput(C,'schoolHide',{id:'cfg_schoolHide',type:'check'}),'不顯示校名');
   const mode=bindInput(C,'titleMode',{id:'cfg_titleMode',type:'select',options:[['fill','填空選擇（建議）'],['free','整行自己打']],after:()=>{if(C.titleMode==='free'&&!cval(C.titleText))C.titleText=DEFAULT_TITLE;rebuildHead();}});
   const out=[field('學校名稱',school),hide,field('大標題的寫法',mode)];
