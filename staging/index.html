@@ -315,7 +315,7 @@ input.sw:checked+.swstate::after{content:'開'}
 .typepick .typerow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:0;border-bottom:none}
 .typepick .typerow .tn{min-width:0}
 .typepick .note{font-size:12px;color:var(--danger)}
-.cfgwin{position:fixed;z-index:36;display:flex;flex-direction:column;box-sizing:border-box;border:1px solid #C6CEDA;border-top:4px solid var(--accent);border-radius:10px;overflow:hidden;
+.cfgwin{position:fixed;z-index:36;display:flex;flex-direction:column;box-sizing:border-box;border:1px solid #C6CEDA;border-top:4px solid var(--accent);border-radius:10px;overflow:hidden;overflow:clip;
   background:#FBFCFD;box-shadow:0 12px 32px rgba(27,34,48,.22),0 2px 6px rgba(27,34,48,.10)}
 .cfgwin[hidden]{display:none}
 .cfgwin-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 14px;background:#F4F6FA;color:var(--ink);border-bottom:1px solid #DDE2EA}
@@ -325,7 +325,7 @@ input.sw:checked+.swstate::after{content:'開'}
 .cfgwin-tabs{order:3;flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px}
 .cfgwin-tabs .cfgtab{padding:3px 10px;font-size:12.5px}
 .cfgwin-tabs .sep{width:1px;background:#C6CEDA;margin:0 2px}
-.cfgwin-b{overflow:auto;padding:4px 0 6px;flex:1;min-height:0}
+.cfgwin-b{position:relative;overflow:auto;padding:4px 0 6px;flex:1;min-height:0}
 .cfgwin .card-b{padding:8px 16px 10px;display:block;column-width:420px;column-gap:28px}
 .cfgwin .card-b>*{break-inside:avoid;margin:0 0 10px}
 .cfgwin input:not([type=checkbox]):not([type=radio]):not([type=range]),.cfgwin select,.cfgwin textarea{background:#fff}
@@ -510,9 +510,10 @@ function hfEditor(C){
 const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD；開新版號時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.1';
-const APP_BUILD='2026-11-26 21:45';
+const APP_BUILD='2026-11-26 22:03';
 const APP_LOG=[
   {v:'1.1',items:[
+    '修正：「版頭與版面」設定視窗往下捲後，標題列和「關閉」按鈕不見、回不到上面的問題。',
     '題目、選項、詳解和試卷提醒／卷尾提醒的欄位，會直接顯示粗體、底線、雙底線、波浪線、著重點和外框的效果，不再看到指令。',
     '劃卡提醒改成「試卷提醒」，由老師自己填（新考卷預設空白，可插入範例）；新增「卷尾提醒」，可調上下位置。兩者都能分段設定對齊、字級、粗體、底線與外框。',
     '畫面配色調整（考卷輸出不受影響），並加上「選取文字加外框」的說明。',
