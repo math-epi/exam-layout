@@ -498,7 +498,7 @@ function hfEditor(C){
 const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD；開新版號時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.1';
-const APP_BUILD='2026-11-26 20:30';
+const APP_BUILD='2026-11-26 20:36';
 const APP_LOG=[
   {v:'1.1',items:[
     '畫面配色調整（考卷輸出不受影響），並加上「選取文字加外框」的說明。',
@@ -2327,7 +2327,7 @@ function openHdDlg(){
   const $x=h('button',{type:'button',class:'btn small',id:'tplExport',onclick:()=>exportTpls(readTpls().list,'我的版型.json')},'匯出全部版型檔');
   const d=h('div',{id:'hdDlg',role:'dialog','aria-modal':'true','aria-label':'版頭版型',onclick:e=>{if(e.target===d)close();}},h('div',{class:'box'},
     h('div',{class:'hdtop'},h('h3',{},'版頭版型'),h('button',{type:'button',class:'btn small',id:'hdDlgX',onclick:close},'關閉')),
-    h('div',{class:'hint'},'點一下就套用，打好的題目不會動。'),
+    h('div',{class:'hint'},'點一下就可以套用，已經打好的題目不會受到影響'),
     card('three','三列版型（有框線）','大標題、命題範圍與班級座號姓名、讀卡與備註。',mini('',[[T],['命題範圍：','班級：　座號：　姓名：'],['是否電腦讀卡','是否回收題目卷','共 2 頁','備註：']])),
     card('title','兩列版型（無框線）','大標題，下一列是靠右的班級、座號、姓名。',mini(' solo',[[T],['班級：　　座號：　　姓名：　　　']])),
     card('custom','自訂版型',S.cfg.custom?'列數、欄數、內容與框線自己決定；之前設計的內容還在。':'從空白開始，列數、欄數、內容與框線自己決定。',h('div',{class:'blank'},'自訂版型')),
