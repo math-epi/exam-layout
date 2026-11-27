@@ -226,7 +226,7 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 .paper.framed{position:relative}
 .paper.framed::after{content:'';position:absolute;pointer-events:none;top:var(--frt);left:var(--frs);right:var(--frs);bottom:var(--frb);border:var(--frl)}
 .cfgwin .card-b .hdedit{column-span:all;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:4px 0 12px;background:#fff;color:#1B2333}
-.hdedit .stage{position:sticky;top:0;z-index:8;padding:10px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px;margin:6px 0;color:#000;background:#fff}
+.hdedit .stage{position:relative;padding:10px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px;margin:6px 0;color:#000;background:#fff}
 .hdedit .hit{position:absolute;z-index:5;padding:0;border:0;background:transparent;cursor:pointer}
 .hdedit .hit:hover,.hdedit .hit:focus-visible{background:rgba(31,95,175,.28)}
 .hdedit .hit.drag{cursor:col-resize;touch-action:none}
@@ -347,6 +347,41 @@ input.sw:checked+.swstate::after{content:'開'}
 .cfgwin input:not([type=checkbox]):not([type=radio]):not([type=range]),.cfgwin select,.cfgwin textarea{background:#fff}
 .cfgwin .secset{background:#F1F4F8;border:1px solid #E1E6EE}
 .cfgdetail-t{font-weight:700;font-size:13px;margin:0 0 2px;color:var(--ink)}
+/* 設定視窗外觀：與數學式編輯器同一套（深藍細格標頭、藍色光帶、緊湊欄位） */
+.cfgwin{--glow:rgba(47,128,237,.26);background:#F3F6FA;border:1px solid #9DB3D6;border-radius:12px;box-shadow:0 18px 48px rgba(12,22,44,.30)}
+.cfgwin-h{position:relative;gap:0 10px;padding:0;color:#fff;border:0;background:#fff}
+.cfgwin-h::before{content:'';position:absolute;left:0;right:0;top:0;height:42px;background:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px) 0 0/100% 10px,linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px) 0 0/10px 100%,linear-gradient(100deg,#0D1B38,#1C3C76)}
+.cfgwin-h::after{content:'';position:absolute;left:0;right:0;top:42px;height:2px;background:linear-gradient(90deg,#22D3EE,#3B82F6 55%,transparent)}
+.cfgwin-h b{position:relative;display:flex;align-items:center;gap:9px;height:42px;padding-left:12px;font-size:14px;letter-spacing:.12em}
+.cfgwin-h b::before{content:'⚙';display:flex;align-items:center;justify-content:center;width:23px;height:23px;border:1px solid #5EC8F2;border-radius:7px;color:#D6F2FF;font-size:14px;letter-spacing:0;box-shadow:0 0 9px rgba(56,189,248,.55),inset 0 0 6px rgba(56,189,248,.35)}
+.cfgwin-x{position:relative;margin-right:10px;background:transparent;color:#E4ECFA;border-color:#5A7099;border-radius:5px;font-size:11.5px;font-weight:500;padding:2px 10px}
+.cfgwin-x:hover{background:rgba(255,255,255,.12)}
+.cfgwin-tabs{position:relative;margin-top:2px;gap:2px;padding:0 8px;border-bottom:1px solid #D8DEE8}
+.cfgwin-tabs .cfgtab{border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:#53607A;padding:8px 11px 7px;font-size:13px}
+.cfgwin-tabs .cfgtab:hover{color:var(--accent);background:#F1F5FB}
+.cfgwin-tabs .cfgtab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:700;background:transparent}
+.cfgwin-tabs .sep{align-self:center;height:16px;background:#D8DEE8;margin:0 4px}
+.cfgwin-b{padding:10px 0 4px}
+.cfgwin .card-b{padding:0 12px;column-width:400px;column-gap:12px}
+.cfgwin .card-b:empty{display:none}
+.cfgwin .card-b>*{margin:0 0 10px}
+.cfgwin .sg,.cfgwin .card-b>.hfbox,.cfgwin .card-b .hdedit,.cfgwin #typeDetail>div:not(.hint){background:#fff;border:1px solid #D8DEE8;border-radius:10px;padding:9px 12px 11px}
+.cfgwin .sg[hidden]{display:none}
+.cfgwin .sg>h4,.cfgwin .hdedit>b,.cfgwin .cfgdetail-t{display:flex;align-items:center;gap:7px;margin:0 0 8px;font-size:12.5px;font-weight:700;letter-spacing:.08em;color:#14274A}
+.cfgwin .sg>h4::before,.cfgwin .hdedit>b::before{content:'';width:3px;height:13px;border-radius:2px;background:linear-gradient(180deg,#22D3EE,#2563C9)}
+.cfgwin .sg>*+*{margin-top:8px}.cfgwin .sg>h4+*{margin-top:0}
+.cfgwin .sg .f{margin-bottom:0}
+.cfgwin .f>label{font-size:12px;color:#3C4A66;font-weight:600}
+.cfgwin .hint{font-size:11.5px;line-height:1.55}
+.cfgwin input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),.cfgwin select,.cfgwin textarea{font-size:13px;padding:4px 9px;min-height:30px;border-radius:7px;border-color:#CBD5E4}
+.cfgwin input:not([type=checkbox]):not([type=radio]):not([type=range]):focus,.cfgwin select:focus,.cfgwin textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--glow)}
+.cfgwin .btn.small{border-radius:6px}
+.cfgwin .rtv{font-size:13px;padding:4px 9px;border-color:#CBD5E4;border-radius:7px;line-height:1.7}
+.cfgwin .rte:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow)}
+.cfgwin label.chk{font-size:13px}
+.cfgwin .card-b>.hfbox>b:first-child{letter-spacing:.06em;color:#14274A;font-size:12.5px}
+.cfgwin .tip{font-size:12px}
+.cfgwin .slotinfo{font-size:12px}
 @media print{.cfgwin,.cfgtabs{display:none!important}}
 </style>
 </head>
@@ -371,7 +406,7 @@ input.sw:checked+.swstate::after{content:'開'}
   <details style="margin-top:6px"><summary style="cursor:pointer;color:#1E407C;font-weight:600">更多說明</summary>
   <div style="margin-top:6px">按「列印 / 存檔」再選「存成考卷檔」，可存成考卷檔（下次用「開啟舊檔」接著改）；熟悉 LaTeX 的老師可以下載 <b>Overleaf 專案 zip</b>（含 main.tex 與 examsheet.cls，上傳後用 <b>XeLaTeX</b> 編譯兩次）。
   選填題的解答直接輸入答案（如 <code>-56/7</code>、<code>\sqrt{27}</code>），數字與正負號會自動變成答案卡的圈圈格子。圖形請先放進「圖庫」，再到每題「附圖」選用。<br>
-  版面、題型預設、圖庫、行距與字型等設定，請按題目區上方的「⚙ 設定」按鈕，從下拉選單選一項，會浮出設定視窗（按「關閉」或 Esc 關掉）。要勾選這份考卷的題型，請按「本試卷題型」標籤。<br>
+  版頭、版面、提醒文字、題型預設、輸出、字型與圖庫等設定，請按題目區上方的「⚙ 設定」按鈕，從下拉選單選一項，會浮出設定視窗（按「關閉」或 Esc 關掉）。要勾選這份考卷的題型，請按「本試卷題型」標籤。<br>
   <label class="swrow" title="按一下切換開／關"><input type="checkbox" id="rtToggle" class="sw" checked><span class="swstate" aria-hidden="true"></span><span><b>顯示排版後的數學式</b>：左邊欄位沒在編輯時，以排版後的樣子顯示（點公式可用數學式編輯器修改，點文字回到輸入）；關閉則顯示原始文字。</span></label>
   <div class="swrow" style="align-items:flex-start"><span style="flex:1 1 auto"><b>編輯方式</b>：打題目、選項、詳解和考卷提醒時，數學式和文字格式怎麼顯示。</span><select id="edMode" style="width:auto;flex:none"><option value="rich">直接顯示排版後的數學式與文字格式（建議）</option><option value="tok">收成〔數學式1〕，下方即時預覽</option><option value="raw">顯示 LaTeX 原始碼</option></select></div></div>
   </details>
@@ -399,11 +434,12 @@ input.sw:checked+.swstate::after{content:'開'}
 </div>
 <div id="cfgHold" hidden>
   <div class="cfgpane" data-pane="type"><div class="card-b"><div class="hint" style="margin:0 0 6px">勾選這份考卷要出的題型；勾選後題目區會出現該題型。名稱、配分、說明請到「題型預設」設定。<button class="btn small" type="button" style="margin-left:6px" onclick="openCfg('opt')">開啟題型預設</button></div><div class="typepick" id="typePick"></div></div></div>
-  <div class="cfgpane" data-pane="all"><div class="card-b" id="setAll"></div></div>
   <div class="cfgpane" data-pane="head"><div class="card-b" id="setHead"></div></div>
+  <div class="cfgpane" data-pane="page"><div class="card-b" id="setPage"></div></div>
+  <div class="cfgpane" data-pane="note"><div class="card-b" id="setNote"></div></div>
   <div class="cfgpane" data-pane="opt"><div class="card-b" id="typeDetail"></div><div class="card-b" id="setOpt"></div></div>
   <div class="cfgpane" data-pane="fig"><div class="card-b" id="setFig"></div></div>
-  <div class="cfgpane" data-pane="adv"><div class="card-b" id="setAdv"></div></div>
+  <div class="cfgpane" data-pane="out"><div class="card-b" id="setOut"></div></div>
 </div>
 <div class="cfgwin" id="cfgWin" hidden role="dialog" aria-label="設定視窗"><div class="cfgwin-h"><b id="cfgWinT"></b><button class="cfgwin-x" id="cfgWinX" type="button" title="關閉（Esc）">關閉 ✕</button><div class="cfgwin-tabs" id="cfgWinTabs"></div></div><div class="cfgwin-b" id="cfgWinB"></div></div>
 <div class="floatadd" id="floatAdd" hidden></div>
@@ -529,11 +565,13 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.4';
-const APP_BUILD='2026-11-27 12:29';
+const APP_BUILD='2026-11-27 12:46';
 const APP_LOG=[
   {v:'1.4',items:[
     '數學式 $…$ 裡的全形英數、全形符號（＝＋＜（）％等）和全形空格，會自動改成半形；注音符號比照中文處理。\\text{…} 裡面的內容不動。',
-    '集合 \\{ \\}、圓括號、方括號裡的中文，改成原地加上 \\text{}，不再把式子從括號中間拆開。'
+    '集合 \\{ \\}、圓括號、方括號裡的中文，改成原地加上 \\text{}，不再把式子從括號中間拆開。',
+    '設定視窗重新分類：版頭、版面與間距、提醒文字、題型預設、輸出與字型、圖庫（原「全域設定」併入版頭與版面），外觀改成與數學式編輯器一致。',
+    '修正：自訂版頭的預覽框固定在畫面上，往下捲時擋住下面的設定。'
   ]},
   {v:'1.3',items:[
     '修正：網頁列印時，填充題與選填題的圈號圓圈沒有印出來（\\boxed 框線、\\cancel 刪除線也一併修正）',
@@ -673,11 +711,11 @@ function snapX(U,r,j,x){
   let best=x,d=0.012;marks.forEach(m=>{if(Math.abs(m-x)<d){d=Math.abs(m-x);best=m;}});
   return best;
 }
-/* ---- 版頭只放文字；讀卡方式在「全域設定」選，文字裡的【讀卡方式】會印出全部選項並塗黑選到的那一個 ---- */
+/* ---- 版頭只放文字；讀卡方式在版頭設定選，文字裡的【讀卡方式】會印出全部選項並塗黑選到的那一個 ---- */
 const CARD_TOKEN='【讀卡方式】';
 const CARD_OPTS=[['math','數學卡'],['general','一般卡'],['none','不讀卡']];
-const CARD_TIP='塗黑哪一個，請到「⚙ 設定」→「全域設定」的「讀卡方式」選擇';
-const REC_TIP='勾哪一個，請到「⚙ 設定」→「標頭與版面」的「是否回收題目卷」選擇';
+const CARD_TIP='塗黑哪一個，請到「⚙ 設定」→「版頭」的「讀卡方式」選擇';
+const REC_TIP='勾哪一個，請到「⚙ 設定」→「版頭」的「是否回收題目卷」選擇';
 const recycleText=()=>'是否回收題目卷：'+(S.cfg.recycle?'■是 □否':'□是 ■否');
 /* 較早測試版存的讀卡／回收元件，改成文字 */
 function textCells(U){
@@ -722,7 +760,7 @@ function cardTextWarn(){
     const hit=[['math',/數學卡/],['general',/一般卡/],['none',/不讀卡/]].filter(x=>x[1].test(t));
     if(hit.length===1&&hit[0][0]!==C.card){
       const n=k=>CARD_OPTS.find(x=>x[0]===k)[1];
-      return `版頭文字寫了「${n(hit[0][0])}」，但「全域設定」的讀卡方式是「${n(C.card)}」，請確認哪一個正確。`;
+      return `版頭文字寫了「${n(hit[0][0])}」，但「版頭」設定的讀卡方式是「${n(C.card)}」，請確認哪一個正確。`;
     }
   }
   return '';
@@ -886,7 +924,7 @@ function hdEditor(){
     h('b',{},'自訂版頭'),
     h('div',{class:'bar'},...CU_SRC.map(start),reset),
     h('div',{class:'hint'},'三個可以來回切換，各自保留你改過的內容；考卷印的是目前選到的那一個。'),
-    h('div',{class:'hint'},'點線段可單獨加上或取消（灰色點線代表沒有線，印出來是空白）；按住欄與欄之間的界線左右拖拉可調整欄寬；版頭上的字照打的印；讀卡方式到「全域設定」選。'),
+    h('div',{class:'hint'},'點線段可單獨加上或取消（灰色點線代表沒有線，印出來是空白）；按住欄與欄之間的界線左右拖拉可調整欄寬；版頭上的字照打的印；讀卡方式在下面的「讀卡與回收」選。'),
     h('div',{class:'stage',id:'hdStage'}),
     h('div',{class:'bar'},h('span',{},'框線：'),quick('all','全部有框'),quick('none','不要框線'),quick('outer','只留外框'),quick('hline','只留橫線')),
     h('div',{class:'bar'},
@@ -1338,10 +1376,10 @@ function compute(){
   const imgs=new Set();
   S.sections.forEach(s=>s.qs.forEach(q=>{if(q.inc===false)return;eachFigRef(q,id=>{const f=findFig(id);if(!f)warn('有題目指定的附圖（圖 '+id+'）已不在圖庫。',{q:q.id,f:'fig'});else if(f.kind==='image')imgs.add(f.file);});}));
   if(imgs.size)warn('圖片檔 '+[...imgs].join('、')+'：用「列印 / 存檔」下載 Overleaf zip 會自動包含；若只複製 main.tex，要把圖片上傳到 Overleaf 專案（與 main.tex 同一層），檔名要完全一致。');
-  if(math&&qn>cardSlots())warn(`數學卡的答案只有 ${cardSlots()} 格（可在「全域設定」修改數學卡格數），目前選擇題與選填格子共 ${qn} 格，超過 ${qn-cardSlots()} 格。第 ${cardSlots()+1} 格起不會畫圈圈編號，請減少題數或選填的格子數。`,{cfg:'cfg_cardSlots'});
+  if(math&&qn>cardSlots())warn(`數學卡的答案只有 ${cardSlots()} 格（可在「版頭」設定修改數學卡格數），目前選擇題與選填格子共 ${qn} 格，超過 ${qn-cardSlots()} 格。第 ${cardSlots()+1} 格起不會畫圈圈編號，請減少題數或選填的格子數。`,{cfg:'cfg_cardSlots'});
   const ex=S.cfg.expectedTotal.trim();
   if(ex!==''&&num(ex)!==total)warn(`全卷配分合計 ${fmt(total)} 分，與設定的滿分 ${ex} 分不符。`,{cfg:'cfg_expectedTotal'});
-  if(!S.cfg.schoolHide&&!cval(S.cfg.school)&&(S.cfg.titleMode!=='free'||String(S.cfg.titleText).includes('【學校】')))warn('還沒有填學校名稱，目前會印「○○高級中學」（「⚙ 設定」→「標頭與版面」；不想印校名可勾「不顯示校名」）。',{cfg:'cfg_school'});
+  if(!S.cfg.schoolHide&&!cval(S.cfg.school)&&(S.cfg.titleMode!=='free'||String(S.cfg.titleText).includes('【學校】')))warn('還沒有填學校名稱，目前會印「○○高級中學」（「⚙ 設定」→「版頭」；不想印校名可勾「不顯示校名」）。',{cfg:'cfg_school'});
   const cw=cardTextWarn();if(cw)warn(cw,{cfg:'',pane:'head',sel:'.hdedit'});
   return {info,secs,warns,gos,total,qn};
 }
@@ -2589,23 +2627,71 @@ function openHdDlg(){
   draw();
   document.body.append(d);document.addEventListener('keydown',key,true);
 }
+function sgroup(title,...kids){return h('section',{class:'sg'},h('h4',{},title),...kids.filter(Boolean));}
 function buildSettings(){
   const C=S.cfg,F=C.fonts;
   const head=$('#setHead'),solo=C.hdStyle==='title',cust=C.hdStyle==='custom';
   head.replaceChildren(
-    field('版型',bindInput(C,'hdStyle',{id:'cfg_hdStyle',type:'select',options:HD_STYLES,after:rebuildHead}),solo?'大標題下面是靠右的班級、座號、姓名，沒有框線。':cust?'列數、欄數、內容與框線都自己決定（在下面的「自訂版頭」）。':'版頭固定三列、有框線。'),
-    h('div',{},h('button',{type:'button',class:'btn small',id:'cfg_hdPick',onclick:openHdDlg},'我的版型：儲存／叫出…')),
+    sgroup('版型',
+      field('版型',bindInput(C,'hdStyle',{id:'cfg_hdStyle',type:'select',options:HD_STYLES,after:rebuildHead}),solo?'大標題下面是靠右的班級、座號、姓名，沒有框線。':cust?'列數、欄數、內容與框線都自己決定（在下面的「自訂版頭」）。':'版頭固定三列、有框線。'),
+      h('div',{},h('button',{type:'button',class:'btn small',id:'cfg_hdPick',onclick:openHdDlg},'我的版型：儲存／叫出…'))),
     ...(cust?[hdEditor()]:[]),
-    ...titleFields(C),
-    field('命題範圍',bindInput(C,'scope',{id:'cfg_scope',mm:true})),
-    h('div',{class:'hint',id:'cfg_cardHint',style:'padding:4px 0'},'讀卡方式（數學卡／一般卡／不讀卡）請到',h('button',{type:'button',class:'btn small',id:'goCard',onclick:()=>openCfg('all')},'全域設定'),'選擇。'),
-    h('div',{class:'grid2'},
-      field('是否回收題目卷',h('label',{class:'chk',style:'padding:6px 0'},bindInput(C,'recycle',{id:'cfg_recycle',type:'check'}),'回收'))),
-    h('label',{class:'chk',style:'padding:4px 0'},bindInput(C,'hdRepeat',{id:'cfg_hdRepeat',type:'check'}),'考卷超過一頁時，第 2 頁起也顯示標頭'),
-    hfEditor(C),
-    field('標頭第三列版面',bindInput(C,'hdRows',{id:'cfg_hdRows',type:'select',options:[['auto','自動（備註太長時，讀卡與回收疊成兩行）'],['one','一律並排一行'],['two','一律疊成兩行']]})),
-    field('紙張大小',bindInput(C,'paper',{id:'cfg_paper',type:'select',options:[['b4','B4（預設，257×364mm）'],['a4','A4'],['b5','B5'],['8k','8K']]})),
-    field('解答的顏色（解答版的答案）',(()=>{
+    sgroup('標題文字',...titleFields(C),
+      field('命題範圍',bindInput(C,'scope',{id:'cfg_scope',mm:true}))),
+    sgroup('讀卡與回收',
+      field('讀卡方式',bindInput(C,'card',{id:'cfg_card',type:'select',options:[['math','數學卡（選項 (1)(2)…，題號從 1 起算）'],['general','一般卡（選項 (A)(B)…）'],['none','不讀卡']],after:()=>{rerender();rebuildHead();}}),'決定選項怎麼編號、版頭的讀卡方框塗黑哪一個、以及畫卡注意事項。'),
+      ...(C.card==='math'?[field('數學卡格數（題號上限）',bindInput(C,'cardSlots',{id:'cfg_cardSlots',type:'number',int:true,min:1,max:999,after:changed}),'選「數學卡」時使用，預設 50（有些學校的數學卡是 40 格或更多）；選擇題與選填格子超過這個格數時，上方會提醒。')]:[]),
+      h('div',{class:'grid2'},
+        field('是否回收題目卷',h('label',{class:'chk',style:'padding:6px 0'},bindInput(C,'recycle',{id:'cfg_recycle',type:'check'}),'回收')))),
+    sgroup('版頭其他',
+      field('備註',bindInput(C,'note',{id:'cfg_note'}),'例如：應考班級 202~205'),
+      field('標頭第三列版面',bindInput(C,'hdRows',{id:'cfg_hdRows',type:'select',options:[['auto','自動（備註太長時，讀卡與回收疊成兩行）'],['one','一律並排一行'],['two','一律疊成兩行']]})),
+      h('label',{class:'chk',style:'padding:4px 0'},bindInput(C,'hdRepeat',{id:'cfg_hdRepeat',type:'check'}),'考卷超過一頁時，第 2 頁起也顯示標頭')));
+  drawHdEdit();
+  if(solo||cust)(solo?['cfg_scope','cfg_recycle','cfg_note','cfg_hdRows']:['cfg_recycle','cfg_hdRows']).forEach(id=>{const el=head.querySelector('#'+id),f=el&&el.closest('.f');if(f)f.style.display='none';});
+  head.querySelectorAll('.sg').forEach(g=>{g.hidden=![...g.children].slice(1).some(e=>e.style.display!=='none'&&!(e.classList.contains('grid2')&&[...e.children].every(c=>c.style.display==='none')));});
+  $('#setPage').replaceChildren(
+    sgroup('紙張與邊線',
+      field('紙張大小',bindInput(C,'paper',{id:'cfg_paper',type:'select',options:[['b4','B4（預設，257×364mm）'],['a4','A4'],['b5','B5'],['8k','8K']]})),
+      field('試卷邊線（整張紙四周的框）',bindInput(C,'frameOn',{id:'cfg_frameOn',type:'select',options:[['false','關閉（預設）'],['true','開啟']],after:()=>{C.frameOn=($('#cfg_frameOn').value==='true');rebuildHead();}}),'三列版型、兩列版型、自訂版型都適用；開啟後每一頁都會印。'),
+    ...(C.frameOn?[h('div',{class:'grid3'},
+      field('邊線線型',bindInput(C,'frameStyle',{id:'cfg_frameStyle',type:'select',options:LINE_STYLES})),
+      field('邊線粗細',bindInput(C,'frameW',{id:'cfg_frameW',type:'select',options:LINE_WIDTHS})),
+      field('邊線顏色',bindInput(C,'frameColor',{id:'cfg_frameColor',type:'select',options:LINE_COLORS})))]:[])),
+    sgroup('行距與間距',
+      h('div',{class:'grid3'},
+      field('行距倍率',bindInput(C,'lineSpacing',{id:'cfg_lineSpacing',placeholder:'1.5',after:changed})),
+      field('大題與大題之間（pt）',bindInput(C,'secBefore',{id:'cfg_secBefore',placeholder:'14',after:changed})),
+      field('大題標題與第一題之間（pt）',bindInput(C,'secAfter',{id:'cfg_secAfter',placeholder:'8',after:changed}))),
+    h('div',{class:'grid3'},
+      field('選擇題的小題之間（pt）',bindInput(C,'choiceSkip',{id:'cfg_choiceSkip',placeholder:'10',after:changed})),
+      field('填空題的小題之間（pt）',bindInput(C,'fillSkip',{id:'cfg_fillSkip',placeholder:'26',after:changed})),
+      field('題幹與選項之間（pt）',bindInput(C,'stemSkip',{id:'cfg_stemSkip',placeholder:'0',after:changed}))),
+      field('題目內段落與段落之間（pt）',bindInput(C,'paraSkip',{id:'cfg_paraSkip',placeholder:'0',after:changed}),'題目裡空一行分段時，段與段之間多加的距離。'),
+      h('span',{class:'hint'},'全部留空＝預設（行距 1.5、大題 14／8、選擇題 10、填空題 26、其餘 0）。數字越大空白越多；填空題留比較大是給學生計算。預覽是近似的，以 PDF／Overleaf 編譯結果為準。')),
+    hfEditor(C));
+  $('#setNote').replaceChildren(noteEditor(C,'top'),noteEditor(C,'end'),h('div',{class:'tip',id:'boxTipHead'}));
+  $('#boxTipHead').innerHTML='想幫文字加外框？用滑鼠<b>選取</b>要印在考卷上的文字（題目、選項、版頭、頁首頁尾等，答案欄除外），欄位旁會出現「<span class="fb">框</span> 加外框」按鈕，按一下就框起來；再選一次、再按一次就取消。';
+  $('#setOpt').replaceChildren(
+    sgroup('選項與題型',
+      field('選項標示',bindInput(C,'optStyle',{id:'cfg_optStyle',type:'select',options:[['auto','自動（數學卡用 (1)(2)…，一般卡用 (A)(B)…）'],['number','一律 (1)(2)…'],['letter','一律 (A)(B)…']],after:()=>{changed();}})),
+      h('div',{class:'grid2'},
+      field('多選題預設選項數',bindInput(C,'multiN',{id:'cfg_multiN',type:'number',int:true,min:2,max:9,after:changed})),
+      field('單選題預設選項數',bindInput(C,'singleN',{id:'cfg_singleN',type:'number',int:true,min:2,max:9,after:changed}))),
+      field('填空題的大題名稱',bindInput(C,'fillName',{id:'cfg_fillName',type:'select',options:[['填充題','填充題'],['選填題','選填題']],after:()=>{S.sections.forEach(s=>{if(s.type==='fill'&&(s.name==='填充題'||s.name==='選填題'))s.name=C.fillName;});rerender(true);}}),'填空題型的名稱（「本試卷題型」的勾選項與浮動按鈕也會一起改）；已加入的填空題型區塊會一起改名。'),
+      field('選填題：算式中間的減號（如 2x−4 的 −）是否佔答案卡一格',bindInput(C,'minusSlot',{id:'cfg_minusSlot',type:'select',options:[['false','預設不佔格'],['true','預設佔一格']],after:()=>{C.minusSlot=($('#cfg_minusSlot').value==='true');changed();rerender();}}),'每一題也可以在題目裡單獨改。數字前面的負號一律佔格。')),
+    sgroup('配分與作答',
+      h('div',{class:'grid3'},
+      field('多選題每題配分',bindInput(C,'multiPts',{id:'cfg_multiPts'})),field('單選題每題配分',bindInput(C,'singlePts',{id:'cfg_singlePts'})),field('填空題每題配分',bindInput(C,'fillPts',{id:'cfg_fillPts'}))),
+      h('div',{class:'grid2'},
+      field('計算證明題每題配分',bindInput(C,'calcPts',{id:'cfg_calcPts'})),
+      field('計算證明題書寫空間預設列數',bindInput(C,'calcRows',{id:'cfg_calcRows',type:'text',after:changed,placeholder:'6'}),'新增計算證明題時帶入的列數（每題仍可單獨修改）。')),
+      field('全卷滿分檢查（選填）',bindInput(C,'expectedTotal',{id:'cfg_expectedTotal',placeholder:'例如 100'}),'配分合計不等於這個數字時，上方會提醒。'),
+      h('span',{class:'hint'},'這些是「新增大題」時帶入的預設值，每個大題之後仍可單獨改配分與說明。')));
+  $('#setOut').replaceChildren(
+    sgroup('輸出版本與樣式',
+      field('預設輸出的版本',(()=>{const sel=h('select',{id:'cfg_showAnswers'},VERS.map(([v,n])=>h('option',{value:v},n)));sel.value=verOf();sel.addEventListener('change',()=>{setVer(sel.value);renderOut();save();});return sel;})(),'列印／存檔時預設用這一版（那裡還可以另選）；右邊預覽上方的版本鈕改的也是這一項。學生版：只有題目；簡答版：加紅字答案（選擇題選項、Ans:）；詳解版：簡答版再加上每題的詳解。'),
+      field('解答的顏色（解答版的答案）',(()=>{
       const wrap=h('div',{style:'display:flex;align-items:center;gap:8px;flex-wrap:wrap'});
       const pick=h('input',{type:'color',value:ansCol(),style:'width:44px;height:32px;padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer'});
       const set=c=>{S.cfg.ansColor=c;pick.value=c;changed();};
@@ -2614,62 +2700,20 @@ function buildSettings(){
       [['深紅（預設）','#B01E2E'],['暗紅','#8B1A1A'],['深藍','#1F4FA0'],['墨綠','#1E6B45'],['深灰','#333333'],['傳統紅','#FF0000']].forEach(([n,c])=>{
         const b=h('button',{type:'button',class:'btn small',title:n,onclick:()=>set(c)},h('span',{style:'display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px;background:'+c}),n);wrap.append(b);});
       return wrap;})(),'只影響解答版（含預覽的「解答版」）；學生版不會出現這個顏色。'),
-    field('向量箭頭（輸出 LaTeX 時）',bindInput(C,'vecStyle',{id:'cfg_vecStyle',type:'select',options:[['harpoon','老師版（harpoon 套件，箭頭較長）'],['classic','原本']]}),'預覽看不出差別，請編譯 PDF 後比較；不喜歡就換回「原本」。'),
-    field('圈圈數字（答案卡格子）',bindInput(C,'circStyle',{id:'cfg_circStyle',type:'select',options:[['teacher','老師版（細線襯線小圈）'],['classic','原本（粗體大圈）']]})),
-    field('備註',bindInput(C,'note',{id:'cfg_note'}),'例如：應考班級 202~205'),
-    noteEditor(C,'top'),
-    noteEditor(C,'end'),
-    field('預設輸出的版本',(()=>{const sel=h('select',{id:'cfg_showAnswers'},VERS.map(([v,n])=>h('option',{value:v},n)));sel.value=verOf();sel.addEventListener('change',()=>{setVer(sel.value);renderOut();save();});return sel;})(),'列印／存檔時預設用這一版（那裡還可以另選）；右邊預覽上方的版本鈕改的也是這一項。學生版：只有題目；簡答版：加紅字答案（選擇題選項、Ans:）；詳解版：簡答版再加上每題的詳解。'));
-  drawHdEdit();
-  head.prepend(h('div',{class:'tip',id:'boxTipHead'}));
-  head.firstChild.innerHTML='想幫文字加外框？用滑鼠<b>選取</b>要印在考卷上的文字（題目、選項、版頭、頁首頁尾等，答案欄除外），欄位旁會出現「<span class="fb">框</span> 加外框」按鈕，按一下就框起來；再選一次、再按一次就取消。';
-  if(solo||cust)(solo?['cfg_scope','cfg_recycle','cfg_note','cfg_hdRows']:['cfg_recycle','cfg_hdRows']).forEach(id=>{const el=head.querySelector('#'+id),f=el&&el.closest('.f');if(f)f.style.display='none';});
-  $('#setAll').replaceChildren(
-    field('讀卡方式',bindInput(C,'card',{id:'cfg_card',type:'select',options:[['math','數學卡（選項 (1)(2)…，題號從 1 起算）'],['general','一般卡（選項 (A)(B)…）'],['none','不讀卡']],after:()=>{rerender();rebuildHead();}}),'決定選項怎麼編號、版頭的讀卡方框塗黑哪一個、以及畫卡注意事項。'),
-    ...(C.card==='math'?[field('數學卡格數（題號上限）',bindInput(C,'cardSlots',{id:'cfg_cardSlots',type:'number',int:true,min:1,max:999,after:changed}),'選「數學卡」時使用，預設 50（有些學校的數學卡是 40 格或更多）；選擇題與選填格子超過這個格數時，上方會提醒。')]:[]),
-    field('試卷邊線（整張紙四周的框）',bindInput(C,'frameOn',{id:'cfg_frameOn',type:'select',options:[['false','關閉（預設）'],['true','開啟']],after:()=>{C.frameOn=($('#cfg_frameOn').value==='true');rebuildHead();}}),'三列版型、兩列版型、自訂版型都適用；開啟後每一頁都會印。'),
-    ...(C.frameOn?[h('div',{class:'grid3'},
-      field('邊線線型',bindInput(C,'frameStyle',{id:'cfg_frameStyle',type:'select',options:LINE_STYLES})),
-      field('邊線粗細',bindInput(C,'frameW',{id:'cfg_frameW',type:'select',options:LINE_WIDTHS})),
-      field('邊線顏色',bindInput(C,'frameColor',{id:'cfg_frameColor',type:'select',options:LINE_COLORS})))]:[]));
-  const opt=$('#setOpt');opt.replaceChildren(
-    field('選項標示',bindInput(C,'optStyle',{id:'cfg_optStyle',type:'select',options:[['auto','自動（數學卡用 (1)(2)…，一般卡用 (A)(B)…）'],['number','一律 (1)(2)…'],['letter','一律 (A)(B)…']],after:()=>{changed();}})),
-    h('div',{class:'grid2'},
-      field('多選題預設選項數',bindInput(C,'multiN',{id:'cfg_multiN',type:'number',int:true,min:2,max:9,after:changed})),
-      field('單選題預設選項數',bindInput(C,'singleN',{id:'cfg_singleN',type:'number',int:true,min:2,max:9,after:changed}))),
-    field('填空題的大題名稱',bindInput(C,'fillName',{id:'cfg_fillName',type:'select',options:[['填充題','填充題'],['選填題','選填題']],after:()=>{S.sections.forEach(s=>{if(s.type==='fill'&&(s.name==='填充題'||s.name==='選填題'))s.name=C.fillName;});rerender(true);}}),'填空題型的名稱（「本試卷題型」的勾選項與浮動按鈕也會一起改）；已加入的填空題型區塊會一起改名。'),
-    h('div',{class:'grid3'},
-      field('多選題每題配分',bindInput(C,'multiPts',{id:'cfg_multiPts'})),field('單選題每題配分',bindInput(C,'singlePts',{id:'cfg_singlePts'})),field('填空題每題配分',bindInput(C,'fillPts',{id:'cfg_fillPts'}))),
-    field('題目文字：離開欄位或貼上時，直接修正輸入的文字',bindInput(C,'autoFixCjk',{id:'cfg_autoFixCjk',type:'select',options:[['true','開（預設）'],['false','關']],after:()=>{C.autoFixCjk=($('#cfg_autoFixCjk').value==='true');changed();rerender();}}),'例如 $x 的最大值為M$ 會改成 $x$ 的最大值為 $M$，$x＝２$ 會改成 $x=2$，「設 x,y 為實數」會改成「設 $x,y$ 為實數」（與預覽相同規則，只處理題幹與選項，「題目文字：自動把數字…」關閉的題目不改）；也會處理貼上、手寫辨識、LaTeX 匯入的文字。每一題也可以單獨取消；改完可按「復原」。'),
-    field('題目文字：自動把數字、單一英文字母改成數學式',bindInput(C,'autoMath',{id:'cfg_autoMath',type:'select',options:[['true','開（預設）'],['false','關']],after:()=>{C.autoMath=($('#cfg_autoMath').value==='true');changed();rerender();}}),'只處理數學式 $…$ 以外的文字；有意義的英文單字（at、of、you）不會動。每一題也可以單獨取消。'),
-    field('選填題：算式中間的減號（如 2x−4 的 −）是否佔答案卡一格',bindInput(C,'minusSlot',{id:'cfg_minusSlot',type:'select',options:[['false','預設不佔格'],['true','預設佔一格']],after:()=>{C.minusSlot=($('#cfg_minusSlot').value==='true');changed();rerender();}}),'每一題也可以在題目裡單獨改。數字前面的負號一律佔格。'),
-    h('div',{class:'grid2'},
-      field('計算證明題每題配分',bindInput(C,'calcPts',{id:'cfg_calcPts'})),
-      field('計算證明題書寫空間預設列數',bindInput(C,'calcRows',{id:'cfg_calcRows',type:'text',after:changed,placeholder:'6'}),'新增計算證明題時帶入的列數（每題仍可單獨修改）。')),
-    field('全卷滿分檢查（選填）',bindInput(C,'expectedTotal',{id:'cfg_expectedTotal',placeholder:'例如 100'}),'配分合計不等於這個數字時，上方會提醒。'),
-    h('span',{class:'hint'},'這些是「新增大題」時帶入的預設值，每個大題之後仍可單獨改配分與說明。'));
-  const adv=$('#setAdv');adv.replaceChildren(
-    h('b',{style:'font-size:13px'},'行距與間距'),
-    h('div',{class:'grid3'},
-      field('行距倍率',bindInput(C,'lineSpacing',{id:'cfg_lineSpacing',placeholder:'1.5',after:changed})),
-      field('大題與大題之間（pt）',bindInput(C,'secBefore',{id:'cfg_secBefore',placeholder:'14',after:changed})),
-      field('大題標題與第一題之間（pt）',bindInput(C,'secAfter',{id:'cfg_secAfter',placeholder:'8',after:changed}))),
-    h('div',{class:'grid3'},
-      field('選擇題的小題之間（pt）',bindInput(C,'choiceSkip',{id:'cfg_choiceSkip',placeholder:'10',after:changed})),
-      field('填空題的小題之間（pt）',bindInput(C,'fillSkip',{id:'cfg_fillSkip',placeholder:'26',after:changed})),
-      field('題幹與選項之間（pt）',bindInput(C,'stemSkip',{id:'cfg_stemSkip',placeholder:'0',after:changed}))),
-    field('題目內段落與段落之間（pt）',bindInput(C,'paraSkip',{id:'cfg_paraSkip',placeholder:'0',after:changed}),'題目裡空一行分段時，段與段之間多加的距離。'),
-    h('span',{class:'hint'},'全部留空＝預設（行距 1.5、大題 14／8、選擇題 10、填空題 26、其餘 0）。數字越大空白越多；填空題留比較大是給學生計算。預覽是近似的，以 PDF／Overleaf 編譯結果為準。'),
-    h('hr',{style:'border:none;border-top:1px solid var(--line);margin:10px 0'}),
-    h('b',{style:'font-size:13px'},'字型'),
-    h('span',{class:'hint'},'字型留空就用範本預設（標頭 PingFang TC、內文儷宋、英數 Times New Roman）。可填多個，用逗號分隔，依序找系統裡有的。'),
+      field('向量箭頭（輸出 LaTeX 時）',bindInput(C,'vecStyle',{id:'cfg_vecStyle',type:'select',options:[['harpoon','老師版（harpoon 套件，箭頭較長）'],['classic','原本']]}),'預覽看不出差別，請編譯 PDF 後比較；不喜歡就換回「原本」。'),
+      field('圈圈數字（答案卡格子）',bindInput(C,'circStyle',{id:'cfg_circStyle',type:'select',options:[['teacher','老師版（細線襯線小圈）'],['classic','原本（粗體大圈）']]}))),
+    sgroup('題目文字自動處理',
+      field('題目文字：離開欄位或貼上時，直接修正輸入的文字',bindInput(C,'autoFixCjk',{id:'cfg_autoFixCjk',type:'select',options:[['true','開（預設）'],['false','關']],after:()=>{C.autoFixCjk=($('#cfg_autoFixCjk').value==='true');changed();rerender();}}),'例如 $x 的最大值為M$ 會改成 $x$ 的最大值為 $M$，$x＝２$ 會改成 $x=2$，「設 x,y 為實數」會改成「設 $x,y$ 為實數」（與預覽相同規則，只處理題幹與選項，「題目文字：自動把數字…」關閉的題目不改）；也會處理貼上、手寫辨識、LaTeX 匯入的文字。每一題也可以單獨取消；改完可按「復原」。'),
+      field('題目文字：自動把數字、單一英文字母改成數學式',bindInput(C,'autoMath',{id:'cfg_autoMath',type:'select',options:[['true','開（預設）'],['false','關']],after:()=>{C.autoMath=($('#cfg_autoMath').value==='true');changed();rerender();}}),'只處理數學式 $…$ 以外的文字；有意義的英文單字（at、of、you）不會動。每一題也可以單獨取消。')),
+    sgroup('字型',
+      h('span',{class:'hint'},'字型留空就用範本預設（標頭 PingFang TC、內文儷宋、英數 Times New Roman）。可填多個，用逗號分隔，依序找系統裡有的。'),
     h('div',{class:'grid2'},
       field('標頭／題號字型（非襯線）',bindInput(F,'sans',{id:'cfg_fsans',placeholder:'PingFang TC, Noto Sans CJK TC'})),
       field('標頭粗體',bindInput(F,'sansBold',{id:'cfg_fsansb',placeholder:'PingFang TC Semibold'})),
       field('內文中文字型',bindInput(F,'serif',{id:'cfg_fserif',placeholder:'LiSong Pro, Songti TC'})),
       field('內文粗體',bindInput(F,'serifBold',{id:'cfg_fserifb',placeholder:'LiHei Pro'})),
       field('內文英數字型',bindInput(F,'latin',{id:'cfg_flatin',placeholder:'Times New Roman'})),
-      field('數學字型',bindInput(F,'math',{id:'cfg_fmath',placeholder:'STIX Two Math'}))));
+      field('數學字型',bindInput(F,'math',{id:'cfg_fmath',placeholder:'STIX Two Math'})))));
 }
 
 /* ================= 題目區 ================= */
@@ -3420,12 +3464,13 @@ function goQ(id){
 
 /* ===== 設定浮動視窗：標籤在題目導覽列上，一次只開一個，用關閉鈕或 Esc 關閉 ===== */
 const CFG_WINS={
-  type:{tab:'本試卷題型',title:'本試卷題型（勾選要出的題型）',c:'#1E407C',t:'#EAF0FA',main:true},
-  all:{tab:'全域設定',title:'全域設定（讀卡方式、試卷邊線；每種版型都適用）',c:'#8A6D3B',t:'#F5EFE3'},
-  head:{tab:'標頭與版面',title:'標頭與版面設定',c:'#3B6E8F',t:'#E8F0F5'},
-  opt:{tab:'題型預設',title:'題型預設（題型名稱／配分、選項數、全卷滿分檢查）',c:'#6B7F94',t:'#EDF0F4'},
-  fig:{tab:'圖庫',title:'圖庫（手繪圖轉向量圖、圖片）',c:'#5E7C7A',t:'#EBF1F0'},
-  adv:{tab:'行距間距與字型',title:'行距、間距與字型',c:'#7A7F8C',t:'#EEEFF2'}
+  type:{tab:'本試卷題型',title:'本試卷題型（勾選要出的題型）',main:true},
+  head:{tab:'版頭',title:'版頭設定'},
+  page:{tab:'版面與間距',title:'版面與間距（紙張、邊線、行距、頁首頁尾）'},
+  note:{tab:'提醒文字',title:'試卷提醒與卷尾提醒'},
+  opt:{tab:'題型預設',title:'題型預設（題型名稱、配分、選項、滿分檢查）'},
+  out:{tab:'輸出與字型',title:'輸出版本、樣式與字型'},
+  fig:{tab:'圖庫',title:'圖庫（手繪圖轉向量圖、圖片）'}
 };
 let cfgOpen=null;
 function cfgPlace(){
@@ -3450,7 +3495,6 @@ function openCfg(key){
   while(body.firstChild)hold.append(body.firstChild);
   const pane=hold.querySelector(`.cfgpane[data-pane="${key}"]`);if(!pane)return;
   body.append(pane);
-  w.style.setProperty('--cc',def.c);w.style.setProperty('--ct',def.t);
   $('#cfgWinT').textContent=def.title;
   w.hidden=false;cfgOpen=key;cfgPlace();body.scrollTop=0;renderCfgTabs();
 }
@@ -3477,10 +3521,10 @@ function renderCfgTabs(){
   const wt=$('#cfgWinTabs');
   const keys=Object.keys(CFG_WINS),mk=(k,menu)=>{
     const d=CFG_WINS[k];
-    return h('button',{type:'button',class:'cfgtab'+(cfgOpen===k?' on':''),style:`--cc:${d.c};--ct:${d.t}`,title:d.title,'aria-pressed':cfgOpen===k?'true':'false',onclick:()=>{if(menu)cfgMenuOpen=false;toggleCfg(k);}},d.tab);
+    return h('button',{type:'button',class:'cfgtab'+(cfgOpen===k?' on':''),title:d.title,'aria-pressed':cfgOpen===k?'true':'false',onclick:()=>{if(menu)cfgMenuOpen=false;toggleCfg(k);}},d.tab);
   };
   const others=keys.filter(k=>!CFG_WINS[k].main),anyOn=others.includes(cfgOpen);
-  const mb=h('button',{type:'button',class:'cfgtab nodot'+(anyOn?' on':''),style:'','aria-haspopup':'true','aria-expanded':cfgMenuOpen?'true':'false',title:'全域設定、標頭與版面、題型預設、圖庫、行距間距與字型',onclick:()=>{cfgMenuOpen=!cfgMenuOpen;renderCfgTabs();}},'⚙ 設定 ▾');
+  const mb=h('button',{type:'button',class:'cfgtab nodot'+(anyOn?' on':''),style:'','aria-haspopup':'true','aria-expanded':cfgMenuOpen?'true':'false',title:'版頭、版面與間距、提醒文字、題型預設、輸出與字型、圖庫',onclick:()=>{cfgMenuOpen=!cfgMenuOpen;renderCfgTabs();}},'⚙ 設定 ▾');
   const cb=$('#contentBar');if(cb)cb.classList.toggle('menuopen',!!cfgMenuOpen);
   const menu=h('div',{class:'cfgmenu',role:'menu'},...others.map(k=>mk(k,true)));menu.hidden=!cfgMenuOpen;
   box.replaceChildren(...keys.filter(k=>CFG_WINS[k].main).map(k=>mk(k)),mb,menu);
@@ -3511,7 +3555,7 @@ function initPvClick(){
     clearTimeout(navT);
     const r=e.target.closest('.pvq[data-pq],.pvcalc[data-pq]'),sec=r?null:e.target.closest('[data-ps]'),hd=(r||sec)?null:e.target.closest('[data-ph]');
     const pn=e.target.closest('[data-pn]');
-    if(pn){const id=pn.dataset.pn==='top'?'noteTop':'noteEnd';openCfg('head');setTimeout(()=>{const x=document.getElementById(id);if(x)x.scrollIntoView({block:'start'});},60);return;}
+    if(pn){const id=pn.dataset.pn==='top'?'noteTop':'noteEnd';openCfg('note');setTimeout(()=>{const x=document.getElementById(id);if(x)x.scrollIntoView({block:'start'});},60);return;}
     const qid=r?Number(r.dataset.pq):null,sid=sec?Number(sec.dataset.ps):null;
     if(!r&&!sec&&!hd)return;
     /* 稍等一下：若是雙擊選字或拖曳選取，就不要跳走 */
@@ -5216,7 +5260,7 @@ function openTexImport(parsed,fileNames){
   });
   const card=h('div',{style:'background:#fff;border-radius:12px;max-width:620px;width:100%;max-height:88vh;overflow:auto;padding:16px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)'},
     h('div',{style:'font-weight:700;font-size:16px;margin-bottom:4px'},'匯入 LaTeX'),
-    h('div',{class:'hint',style:'margin-bottom:8px'},'讀到 '+fileNames.join('、')+'，共 '+total+' 題。只讀題目，標頭與版面設定不會動。'),
+    h('div',{class:'hint',style:'margin-bottom:8px'},'讀到 '+fileNames.join('、')+'，共 '+total+' 題。只讀題目，版頭與版面設定不會動。'),
     ...(rows.length?rows:[h('div',{class:'hint'},'沒有讀到任何題目。')]),
     warns,
     h('div',{style:'margin-top:12px;display:flex;flex-direction:column;gap:6px'},
