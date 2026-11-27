@@ -565,13 +565,14 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.4';
-const APP_BUILD='2026-11-27 13:16';
+const APP_BUILD='2026-11-27 17:50';
 const APP_LOG=[
   {v:'1.4',items:[
     '數學式 $…$ 裡的全形英數、全形符號（＝＋＜（）％等）和全形空格，會自動改成半形；注音符號比照中文處理。\\text{…} 裡面的內容不動。',
     '集合 \\{ \\}、圓括號、方括號裡的中文，改成原地加上 \\text{}，不再把式子從括號中間拆開。',
     '設定視窗重新分類：版頭、版面與間距、提醒文字、題型與配分、輸出與字型、圖庫（原「全域設定」併入版頭與版面），外觀改成與數學式編輯器一致。',
     '修正：自訂版頭的預覽框固定在畫面上，往下捲時擋住下面的設定。',
+    '修正：畫面較小時，「列印 / 存檔」視窗的關閉按鈕被切掉；現在右上角固定顯示「關閉 ✕」、下方有「返回編輯」，中間可以捲動。',
     '修正：按「列印 / 另存 PDF」之後，列印版面留在畫面上擋住工作台；現在列印視窗結束後會自動回到工作台。'
   ]},
   {v:'1.3',items:[
@@ -4830,7 +4831,7 @@ function buildOverleafZip(ver){
 }
 function openSave(){
   if(document.getElementById('saveDlg'))return;
-  const ov=h('div',{id:'saveDlg',style:'position:fixed;inset:0;background:rgba(24,30,46,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px'});
+  const ov=h('div',{id:'saveDlg',style:'position:fixed;inset:0;background:rgba(24,30,46,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:12px 12px calc(var(--stagebar,0px) + 12px)'});
   const msg=h('div',{class:'hint',style:'min-height:22px;margin-top:10px'});
   const say=(t,bad)=>{msg.textContent=t;msg.style.color=bad?'var(--danger)':'var(--ok)';};
   const row=(btn,desc)=>h('div',{style:'display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)'},h('div',{style:'flex:none;width:210px'},btn),h('div',{class:'hint',style:'flex:1'},desc));
@@ -4839,11 +4840,12 @@ function openSave(){
   const b2=h('button',{class:'btn',type:'button',style:'width:100%'},'只下載 main.tex');
   const b3=h('button',{class:'btn primary',type:'button',style:'width:100%'},'存成考卷檔（.json）');
   const bw=h('button',{class:'btn primary',type:'button',style:'width:100%'},'編譯成 PDF（建議）');
-  const bc=h('button',{class:'btn',type:'button'},'關閉');
+  const bc=h('button',{class:'btn',type:'button',id:'saveClose',title:'關閉這個視窗（Esc）',style:'flex:none;font-weight:700'},'關閉 ✕');
+  const bk=h('button',{class:'btn',type:'button',id:'saveBack',style:'flex:none'},'返回編輯');
   const verSel=h('select',{id:'saveVer'},VERS.map(([v,n])=>h('option',{value:v},n)));verSel.value=verOf();
   const close=()=>{ov.remove();document.removeEventListener('keydown',onKey);};
   const onKey=e=>{if(e.key==='Escape')close();};document.addEventListener('keydown',onKey);
-  bc.addEventListener('click',close);ov.addEventListener('mousedown',e=>{if(e.target===ov)close();});
+  bc.addEventListener('click',close);bk.addEventListener('click',close);ov.addEventListener('mousedown',e=>{if(e.target===ov)close();});
   b1.addEventListener('click',async()=>{
     const r=await saveBinary(examFileBase()+'_overleaf.zip',buildOverleafZip(verSel.value));
     if(r.ok){markExported();say('已送出下載。Overleaf：New Project → Upload Project，選這個 zip，編譯器選 XeLaTeX，編譯兩次。');}
@@ -4862,16 +4864,20 @@ function openSave(){
     window.open('wasm/compile.html','_blank');say('已在新分頁開啟編譯。第一次要下載約 110 MB（約 1 分鐘），之後只要幾秒。');
   });
   b3.addEventListener('click',async()=>{await saveFile('exam-project.json',projectJson(1));});
-  const card=h('div',{style:'background:#fff;border-radius:12px;max-width:640px;width:100%;padding:16px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)'},
-    h('div',{style:'font-weight:700;font-size:16px;margin-bottom:6px'},'列印 / 存檔'),
+  /* 標題列與底列固定，中間捲動：畫面再小也看得到離開的按鈕 */
+  const head=h('div',{style:'flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;border-bottom:1px solid var(--line)'},
+    h('div',{style:'font-weight:700;font-size:16px'},'列印 / 存檔'),bc);
+  const body=h('div',{id:'saveBody',style:'flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:10px 20px'},
     h('div',{class:'hint'},(CAN_COMPILE?'要印出正式考卷，請用第一項（或第二項）':'要印出正式考卷，請用「下載 Overleaf 專案」')+'；要之後接著改，存成「考卷檔」就夠了。「列印 / 另存 PDF」是備用，由瀏覽器排版，結果和 LaTeX 編譯有差異。'),
     CAN_COMPILE?row(bw,'用 XeLaTeX 直接在這個瀏覽器編譯成 PDF，排版與 Overleaf 完全相同，不需要 Overleaf 帳號。第一次使用要下載約 110 MB（約 1 分鐘），之後只要幾秒。編譯頁上方可以切換學生版、簡答版、詳解版。'):'',
     h('div',{style:'padding:10px 0 4px;border-top:1px solid var(--line)'},h('label',{style:'display:flex;gap:10px;align-items:center;flex-wrap:wrap'},h('b',{},'下載 zip、main.tex 的版本'),verSel)),
     row(b1,'內含 main.tex、examsheet.cls、附圖圖片，以及考卷檔。整包上傳到 Overleaf 用 XeLaTeX 編譯'+(CAN_COMPILE?'，成品與上一項相同':'（建議的輸出方式）')+'。這個 zip 也能用「開啟舊檔」開回這個工具繼續改。'),
     row(b0,'用瀏覽器內建的列印功能，可選版本（學生版／簡答版／詳解版）並預覽。【備用】由瀏覽器排版輸出，不是用 LaTeX 編譯，字型、行距、數學式和分頁可能和 LaTeX 編譯的結果不同。建議只在其他輸出方式不能用時使用。'),
     row(b3,'只存這個工具用的考卷檔，之後用「開啟舊檔」接著改。'),
-    row(b2,'只要 main.tex 這一個檔（examsheet.cls 在「examsheet.cls」分頁另外取得）。'),
-    msg,h('div',{style:'text-align:right;margin-top:6px'},bc));
+    row(b2,'只要 main.tex 這一個檔（examsheet.cls 在「examsheet.cls」分頁另外取得）。'));
+  msg.style.cssText='flex:1;min-width:0';
+  const foot=h('div',{style:'flex:none;display:flex;align-items:center;gap:12px;padding:10px 20px;border-top:1px solid var(--line)'},msg,bk);
+  const card=h('div',{style:'background:#fff;border-radius:12px;max-width:640px;width:100%;max-height:100%;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.35)'},head,body,foot);
   ov.append(card);document.body.append(ov);
 }
 
