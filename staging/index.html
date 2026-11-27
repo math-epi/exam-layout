@@ -417,7 +417,7 @@ input.sw:checked+.swstate::after{content:'開'}
   <button class="btn small" id="btnImport" type="button" title="開啟之前存的考卷檔">開啟舊檔</button>
   <button class="btn small" id="btnImportTex" type="button" title="匯入其他老師用 LaTeX 打的題目（.tex 或 .zip），自動分到各題型">匯入 LaTeX</button>
   <button class="btn small danger" id="btnReset" type="button">載入範例</button>
-  <button class="btn small" id="btnInstall" type="button" title="把工作台裝在這台電腦，之後點圖示就能開，不用記網址" hidden>安裝工作台</button>
+  <button class="btn small" id="btnInstall" type="button" title="像一般軟體一樣點圖示開啟，不用記網址；連網開過後可離線編輯與列印" hidden>安裝到電腦</button>
   <a class="btn small" id="lnkManual" href="manual.html" target="_blank" rel="noopener" style="text-decoration:none">使用手冊</a>
   <span id="saveStatus" aria-live="polite" style="font-size:12px;margin-left:10px;padding:3px 10px;border-radius:999px;background:#EAF0FA;color:#5B6577;white-space:nowrap"></span>
   <input type="file" id="fileImport" accept=".json,.zip,application/json,application/zip" hidden>
@@ -589,9 +589,10 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.5';
-const APP_BUILD='2026-11-27 23:31';
+const APP_BUILD='2026-11-28 06:30';
 const APP_LOG=[
   {v:'1.5',items:[
+    '「安裝工作台」按鈕改名為「安裝到電腦」。',
     '設定視窗分區更清楚：每個區塊有自己的顏色外框、標題色帶與編號；正在操作的區塊會亮起來。',
     '選填題：算式中間的減號設定為「佔一格」時，自動在減號格前面補一個 +（2x−4 印成 2x+□□）。',
     '版頭的科目選單固定為：數學、數學科、數學A、數學B、選修數學甲、選修數學乙（仍可自行輸入）；換年級不再自動改科目。',
@@ -5370,7 +5371,7 @@ twoClick($('#btnNew'),()=>{blankState();
   if(used)toast(`新考卷已套用你的預設版型「${d.name}」。`);},'清空？再按一次');
 twoClick($('#btnReset'),()=>{sampleState();settingsBuilt=false;rerender();},'目前內容將被取代，再按一次');
 $('#btnPrint').onclick=openSave;
-/* ===== 安裝工作台（PWA）：只給 GitHub版（http/https）；單機版、Claude版不啟用 ===== */
+/* ===== 安裝到電腦（PWA）：只給 GitHub版（http/https）；單機版、Claude版不啟用 ===== */
 (function initInstall(){
   if(!OFFLINE||!/^https?:$/.test(location.protocol)||!('serviceWorker' in navigator))return;
   const link=document.createElement('link');link.rel='manifest';link.href=STAGING?'manifest-test.webmanifest':'manifest.webmanifest';document.head.append(link);
@@ -5393,8 +5394,8 @@ $('#btnPrint').onclick=openSave;
     const onKey=e=>{if(e.key==='Escape')close();};document.addEventListener('keydown',onKey);
     const bc=h('button',{class:'btn primary',type:'button'},'關閉');bc.addEventListener('click',close);
     const li=(a,b)=>h('li',{style:'margin:6px 0'},h('b',null,a),'：'+b);
-    ov.append(h('div',{role:'dialog','aria-label':'安裝工作台',style:'background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:100%;overflow:auto;padding:18px 22px;line-height:1.7;font-size:14px'},
-      h('div',{style:'font-weight:700;font-size:16px'},'安裝工作台'),
+    ov.append(h('div',{role:'dialog','aria-label':'安裝到電腦',style:'background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:100%;overflow:auto;padding:18px 22px;line-height:1.7;font-size:14px'},
+      h('div',{style:'font-weight:700;font-size:16px'},'安裝到電腦'),
       h('div',null,'請依你用的瀏覽器操作。如果已經裝過，直接從桌面、Dock 或開始功能表開啟。'),
       h('ul',{style:'padding-left:20px'},
         li('Chrome','網址列右邊的安裝圖示；或右上角「⋮」→「投放、儲存及分享」→「安裝網頁應用程式」'),
