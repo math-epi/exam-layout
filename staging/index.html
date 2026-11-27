@@ -526,10 +526,10 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.3';
-const APP_BUILD='2026-11-27 09:02';
+const APP_BUILD='2026-11-27 10:25';
 const APP_LOG=[
   {v:'1.3',items:[
-    '數學符號面板換新外觀（沉穩淺色、按鍵緊湊，筆電畫面可看到整個面板），右上角可切換深色；按鈕改名為「插入並關閉」「連續插入」。','檢查提醒可以直接點，會跳到要修改的題目或設定欄位。',
+    '數學符號面板換新外觀（沉穩淺色、按鍵緊湊，筆電畫面可看到整個面板），右上角可切換深色；按鈕改名為「插入並關閉」「連續插入」。','檢查提醒可以直接點，會跳到要修改的題目或設定欄位。','數學符號面板變窄，常用符號可以自訂快速鍵（面板上方「快速鍵」）。',
     '修正：ℝ、ℕ、ℤ 等雙線字母（\\mathbb）及部分少用符號在網頁上排不出來。',
     '新增「安裝工作台」按鈕：裝好後從桌面、Dock 或開始功能表點圖示就能開，不用記網址。安裝後第一次請連網開啟。'
   ]},
@@ -5631,6 +5631,129 @@ function mmItems(){
   if(mmCat==='recent')return mmRecent.map(k=>MM_ALL.find(it=>it.k===k)).filter(Boolean);
   return (MM.find(c=>c.id===mmCat)||MM[0]).items;
 }
+/* ====== 自訂快速鍵：常用符號指定按鍵；只存在這台電腦的瀏覽器 ====== */
+let mmKeys={};   // 符號 k → 'ctrl+alt+shift+meta|KeyF'
+try{const v=JSON.parse(localStorage.getItem('exam-mm-keys')||'{}');if(v&&typeof v==='object')mmKeys=v;}catch(e){}
+const mkSave=()=>{try{localStorage.setItem('exam-mm-keys',JSON.stringify(mmKeys));}catch(e){}};
+const MK_PUNCT={Minus:'-',Equal:'=',BracketLeft:'[',BracketRight:']',Semicolon:';',Quote:"'",Comma:',',Period:'.',Slash:'/',Backslash:'\\',Backquote:'`'};
+const mkKeyName=c=>/^Key[A-Z]$/.test(c)?c.slice(3):/^Digit\d$/.test(c)?c.slice(5):(MK_PUNCT[c]||null);
+const mkCombo=e=>[e.ctrlKey&&'ctrl',e.altKey&&'alt',e.shiftKey&&'shift',e.metaKey&&'meta'].filter(Boolean).join('+')+'|'+e.code;
+function mkLabel(cb){
+  const [m,c]=cb.split('|');const n={ctrl:IS_MAC?'Control':'Ctrl',alt:KEY_ALT,shift:'Shift',meta:IS_MAC?'⌘':'Win'};
+  return m.split('+').filter(Boolean).map(x=>n[x]).concat(mkKeyName(c)||c).join('+');
+}
+/* 回傳不能用的原因；可以用就回傳 '' */
+function mkBlocked(e){
+  const k=mkKeyName(e.code),c=e.ctrlKey,a=e.altKey,sh=e.shiftKey,m=e.metaKey;
+  if(!k)return '請搭配英文字母、數字或標點符號鍵（Enter、方向鍵、功能鍵不能用）。';
+  if(!c&&!a&&!m)return '要同時按住 '+(IS_MAC?'Option 或 Control':'Alt')+'，否則一般打字就會觸發。';
+  const code=e.code;
+  if(a&&!c&&!m&&code==='KeyM')return '這是工作台「開啟面板」的快速鍵。';
+  if(IS_MAC){
+    if(m)return '⌘ 的組合幾乎都被瀏覽器或 macOS 使用（例如複製、存檔、列印、關閉分頁）。';
+    if(a&&!c&&['KeyE','KeyU','KeyI','KeyN','Backquote'].includes(code))return 'macOS 用這一組打重音符號。';
+    if(c&&!a&&!sh){
+      if(/^Digit/.test(code))return 'macOS 用 Control＋數字切換桌面。';
+      if('ABDEFHKNOPTVY'.includes(k))return 'macOS 在輸入框裡用這一組移動游標或刪字。';
+      if(code==='KeyU')return '這是工作台的「底線」快速鍵。';
+    }
+    if(c&&!a&&(code==='KeyB'||code==='KeyU'))return '這是工作台的「粗體／底線」快速鍵。';
+  }else{
+    if(m)return 'Windows 鍵的組合是系統在用的。';
+    if(c&&!a)return 'Ctrl 的組合幾乎都被瀏覽器、輸入法或工作台使用（例如複製、存檔、列印、粗體）。';
+    if(a&&!c&&!sh){
+      if(code==='KeyD')return '瀏覽器用 Alt+D 跳到網址列。';
+      if(code==='KeyE'||code==='KeyF')return '瀏覽器用 Alt+'+k+' 開啟選單。';
+    }
+    if(a&&sh&&!c&&(code==='KeyI'||code==='KeyT'||code==='KeyB'))return '瀏覽器用 Alt+Shift+'+k+' 做其他功能。';
+  }
+  return '';
+}
+/* 小格子裡的縮寫 */
+const mkShort=cb=>{const [m,c]=cb.split('|');const n=IS_MAC?{ctrl:'⌃',alt:'⌥',shift:'⇧',meta:'⌘'}:{ctrl:'C+',alt:'A+',shift:'S+',meta:'W+'};return m.split('+').filter(Boolean).map(x=>n[x]).join('')+(mkKeyName(c)||c);};
+const mkOwner=cb=>Object.keys(mmKeys).find(k=>mmKeys[k]===cb);
+const mkName=k=>{const it=MM_ALL.find(x=>x.k===k);return it?it.n:k;};
+let mkDlg=null;
+function openKeyDlg(preK){
+  if(mkDlg)return;
+  const back=document.activeElement;
+  let sel=preK||null;
+  const search=h('input',{type:'text',placeholder:'搜尋符號，例如：分數、根號、向量','aria-label':'搜尋要設定的符號'});
+  const pick=h('div',{class:'mk-pick'}),rec=h('div',{class:'mk-rec',tabindex:'0'}),msg=h('div',{class:'mk-msg','aria-live':'polite'}),list=h('div',{class:'mk-list'});
+  const say=(t,cls,...more)=>{msg.className='mk-msg '+(cls||'');msg.replaceChildren(t,...more);};
+  const draw=()=>{
+    const q=search.value.trim().toLowerCase();
+    let items=q?MM_ALL.filter(it=>(it.n+' '+it.t).toLowerCase().includes(q)):(MM[0]?MM[0].items:[]);
+    const cur=sel&&MM_ALL.find(x=>x.k===sel);
+    if(cur&&!q&&!items.includes(cur))items=[cur,...items];
+    pick.replaceChildren(...items.slice(0,60).map(it=>h('button',{type:'button','data-k':it.k,'aria-pressed':String(it.k===sel),title:it.n,onclick:()=>{sel=it.k;say('');draw();rec.focus();}},
+      mmReady?h('span',{},'\\('+mmShow(it)+'\\)'):null,h('span',{},it.n))));
+    if(!items.length)pick.replaceChildren(h('span',{},'找不到符合的符號'));
+    if(mmReady)typeset(pick);
+    rec.textContent=sel?'現在按下要給「'+mkName(sel)+'」的按鍵（建議 '+KEY_ALT+'＋字母）'+(mmKeys[sel]?'　目前：'+mkLabel(mmKeys[sel]):''):'先在上面選一個符號';
+    const ks=Object.keys(mmKeys);
+    list.replaceChildren(...(ks.length?ks.map(k=>h('div',{class:'mk-row'},h('span',{},mkName(k)),h('kbd',{},mkLabel(mmKeys[k])),
+      h('button',{type:'button',class:'btn small','aria-label':'移除「'+mkName(k)+'」的快速鍵',onclick:()=>{delete mmKeys[k];mkSave();say('已移除「'+mkName(k)+'」的快速鍵。','ok');draw();mmRender();}},'移除'))):[h('p',{},'還沒有設定任何快速鍵。')]));
+  };
+  const assign=cb=>{const o=mkOwner(cb);if(o)delete mmKeys[o];mmKeys[sel]=cb;mkSave();say('已設定：'+mkName(sel)+' → '+mkLabel(cb),'ok');draw();mmRender();};
+  const onKey=e=>{
+    if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();close();return;}
+    if(['Control','Alt','Shift','Meta','Tab','CapsLock','AltGraph'].includes(e.key))return;
+    const mod=e.ctrlKey||e.altKey||e.metaKey;
+    if(!mod){
+      if(e.target===search||e.target.tagName==='BUTTON')return;
+      e.preventDefault();e.stopImmediatePropagation();if(sel)say(mkBlocked(e),'bad');return;
+    }
+    if(e.target===search&&(e.metaKey||e.ctrlKey)&&!e.altKey&&['KeyA','KeyC','KeyV','KeyX','KeyZ'].includes(e.code))return;
+    e.preventDefault();e.stopImmediatePropagation();
+    if(e.repeat)return;
+    if(!sel){say('請先選一個符號。','bad');return;}
+    const cb=mkCombo(e),why=mkBlocked(e);
+    if(why){say((mkKeyName(e.code)?mkLabel(cb)+' 不能用：':'')+why+'請換一組。','bad');return;}
+    const o=mkOwner(cb);
+    if(o&&o!==sel){say(mkLabel(cb)+' 已經指定給「'+mkName(o)+'」，請換一組。','bad',h('button',{type:'button',class:'btn small',onclick:()=>assign(cb)},'改給「'+mkName(sel)+'」'));return;}
+    assign(cb);
+  };
+  const close=()=>{window.removeEventListener('keydown',onKey,true);mkDlg.remove();mkDlg=null;if(back&&document.contains(back)&&back.focus)back.focus();};
+  search.oninput=draw;
+  const x=h('button',{type:'button','aria-label':'關閉快速鍵設定',onclick:()=>close()},'×');
+  mkDlg=h('div',{class:'mk-ov',id:'mmKeyDlg',onmousedown:e=>{if(e.target===mkDlg)close();}},h('div',{class:'mk',role:'dialog','aria-modal':'true','aria-label':'自訂快速鍵'},
+    h('div',{class:'mk-h'},h('b',{},'自訂快速鍵'),x),
+    h('div',{class:'mk-b'},
+      h('p',{},'在考卷欄位打字時按下快速鍵，就會打開面板並加入那個符號。設定只存在這台電腦的瀏覽器。'),
+      h('h4',{},'① 選符號'),search,pick,
+      h('h4',{},'② 按下按鍵'),rec,msg,
+      h('p',{},'系統與瀏覽器常用的組合會擋下來。其他軟體或瀏覽器擴充功能占用的按鍵偵測不到：如果按了沒有反應，請換一組。'),
+      h('h4',{},'已設定的快速鍵'),list)));
+  window.addEventListener('keydown',onKey,true);
+  document.body.append(mkDlg);draw();
+  (sel?rec:search).focus();
+}
+/* 面板開好、視覺輸入備妥後再放符號 */
+function mkInsert(it){
+  let n=0;
+  const go=()=>{
+    if(mmBox.hidden)return;
+    let pref='visual';try{pref=localStorage.getItem('exam-mm-mode')||'visual';}catch(e){}
+    const wait=mlState==='loading'||(pref==='visual'&&!mlEl&&mlState!=='fail');
+    if(wait&&n++<80){setTimeout(go,100);return;}
+    mmInsert(it,false);mmFocus();
+  };
+  go();
+}
+window.addEventListener('keydown',e=>{
+  if(mkDlg||!mmBox||e.repeat||e.isComposing&&!e.altKey||!(e.ctrlKey||e.altKey||e.metaKey))return;
+  const k=mkOwner(mkCombo(e));if(!k)return;
+  const it=MM_ALL.find(x=>x.k===k);if(!it)return;
+  const a0=document.activeElement,a=(a0&&a0._rteTa)||a0,inPanel=!mmBox.hidden&&mmBox.contains(a0),field=isTarget(a);
+  /* 其他設定欄位或對話框裡不搶按鍵 */
+  if(!inPanel&&!field&&a0&&a0!==document.body&&a0.matches&&a0.matches('input,textarea,select,[contenteditable="true"]'))return;
+  if(document.querySelector('[aria-modal="true"]'))return;
+  e.preventDefault();e.stopImmediatePropagation();
+  if(inPanel){mmInsert(it,false);mmFocus();return;}
+  if(mmBox.hidden)openMM(field?a:null);else mmFocus();
+  mkInsert(it);
+},true);
 function mmRender(){
   if(!mmBox)return;
   const tabs=mmBox.querySelector('.mm-tabs'),grid=mmBox.querySelector('.mm-grid');
@@ -5643,8 +5766,8 @@ function mmRender(){
       h('div',{class:'mm-2'},
         h('button',{type:'button',title:'放在句子中間，不換行（$…$）',onmousedown:e=>e.preventDefault(),onclick:()=>mmInsert(it,false)},'行內'),
         h('button',{type:'button',title:'獨立一行、置中（$$…$$）',onmousedown:e=>e.preventDefault(),onclick:()=>mmInsert(it,true)},'置中換行'))):
-    h('button',{type:'button',class:'mm-b',title:it.n+'\n'+it.t.replace(/§/g,'').replace(/\n/g,' '),onmousedown:e=>e.preventDefault(),onclick:()=>mmInsert(it)},
-    mmReady?h('span',{class:'mm-x'},'\\('+mmShow(it)+'\\)'):h('span',{class:'mm-t'},it.n),mmReady?h('span',{class:'mm-n'},it.n):null)));
+    h('button',{type:'button',class:'mm-b'+(mmKeys[it.k]?' has-sk':''),'data-k':it.k,title:it.n+'\n'+it.t.replace(/§/g,'').replace(/\n/g,' ')+(mmKeys[it.k]?'\n快速鍵：'+mkLabel(mmKeys[it.k]):'\n按右鍵可設定快速鍵'),onmousedown:e=>e.preventDefault(),onclick:()=>mmInsert(it),oncontextmenu:e=>{e.preventDefault();openKeyDlg(it.k);}},
+    mmKeys[it.k]?h('span',{class:'mm-sk'},mkShort(mmKeys[it.k])):null,mmReady?h('span',{class:'mm-x'},'\\('+mmShow(it)+'\\)'):h('span',{class:'mm-t'},it.n),mmReady?h('span',{class:'mm-n'},it.n):null)));
   if(mmReady)typeset(grid);
 }
 function openMM(ta){
@@ -5723,7 +5846,7 @@ function initMM(){
 .mm{overflow-x:hidden}
 @media (max-width:460px){.mm .mm-act{flex-wrap:wrap}.mm .mm-act .btn.primary{flex:1 1 100%}.mm-act .mm-key{display:none}}
 /* ===== 緊湊版：矮螢幕（筆電、放大顯示）也要看得到整個面板；細格線與藍色光暈的科技感 ===== */
-.mm{--glow:rgba(47,128,237,.30);--dot:rgba(30,64,124,.13);right:12px;bottom:calc(var(--stagebar,0px) + 8px);width:min(428px,calc(100vw - 24px));height:min(640px,calc(100dvh - var(--stagebar,0px) - 16px));max-height:calc(100dvh - var(--stagebar,0px) - 16px);border-color:#9DB3D6;border-radius:12px}
+.mm{--glow:rgba(47,128,237,.30);--dot:rgba(30,64,124,.13);right:12px;bottom:calc(var(--stagebar,0px) + 8px);width:min(376px,calc(100vw - 24px));height:min(640px,calc(100dvh - var(--stagebar,0px) - 16px));max-height:calc(100dvh - var(--stagebar,0px) - 16px);border-color:#9DB3D6;border-radius:12px}
 .mm.mm-dark{--glow:rgba(96,165,250,.38);--dot:rgba(143,180,240,.16);border-color:#34528A}
 .mm-h{min-height:40px;padding:0 6px 0 11px;gap:8px;background:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px) 0 0/100% 10px,linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px) 0 0/10px 100%,linear-gradient(100deg,#0D1B38,#1C3C76)}
 .mm.mm-dark .mm-h{background:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px) 0 0/100% 10px,linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px) 0 0/10px 100%,linear-gradient(100deg,#070D1A,#14264A)}
@@ -5760,14 +5883,40 @@ button.mm-b:hover::before,button.mm-b:focus-visible::before{border-color:#22D3EE
 .mm-grid .mm-b2{grid-column:span 3;min-height:88px}.mm-b2 .mm-x{min-height:56px;font-size:12px}.mm .mm-2 button{font-size:11px;padding:1px 7px}
 .mm-f{padding:4px 12px 5px;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (prefers-reduced-motion:reduce){.mm-b{transition:none}button.mm-b:hover{transform:none}}
-@media (max-width:460px){.mm-ed .mm-vc{position:static;margin-top:5px}.mm-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.mm-grid .mm-b2{grid-column:span 5}.mm .mm-act .btn.primary{flex:1 1 auto}.mm .mm-act{flex-wrap:nowrap}.mm-h .mm-kbd{display:none}}`;
+@media (max-width:460px){.mm-ed .mm-vc{position:static;margin-top:5px}.mm-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.mm-grid .mm-b2{grid-column:span 5}.mm .mm-act .btn.primary{flex:1 1 auto}.mm .mm-act{flex-wrap:nowrap}.mm-h .mm-kbd{display:none}}
+/* 窄版（376px）與自訂快速鍵 */
+.mm-h{gap:6px}.mm-h b{letter-spacing:.1em;white-space:nowrap}.mm-h button{white-space:nowrap;padding:1px 6px}
+.mm-ed,.mm-c,.mm-tabs,.mm-grid,.mm-f{padding-left:10px;padding-right:10px}.mm-vc{right:10px}
+.mm .mm-modes .btn{padding:2px 8px;white-space:nowrap}
+.mm .mm-c select{width:136px}
+.mm .mm-act .btn{padding:2px 7px}.mm-act{gap:5px}
+.mm .mm-tabs button{padding:1px 6px}.mm-tabs{gap:3px}
+.mm-grid{gap:4px}
+.mm-sk{position:absolute;right:2px;top:1px;max-width:calc(100% - 4px);overflow:hidden;white-space:nowrap;font:600 7.5px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);background:var(--soft);border-radius:3px;padding:0 2px}
+.mm-b.has-sk{padding-top:10px}
+@media (max-width:420px){.mm .mm-act .mm-key,.mm-vc .hint{display:none}.mm .mm-c select{width:120px}}
+.mk-ov{position:fixed;inset:0;z-index:100000;background:rgba(10,18,36,.5);display:flex;align-items:center;justify-content:center;padding:10px}
+.mk{width:min(560px,100%);max-height:calc(100dvh - 20px);display:flex;flex-direction:column;background:#fff;color:#1A2233;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden}
+.mk-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;background:linear-gradient(100deg,#0D1B38,#1C3C76);color:#fff;border-bottom:2px solid #22D3EE}
+.mk-h button{font:inherit;font-size:19px;line-height:1;background:none;border:0;color:#fff;cursor:pointer;padding:4px 8px}
+.mk-b{overflow:auto;padding:10px 14px 14px;display:flex;flex-direction:column;gap:8px}.mk-b>*{flex-shrink:0}
+.mk p{margin:0;font-size:13px;color:#53607A;line-height:1.6}.mk h4{margin:4px 0 0;font-size:13.5px}
+.mk input{font:inherit;font-size:13.5px;padding:5px 10px;border:1px solid #D8DEE8;border-radius:8px}
+.mk-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:4px;max-height:132px;overflow:auto;padding:2px}
+.mk-pick button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:50px;padding:3px;border:1px solid #D8DEE8;background:#fff;color:inherit;border-radius:7px;cursor:pointer;font-size:10px}
+.mk-pick button[aria-pressed="true"]{border-color:#1E407C;background:#EDF1F8;box-shadow:0 0 0 2px #1E407C}
+.mk-rec{border:1.5px dashed #1E407C;border-radius:9px;background:#F7F9FC;padding:10px 12px;font-size:14px;text-align:center}
+.mk-msg{min-height:1.6em;font-size:13px;line-height:1.6}.mk-msg.bad{color:#A4332A;font-weight:700}.mk-msg.ok{color:#17663A;font-weight:700}.mk-msg button{margin-left:8px}
+.mk-list{display:flex;flex-direction:column;gap:4px}
+.mk-row{display:flex;align-items:center;gap:10px;border:1px solid #D8DEE8;border-radius:8px;padding:4px 8px;font-size:13px}
+.mk-row span{flex:1;min-width:0}.mk kbd{font:600 12px ui-monospace,Menlo,monospace;border:1px solid #B8C4D8;border-bottom-width:2px;border-radius:5px;padding:1px 7px;background:#fff;color:#1A2233;white-space:nowrap}`;
   document.head.append(style);
   const close=h('button',{type:'button',class:'mm-close','aria-label':'關閉數學符號面板',title:'關閉（Esc）',onclick:closeMM},'×');
   /* 外觀：預設淺色，老師切換後記在這台電腦 */
   const themeBtn=h('button',{type:'button',id:'mmTheme',onmousedown:e=>e.preventDefault()});
   const setTheme=(dark,save)=>{mmBox.classList.toggle('mm-dark',dark);themeBtn.textContent=dark?'淺色':'深色';themeBtn.title='切換成'+(dark?'淺色':'深色')+'外觀';themeBtn.setAttribute('aria-label',themeBtn.title);if(save){try{localStorage.setItem('exam-mm-theme',dark?'dark':'light');}catch(e){}}};
   themeBtn.addEventListener('click',()=>setTheme(!mmBox.classList.contains('mm-dark'),true));
-  const hd=h('div',{class:'mm-h',title:'按住這一列可以拖曳移動'},h('span',{class:'mm-logo','aria-hidden':'true'},'Σ'),h('b',{},'數學符號'),h('span',{class:'mm-sp'}),h('span',{class:'mm-kbd'},KEY_ALT+'+M'),themeBtn,close);
+  const hd=h('div',{class:'mm-h',title:'按住這一列可以拖曳移動'},h('span',{class:'mm-logo','aria-hidden':'true'},'Σ'),h('b',{},'數學符號'),h('span',{class:'mm-sp'}),h('span',{class:'mm-kbd'},KEY_ALT+'+M'),h('button',{type:'button',id:'mmKeysBtn',title:'替常用符號設定快速鍵',onmousedown:e=>e.preventDefault(),onclick:()=>openKeyDlg()},'快速鍵'),themeBtn,close);
   const search=h('input',{type:'text',id:'mmSearch',placeholder:'搜尋，例如：分數、根號、alpha','aria-label':'搜尋符號'});
   search.oninput=()=>{mmQuery=search.value;mmRender();};
   const mode=h('select',{id:'mmMode','aria-label':'公式符號'},h('option',{value:'auto'},'插入時自動加 $…$'),h('option',{value:'inline'},'一律行內 $…$'),h('option',{value:'display'},'一律獨立 $$…$$'),h('option',{value:'raw'},'不加 $（已在公式內）'));
@@ -5782,7 +5931,7 @@ button.mm-b:hover::before,button.mm-b:focus-visible::before{border-color:#22D3EE
   const modes=h('div',{class:'mm-modes'},mB('visual','視覺輸入'),mB('text','LaTeX 文字'));
   const ctl=(n,cmd,tip)=>h('button',{type:'button',class:'btn small',title:tip,onmousedown:e=>e.preventDefault(),onclick:()=>{if(mlEl){mlEl.focus();mlEl.executeCommand(cmd);mmPrev();}}},n);
   const visWrap=h('div',{id:'mmVisWrap',hidden:true},
-    h('div',{class:'mm-vc'},h('span',{class:'hint'},'矩陣／聯立：'),ctl('＋列','addRowAfter','在目前這一列下面加一列'),ctl('＋欄','addColumnAfter','在目前這一欄右邊加一欄'),ctl('−列','removeRow','刪除目前這一列'),ctl('−欄','removeColumn','刪除目前這一欄')),
+    h('div',{class:'mm-vc'},h('span',{class:'hint',title:'矩陣、聯立方程式增減列與欄'},'矩陣'),ctl('＋列','addRowAfter','在目前這一列下面加一列'),ctl('＋欄','addColumnAfter','在目前這一欄右邊加一欄'),ctl('−列','removeRow','刪除目前這一列'),ctl('−欄','removeColumn','刪除目前這一欄')),
     h('div',{id:'mmLx',class:'mm-lx'}));
   const ed=h('div',{class:'mm-ed'},h('div',{class:'mm-edl'},'公式輸入框（不用打 $）'),modes,visWrap,draft,pv,er,h('div',{class:'mm-act'},ins,ins2,clr));
   mmBox=h('div',{id:'mm',class:'mm',hidden:true,role:'dialog','aria-label':'數學符號'},hd,ed,h('div',{class:'mm-c'},search,mode),h('div',{class:'mm-tabs',role:'tablist'}),h('div',{class:'mm-grid'}),
