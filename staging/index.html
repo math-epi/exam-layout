@@ -370,10 +370,7 @@ input.sw:checked+.swstate::after{content:'開'}
 .cfgwin .card-b{padding:0 12px;column-width:400px;column-gap:12px}
 .cfgwin .card-b:empty{display:none}
 .cfgwin .card-b>*{margin:0 0 10px}
-.cfgwin .sg,.cfgwin .card-b>.hfbox,.cfgwin .card-b .hdedit,.cfgwin #typeDetail>div:not(.hint){background:#fff;border:1px solid #D8DEE8;border-radius:10px;padding:9px 12px 11px}
 .cfgwin .sg[hidden]{display:none}
-.cfgwin .sg>h4,.cfgwin .hdedit>b,.cfgwin .cfgdetail-t{display:flex;align-items:center;gap:7px;margin:0 0 8px;font-size:12.5px;font-weight:700;letter-spacing:.08em;color:#14274A}
-.cfgwin .sg>h4::before,.cfgwin .hdedit>b::before{content:'';width:3px;height:13px;border-radius:2px;background:linear-gradient(180deg,#22D3EE,#2563C9)}
 .cfgwin .sg>*+*{margin-top:8px}.cfgwin .sg>h4+*{margin-top:0}
 .cfgwin .sg .f{margin-bottom:0}
 .cfgwin .f>label{font-size:12px;color:#3C4A66;font-weight:600}
@@ -384,9 +381,31 @@ input.sw:checked+.swstate::after{content:'開'}
 .cfgwin .rtv{font-size:13px;padding:4px 9px;border-color:#CBD5E4;border-radius:7px;line-height:1.7}
 .cfgwin .rte:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow)}
 .cfgwin label.chk{font-size:13px}
-.cfgwin .card-b>.hfbox>b:first-child{letter-spacing:.06em;color:#14274A;font-size:12.5px}
 .cfgwin .tip{font-size:12px}
 .cfgwin .slotinfo{font-size:12px}
+/* 設定視窗分區：每個區塊一個顏色（外框、標題帶、編號、游標所在框一致） */
+.cfgwin-b{background:linear-gradient(rgba(30,64,124,.045) 1px,transparent 1px) 0 0/100% 18px,linear-gradient(90deg,rgba(30,64,124,.045) 1px,transparent 1px) 0 0/18px 100%,#EEF2F8}
+.cfgwin .cfgpane{counter-reset:sg}
+.cfgwin .sg,.cfgwin .card-b>.hfbox,.cfgwin .card-b .hdedit,.cfgwin #typeDetail>div:not(.hint),.cfgwin .figcard{--bc:#1F5FBF;--bt:#E8F0FD;--glow:color-mix(in srgb,var(--bc) 24%,transparent);background:#fff;border:2px solid color-mix(in srgb,var(--bc) 58%,#fff);border-radius:10px;padding:9px 12px 11px;box-shadow:0 1px 3px rgba(12,22,44,.07);transition:border-color .15s,box-shadow .15s}
+.cfgwin [data-bc=teal]{--bc:#0B7285!important;--bt:#E3F4F6!important}
+.cfgwin [data-bc=violet]{--bc:#5B45B0!important;--bt:#EFEBFA!important}
+.cfgwin [data-bc=amber]{--bc:#96610A!important;--bt:#FAF1DD!important}
+.cfgwin [data-bc=green]{--bc:#256F46!important;--bt:#E6F4EC!important}
+.cfgwin [data-bc=rose]{--bc:#A03568!important;--bt:#F9EAF1!important}
+.cfgwin #typeDetail>div:not(.hint){--bc:var(--tc);--bt:var(--tt)}
+.cfgwin .sg:focus-within,.cfgwin .card-b>.hfbox:focus-within,.cfgwin .card-b .hdedit:focus-within,.cfgwin #typeDetail>div:not(.hint):focus-within,.cfgwin .figcard:focus-within{border-color:var(--bc);box-shadow:0 0 0 3px var(--glow),0 6px 18px rgba(12,22,44,.12)}
+.cfgwin .sg>h4,.cfgwin .hdedit>b,.cfgwin .card-b>.hfbox>b:first-child,.cfgwin .cfgdetail-t{counter-increment:sg;display:flex;align-items:center;gap:9px;margin:-9px -12px 10px;padding:7px 12px 7px 9px;border-radius:8px 8px 0 0;border-bottom:1px solid color-mix(in srgb,var(--bc) 32%,#fff);background:var(--bt);color:color-mix(in srgb,var(--bc) 82%,#000);font-size:13px;font-weight:700;letter-spacing:.08em;line-height:1.4}
+.cfgwin .sg>h4::before,.cfgwin .hdedit>b::before,.cfgwin .card-b>.hfbox>b:first-child::before,.cfgwin .cfgdetail-t::before{content:counter(sg,decimal-leading-zero);flex:none;width:auto;height:auto;min-width:24px;box-sizing:border-box;text-align:center;padding:1px 4px;border-radius:4px;background:var(--bc);color:#fff;font:700 11px/16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:0}
+.cfgwin .sg>h4::after,.cfgwin .hdedit>b::after,.cfgwin .card-b>.hfbox>b:first-child::after,.cfgwin .cfgdetail-t::after{content:'';flex:1;min-width:20px;height:6px;opacity:.55;background:linear-gradient(var(--bc),var(--bc)) right center/6px 6px no-repeat,linear-gradient(90deg,transparent,var(--bc)) left center/calc(100% - 10px) 1px no-repeat}
+.cfgwin .sg input:not([type=checkbox]):not([type=radio]):not([type=range]):focus,.cfgwin .sg select:focus,.cfgwin .sg textarea:focus,.cfgwin .sg .rte:focus,.cfgwin .hfbox input:not([type=checkbox]):not([type=radio]):not([type=range]):focus,.cfgwin .hfbox select:focus,.cfgwin .hfbox textarea:focus,.cfgwin .hfbox .rte:focus,.cfgwin .hdedit input:focus,.cfgwin .hdedit select:focus,.cfgwin .hdedit textarea:focus,.cfgwin #typeDetail input:focus,.cfgwin .figcard input:focus,.cfgwin .figcard textarea:focus,.cfgwin .figcard select:focus{border-color:var(--bc);box-shadow:0 0 0 3px var(--glow)}
+.cfgwin .secset{background:color-mix(in srgb,var(--tt) 55%,#fff);border:1px solid color-mix(in srgb,var(--tc) 22%,#fff);margin-left:0}
+.cfgwin #typeDetail .pfrow,.cfgwin #typeDetail .slotinfo{margin-left:0!important}
+.cfgwin .sg .typepick .typerow{padding:5px 11px;border:1.5px solid color-mix(in srgb,var(--tc) 28%,#fff);border-radius:8px;background:#fff}
+.cfgwin .sg .typepick .typerow:has(>label input:checked){border-color:var(--tc);background:var(--tt)}
+.cfgwin .sg .typepick{gap:8px}
+.cfgwin [data-pane=type] .card-b{column-width:auto;column-count:1}
+.cfgwin .figcard{display:flex;gap:10px;padding:10px}
+.cfgwin .figcard .fignum{background:var(--bc);color:#fff;border-radius:5px;padding:2px 9px;font-size:12.5px;align-self:center}
 @media print{.cfgwin,.cfgtabs{display:none!important}}
 </style>
 </head>
@@ -438,7 +457,7 @@ input.sw:checked+.swstate::after{content:'開'}
   </div>
 </div>
 <div id="cfgHold" hidden>
-  <div class="cfgpane" data-pane="type"><div class="card-b"><div class="hint" style="margin:0 0 6px">勾選這份考卷要出的題型；勾選後題目區會出現該題型。名稱、配分、說明請到「題型與配分」設定。<button class="btn small" type="button" style="margin-left:6px" onclick="openCfg('opt')">開啟題型與配分</button></div><div class="typepick" id="typePick"></div></div></div>
+  <div class="cfgpane" data-pane="type"><div class="card-b"><section class="sg" data-bc="blue"><h4>勾選題型</h4><div class="hint" style="margin:0 0 6px">勾選這份考卷要出的題型；勾選後題目區會出現該題型。名稱、配分、說明請到「題型與配分」設定。<button class="btn small" type="button" style="margin-left:6px" onclick="openCfg('opt')">開啟題型與配分</button></div><div class="typepick" id="typePick"></div></section></div></div>
   <div class="cfgpane" data-pane="head"><div class="card-b" id="setHead"></div></div>
   <div class="cfgpane" data-pane="page"><div class="card-b" id="setPage"></div></div>
   <div class="cfgpane" data-pane="note"><div class="card-b" id="setNote"></div></div>
@@ -556,7 +575,7 @@ function hfEditor(C){
   preset.addEventListener('change',()=>{if(!preset.value)return;F.fc=HF_PRESET[preset.value];inputs.fc.value=F.fc;preset.value='';closeAsk();draw();changed();});
   const one=h('input',{type:'checkbox',id:'hf_one'});one.checked=!!F.onePage;one.addEventListener('change',()=>{F.onePage=one.checked;draw();changed();});
   draw();
-  return h('div',{class:'hfbox',id:'hfBox'},h('b',{},'頁首與頁尾'),
+  return h('div',{class:'hfbox',id:'hfBox','data-bc':'violet'},h('b',{},'頁首與頁尾'),
     h('div',{class:'hint'},'每一頁都會印。頁碼要印在哪裡由這裡決定：先點某一格，再按「插入【頁碼】」；不想印頁碼就把它刪掉。右邊的即時預覽不顯示頁首頁尾，請看下面的示意、「列印／另存 PDF」或編譯出的 PDF。'),
     h('div',{class:'grid3'},HF_SLOTS.slice(0,3).map(cell)),
     h('div',{class:'grid3'},HF_SLOTS.slice(3).map(cell)),
@@ -570,9 +589,10 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.5';
-const APP_BUILD='2026-11-27 23:16';
+const APP_BUILD='2026-11-27 23:31';
 const APP_LOG=[
   {v:'1.5',items:[
+    '設定視窗分區更清楚：每個區塊有自己的顏色外框、標題色帶與編號；正在操作的區塊會亮起來。',
     '選填題：算式中間的減號設定為「佔一格」時，自動在減號格前面補一個 +（2x−4 印成 2x+□□）。',
     '版頭的科目選單固定為：數學、數學科、數學A、數學B、選修數學甲、選修數學乙（仍可自行輸入）；換年級不再自動改科目。',
     '右邊預覽上方的版本鈕現在只切換畫面，不再改「預設輸出的版本」；「列印 / 存檔」視窗上方會標出預設版本。',
@@ -948,7 +968,7 @@ function hdEditor(){
   const start=([src,name])=>h('button',{type:'button',class:'btn small'+(U.src===src?' cur':''),'data-start':src,'aria-pressed':String(U.src===src),onclick:()=>{switchCust(src);rebuildHead();}},name);
   const reset=h('button',{type:'button',class:'btn small',id:'cu_reset',title:'只把目前選的這一個回到剛開始的樣子'},'這一個重新開始');
   twoClick(reset,()=>{S.cfg.custom=newCust(U.src);rebuildHead();},'清掉目前這一個的修改？再按一次');
-  return h('div',{class:'hdedit',id:'hdEdit'},
+  return h('div',{class:'hdedit',id:'hdEdit','data-bc':'violet'},
     h('b',{},'自訂版頭'),
     h('div',{class:'bar'},...CU_SRC.map(start),reset),
     h('div',{class:'hint'},'三個可以來回切換，各自保留你改過的內容；考卷印的是目前選到的那一個。'),
@@ -1071,7 +1091,7 @@ function noteTex(list){
 }
 /* 設定欄：k＝'top' 或 'end' */
 function noteEditor(C,k){
-  const isTop=k==='top',root=h('div',{class:'hfbox notebox',id:isTop?'noteTop':'noteEnd'});
+  const isTop=k==='top',root=h('div',{class:'hfbox notebox',id:isTop?'noteTop':'noteEnd','data-bc':isTop?'blue':'teal'});
   const draw=(focus)=>{
     const list=C[k]&&C[k].length?C[k]:[noteBlock('',isTop?null:{align:'c'})];
     const commit=()=>{C[k]=list;changed();demo();};
@@ -2679,7 +2699,8 @@ function openHdDlg(){
   draw();
   document.body.append(d);document.addEventListener('keydown',key,true);
 }
-function sgroup(title,...kids){return h('section',{class:'sg'},h('h4',{},title),...kids.filter(Boolean));}
+const SG_COLOR={'版型':'blue','標題文字':'teal','讀卡與回收':'amber','版頭其他':'green','紙張與邊線':'blue','行距與間距':'teal','選項與題型':'blue','配分與作答':'green','輸出版本與樣式':'blue','題目文字自動處理':'teal','字型':'amber','加入圖形':'blue'};
+function sgroup(title,...kids){return h('section',{class:'sg','data-bc':SG_COLOR[title]||'blue'},h('h4',{},title),...kids.filter(Boolean));}
 function buildSettings(){
   const C=S.cfg,F=C.fonts;
   const head=$('#setHead'),solo=C.hdStyle==='title',cust=C.hdStyle==='custom';
@@ -3406,7 +3427,7 @@ function renderTypePicker(){
           field('每題配分',bindInput(sec,'pts',{type:'text',after:()=>{changed();updPartialUI();}})),
           field('說明（標題括號內）',desc))));
     });
-    if(list.length)wrap.prepend(h('div',{class:'cfgdetail-t',style:tcStyle(t)},'● '+typeLabel(t)));
+    if(list.length){wrap.style.cssText=tcStyle(t);wrap.prepend(h('div',{class:'cfgdetail-t'},typeLabel(t)));}
     if(t==='multi'&&list.length>0){
       const C=S.cfg,mk=k=>{const i=bindInput(C,k,{type:'text',after:()=>{changed();updPartialUI();}});i.inputMode='decimal';return i;};
       const i1=mk('multiP1'),i2=mk('multiP2'),i3=mk('multiP3');
@@ -4313,7 +4334,7 @@ function buildFigLib(){
     else if(figSvg(f))th.append(h('img',{src:svgUrl(figSvg(f).replace(/<svg([^>]*)>/,'<svg$1><rect x="-99999" y="-99999" width="199998" height="199998" fill="#fff"/>')),'data-figsvg':f.id,style:'max-width:100%;max-height:90px'}));
     else th.append(h('span',{class:'hint'},'無預覽'));
     const right=h('div',{style:'flex:1;min-width:0;display:flex;flex-direction:column;gap:6px'},
-      h('div',{class:'optrow'},h('b',{style:'flex:none'},'圖 '+f.id),bindInput(f,'name',{type:'text',after:()=>{save();}})),
+      h('div',{class:'optrow'},h('b',{class:'fignum',style:'flex:none'},'圖 '+f.id),bindInput(f,'name',{type:'text',after:()=>{save();}})),
       f.kind==='table'?tableEditor(f,()=>{save();scheduleOutput();}):
       f.kind==='image'
         ?h('div',{class:'f'},h('label',{},'上傳到 Overleaf 的檔名（英數、-、_、.；png/jpg/pdf）'),bindInput(f,'file',{type:'text',mono:true,after:()=>{f.file=f.file.replace(/[^A-Za-z0-9_.\-]/g,'');save();scheduleOutput();}}))
@@ -4323,10 +4344,10 @@ function buildFigLib(){
       (f.kind!=='image'&&f.kind!=='table')?figReviser(f,()=>rerender()):null,
       (f.kind!=='image'&&f.kind!=='table')?h('details',{},h('summary',{class:'hint',style:'cursor:pointer'},'TikZ 程式碼（可手改）'),bindInput(f,'body',{type:'textarea',rows:5,after:()=>{save();scheduleOutput();}})):null,
       f.notes?h('span',{class:'hint'},'AI 說明：'+f.notes):null);
-    list.append(h('div',{style:'display:flex;gap:10px;border:1px solid var(--line);border-radius:10px;padding:8px'},th,right));
+    list.append(h('div',{class:'figcard','data-bc':['teal','violet','amber','green','rose'][list.childElementCount%5]},th,right));
   });
-  box.replaceChildren(figAiPanel(id=>{rerender();say('已加入圖 '+id+'，到每題的「附圖」選用。');}),h('span',{class:'hint'},'也可以把別處產生的圖形資料貼在下方，或選 .json／PNG／JPG 檔。加入後到每題的「附圖」選用。'),ta,
-    h('div',{class:'addrow'},add,h('button',{class:'btn small',type:'button',onclick:()=>fin.click()},'選擇檔案…'),fin,h('button',{class:'btn small',type:'button',onclick:()=>{newTable();rerender();say('已加入一個表格，可直接在下面編輯。');}},'＋ 新增表格'),msg),
+  box.replaceChildren(sgroup('加入圖形',figAiPanel(id=>{rerender();say('已加入圖 '+id+'，到每題的「附圖」選用。');}),h('span',{class:'hint'},'也可以把別處產生的圖形資料貼在下方，或選 .json／PNG／JPG 檔。加入後到每題的「附圖」選用。'),ta,
+    h('div',{class:'addrow'},add,h('button',{class:'btn small',type:'button',onclick:()=>fin.click()},'選擇檔案…'),fin,h('button',{class:'btn small',type:'button',onclick:()=>{newTable();rerender();say('已加入一個表格，可直接在下面編輯。');}},'＋ 新增表格'),msg)),
     S.figs.length?list:h('span',{class:'hint'},'圖庫目前是空的。'));
   hydrateFigs(box);
 }
