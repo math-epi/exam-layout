@@ -386,20 +386,26 @@ input.sw:checked+.swstate::after{content:'開'}
 /* 設定視窗分區：每個區塊一個顏色（外框、標題帶、編號、游標所在框一致） */
 .cfgwin-b{background:linear-gradient(rgba(30,64,124,.045) 1px,transparent 1px) 0 0/100% 18px,linear-gradient(90deg,rgba(30,64,124,.045) 1px,transparent 1px) 0 0/18px 100%,#EEF2F8}
 .cfgwin .cfgpane{counter-reset:sg}
-.cfgwin .sg,.cfgwin .card-b>.hfbox,.cfgwin .card-b .hdedit,.cfgwin #typeDetail>div:not(.hint),.cfgwin .figcard{--bc:#1F5FBF;--bt:#E8F0FD;--glow:color-mix(in srgb,var(--bc) 24%,transparent);background:#fff;border:2px solid color-mix(in srgb,var(--bc) 58%,#fff);border-radius:10px;padding:9px 12px 11px;box-shadow:0 1px 3px rgba(12,22,44,.07);transition:border-color .15s,box-shadow .15s}
+.cfgwin .sg,.cfgwin .card-b>.hfbox,.cfgwin .card-b .hdedit,.cfgwin #typeDetail .tblk,.cfgwin .figcard{--bc:#1F5FBF;--bt:#E8F0FD;--glow:color-mix(in srgb,var(--bc) 24%,transparent);background:#fff;border:2px solid color-mix(in srgb,var(--bc) 58%,#fff);border-radius:10px;padding:9px 12px 11px;box-shadow:0 1px 3px rgba(12,22,44,.07);transition:border-color .15s,box-shadow .15s}
 .cfgwin [data-bc=teal]{--bc:#0B7285!important;--bt:#E3F4F6!important}
 .cfgwin [data-bc=violet]{--bc:#5B45B0!important;--bt:#EFEBFA!important}
 .cfgwin [data-bc=amber]{--bc:#96610A!important;--bt:#FAF1DD!important}
 .cfgwin [data-bc=green]{--bc:#256F46!important;--bt:#E6F4EC!important}
 .cfgwin [data-bc=rose]{--bc:#A03568!important;--bt:#F9EAF1!important}
-.cfgwin #typeDetail>div:not(.hint){--bc:var(--tc);--bt:var(--tt)}
-.cfgwin .sg:focus-within,.cfgwin .card-b>.hfbox:focus-within,.cfgwin .card-b .hdedit:focus-within,.cfgwin #typeDetail>div:not(.hint):focus-within,.cfgwin .figcard:focus-within{border-color:var(--bc);box-shadow:0 0 0 3px var(--glow),0 6px 18px rgba(12,22,44,.12)}
+.cfgwin #typeDetail .tblk{--bc:var(--tc);--bt:var(--tt)}
+.cfgwin .sg:focus-within,.cfgwin .card-b>.hfbox:focus-within,.cfgwin .card-b .hdedit:focus-within,.cfgwin #typeDetail .tblk:focus-within,.cfgwin .figcard:focus-within{border-color:var(--bc);box-shadow:0 0 0 3px var(--glow),0 6px 18px rgba(12,22,44,.12)}
 .cfgwin .sg>h4,.cfgwin .hdedit>b,.cfgwin .card-b>.hfbox>b:first-child,.cfgwin .cfgdetail-t{counter-increment:sg;display:flex;align-items:center;gap:9px;margin:-9px -12px 10px;padding:7px 12px 7px 9px;border-radius:8px 8px 0 0;border-bottom:1px solid color-mix(in srgb,var(--bc) 32%,#fff);background:var(--bt);color:color-mix(in srgb,var(--bc) 82%,#000);font-size:13px;font-weight:700;letter-spacing:.08em;line-height:1.4}
 .cfgwin .sg>h4::before,.cfgwin .hdedit>b::before,.cfgwin .card-b>.hfbox>b:first-child::before,.cfgwin .cfgdetail-t::before{content:counter(sg,decimal-leading-zero);flex:none;width:auto;height:auto;min-width:24px;box-sizing:border-box;text-align:center;padding:1px 4px;border-radius:4px;background:var(--bc);color:#fff;font:700 11px/16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:0}
 .cfgwin .sg>h4::after,.cfgwin .hdedit>b::after,.cfgwin .card-b>.hfbox>b:first-child::after,.cfgwin .cfgdetail-t::after{content:'';flex:1;min-width:20px;height:6px;opacity:.55;background:linear-gradient(var(--bc),var(--bc)) right center/6px 6px no-repeat,linear-gradient(90deg,transparent,var(--bc)) left center/calc(100% - 10px) 1px no-repeat}
 .cfgwin .sg input:not([type=checkbox]):not([type=radio]):not([type=range]):focus,.cfgwin .sg select:focus,.cfgwin .sg textarea:focus,.cfgwin .sg .rte:focus,.cfgwin .hfbox input:not([type=checkbox]):not([type=radio]):not([type=range]):focus,.cfgwin .hfbox select:focus,.cfgwin .hfbox textarea:focus,.cfgwin .hfbox .rte:focus,.cfgwin .hdedit input:focus,.cfgwin .hdedit select:focus,.cfgwin .hdedit textarea:focus,.cfgwin #typeDetail input:focus,.cfgwin .figcard input:focus,.cfgwin .figcard textarea:focus,.cfgwin .figcard select:focus{border-color:var(--bc);box-shadow:0 0 0 3px var(--glow)}
 .cfgwin .secset{background:color-mix(in srgb,var(--tt) 55%,#fff);border:1px solid color-mix(in srgb,var(--tc) 22%,#fff);margin-left:0}
 .cfgwin #typeDetail .pfrow,.cfgwin #typeDetail .slotinfo{margin-left:0!important}
+/* 題型區塊分左右兩欄，兩欄上緣、下緣對齊 */
+.cfgwin #typeDetail{columns:auto}
+.cfgwin .tcols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:12px;align-items:stretch}
+.cfgwin .tcol{display:flex;flex-direction:column;gap:10px;min-width:0}
+.cfgwin .tcol>.tblk{flex:1 0 auto;margin:0}
+@media(max-width:860px){.cfgwin .tcols{grid-template-columns:minmax(0,1fr);row-gap:10px}.cfgwin .tcol:empty{display:none}}
 .cfgwin .sg .typepick .typerow{padding:5px 11px;border:1.5px solid color-mix(in srgb,var(--tc) 28%,#fff);border-radius:8px;background:#fff}
 .cfgwin .sg .typepick .typerow:has(>label input:checked){border-color:var(--tc);background:var(--tt)}
 .cfgwin .sg .typepick{gap:8px}
@@ -589,9 +595,10 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.5';
-const APP_BUILD='2026-11-28 06:32';
+const APP_BUILD='2026-11-28 06:35';
 const APP_LOG=[
   {v:'1.5',items:[
+    '「題型與配分」的題型區塊分左右兩欄，上下緣對齊。',
     '「安裝工作台」按鈕改名為「安裝到電腦」，安裝圖示換新（深藍底，Σ 上「試卷」下「數學」）。',
     '設定視窗分區更清楚：每個區塊有自己的顏色外框、標題色帶與編號；正在操作的區塊會亮起來。',
     '選填題：算式中間的減號設定為「佔一格」時，自動在減號格前面補一個 +（2x−4 印成 2x+□□）。',
@@ -3399,6 +3406,13 @@ function addSection(type){
   S.sections.splice(at,0,s);lastFocusQ=null;rerender();
   setTimeout(()=>{const el=document.querySelector(`[data-sid="${s.id}"]`);if(el){markProg();el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.add('flash');}},30);
 }
+/* 照題型順序切成左右兩欄，切在兩欄高度最接近的位置（編號由左欄往右欄讀） */
+function typeCols(parts){
+  const total=parts.reduce((a,p)=>a+p.size,0);
+  let k=0,best=Infinity,l=0;
+  parts.forEach((p,i)=>{l+=p.size;const m=Math.max(l,total-l);if(m<best){best=m;k=i+1;}});
+  return h('div',{class:'tcols'},...[parts.slice(0,k),parts.slice(k)].map(c=>h('div',{class:'tcol'},...c.map(p=>p.el))));
+}
 function renderTypePicker(){
   const box=$('#typePick');if(!box)return;
   const detBox=$('#typeDetail'),detParts=[];
@@ -3443,10 +3457,10 @@ function renderTypePicker(){
         h('span',{class:'hint'},'（留空＝依大考規則自動算；錯三個以上填 0 或留空＝不給分）')),sentence);
       updPartialUI();
     }
-    if(wrap.childNodes.length)detParts.push(wrap);
+    if(wrap.childNodes.length){wrap.className='tblk';detParts.push({el:wrap,t,size:list.length+(t==='multi'?1:0)});}
     return row;
   }));
-  if(detBox)detBox.replaceChildren(...(detParts.length?[h('div',{class:'hint'},'各題型區塊的名稱、每題配分與說明（勾選的題型才會出現在這裡）。')]:[h('div',{class:'hint'},'還沒有勾選題型。請先按題目區上方的「本試卷題型」標籤勾選。')]),...detParts);
+  if(detBox)detBox.replaceChildren(...(detParts.length?[h('div',{class:'hint'},'各題型區塊的名稱、每題配分與說明（勾選的題型才會出現在這裡）。')]:[h('div',{class:'hint'},'還沒有勾選題型。請先按題目區上方的「本試卷題型」標籤勾選。')]),typeCols(detParts));
 }
 /* 導覽列：每個大題一顆有顏色的按鈕，點了捲到該大題，目前所在的大題反白 */
 function renderNav(){
