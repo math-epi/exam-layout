@@ -529,10 +529,11 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.4';
-const APP_BUILD='2026-11-27 12:24';
+const APP_BUILD='2026-11-27 12:29';
 const APP_LOG=[
   {v:'1.4',items:[
-    '數學式 $…$ 裡的全形英數、全形符號（＝＋＜（）％等）和全形空格，會自動改成半形；注音符號比照中文處理。\\text{…} 裡面的內容不動。'
+    '數學式 $…$ 裡的全形英數、全形符號（＝＋＜（）％等）和全形空格，會自動改成半形；注音符號比照中文處理。\\text{…} 裡面的內容不動。',
+    '集合 \\{ \\}、圓括號、方括號裡的中文，改成原地加上 \\text{}，不再把式子從括號中間拆開。'
   ]},
   {v:'1.3',items:[
     '修正：網頁列印時，填充題與選填題的圈號圓圈沒有印出來（\\boxed 框線、\\cancel 刪除線也一併修正）',
@@ -1882,6 +1883,7 @@ function qProcInfo(q){
 
 /* ================= 數學式裡的中文：檢查與修正 =================
    老師常把中文打進 $…$ 裡，例如「$x 的最大值為M$」。
+   （括號、集合裡的中文也算②）
    ① 能分開的（中文在最外層）：把中文移到 $ 外面，數學的部分各自包回 $…$ →「$x$ 的最大值為 $M$」
    ② 不容易分開的（中文在 \frac、\sqrt、上下標、\left…\right、環境 裡面，或分開後兩邊接不起來）：中文就地包 \text{…}
    只處理 $…$、$$…$$、\(…\)、\[…\]；已經在 \text{…} 裡的中文不動。 */
@@ -1891,9 +1893,37 @@ const MC_TEXTCMD=/^(?:text|textrm|textbf|textit|textnormal|textsf|texttt|mbox|hb
 const MC_OPS='le|ge|leq|geq|neq|ne|in|notin|ni|times|cdot|div|to|rightarrow|leftarrow|Rightarrow|Leftarrow|Leftrightarrow|subset|subseteq|supset|supseteq|cup|cap|perp|parallel|approx|equiv|sim|cong|propto|land|lor|wedge|vee|setminus|mid|nmid';
 const MC_START=new RegExp('^(?:[=+*/<>^_&,;|]|\\\\(?:'+MC_OPS+'|pm|mp)(?![A-Za-z]))');
 const MC_END=new RegExp('(?:[=+\\-*/<>^_&,;|]|\\\\(?:'+MC_OPS+'|pm|mp|angle|triangle|overline|underline|vec|hat|bar|sqrt|frac|dfrac|binom|sum|prod|int|lim|log|ln|sin|cos|tan|max|min|arg))\\s*$');
-/* 把數學式內容切成記號：k='c' 中文（含中文之間的空格）、k='o' 其他；d＝大括號／\left／\begin 的深度 */
+/* 成對的 ( [ … ) ]（含半開區間）與 \{ … \} 的位置；落單的括號不算 */
+function mcPairs(s){
+  const O=new Set(),C=new Set(),st=[];let i=0,b=0;
+  const close=(set,at)=>{
+    for(let k=st.length-1;k>=0;k--)if(st[k].set===set&&st[k].b===b){O.add(st[k].at);C.add(at);st.length=k;return;}
+  };
+  while(i<s.length){
+    const c=s[i];
+    if(c==='\\'){
+      const m=/^\\(?:[A-Za-z]+|[\s\S])/.exec(s.slice(i,i+40)),w=m?m[0]:'\\',name=w.slice(1);
+      if(MC_TEXTCMD.test(name)){          // \text{…} 裡的括號不算
+        let j=i+w.length;while(j<s.length&&/\s/.test(s[j]))j++;
+        if(s[j]==='{'){
+          let d=0,k=j;
+          for(;k<s.length;k++){if(s[k]==='\\'){k++;continue;}if(s[k]==='{')d++;else if(s[k]==='}'){d--;if(d===0)break;}}
+          i=k+1;continue;
+        }
+      }
+      if(name==='{')st.push({set:true,at:i,b});else if(name==='}')close(true,i);
+      i+=w.length;continue;
+    }
+    if(c==='{')b++;else if(c==='}')b--;
+    else if(c==='('||c==='[')st.push({set:false,at:i,b});
+    else if(c===')'||c===']')close(false,i);
+    i++;
+  }
+  return {O,C};
+}
+/* 把數學式內容切成記號：k='c' 中文（含中文之間的空格）、k='o' 其他；d＝大括號／括號／\left／\begin 的深度 */
 function mcTokens(s){
-  const T=[];let i=0,d=0;
+  const T=[],P=mcPairs(s);let i=0,d=0;
   const push=(k,x)=>{const l=T[T.length-1];if(k==='c'&&l&&l.k==='c'&&l.d===d)l.s+=x;else T.push({k,s:x,d});};
   while(i<s.length){
     const c=s[i];
@@ -1908,12 +1938,13 @@ function mcTokens(s){
           push('o',s.slice(i,k+1));i=k+1;continue;
         }
       }
-      if(name==='left'||name==='begin')d++;
-      else if((name==='right'||name==='end')&&d>0)d--;
+      if(name==='left'||name==='begin'||P.O.has(i))d++;
+      else if((name==='right'||name==='end'||P.C.has(i))&&d>0)d--;
       push('o',w);i+=w.length;continue;
     }
     if(c==='{'){d++;push('o',c);i++;continue;}
     if(c==='}'){if(d>0)d--;push('o',c);i++;continue;}
+    if(P.O.has(i))d++;else if(P.C.has(i)&&d>0)d--;
     push(MC_CJK.test(c)?'c':'o',c);i++;
   }
   // 中文之間只隔空格的，併成同一段
