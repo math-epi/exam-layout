@@ -570,9 +570,10 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.5';
-const APP_BUILD='2026-11-27 22:55';
+const APP_BUILD='2026-11-27 23:08';
 const APP_LOG=[
   {v:'1.5',items:[
+    '版頭的科目選單固定為：數學、數學科、數學A、數學B、選修數學甲、選修數學乙（仍可自行輸入）；換年級不再自動改科目。',
     '右邊預覽上方的版本鈕現在只切換畫面，不再改「預設輸出的版本」；「列印 / 存檔」視窗上方會標出預設版本。',
     '有分數等較高數學式的行自動加大行距（預覽、網頁列印、LaTeX 編譯都適用），可在「版面與間距」關閉。',
     '網頁列印向編譯版靠近：圈號縮小、數學式大小、選擇題間距、大標題字級與版頭下方間距。',
@@ -989,9 +990,8 @@ function hdEditor(){
 }
 const EXAM_TYPES=['第一次段考','第二次段考','第三次段考','第一次月考','第二次月考','第三次月考','第一次定期考','第二次定期考','第三次定期考','期初考','期中考','期末考','補考'];
 const GRADES=['一年級','二年級','三年級'];
-const SUBJECTS={'一年級':['數學','數學科'],'二年級':['數學A','數學B','數學','數學科'],'三年級':['數學甲','數學乙','數學','數學科']};
+const SUBJECTS=['數學','數學科','數學A','數學B','選修數學甲','選修數學乙'];
 const SUFFIXES=['試題','試卷','考卷','題本'];
-const subjectsFor=g=>SUBJECTS[g]||['數學','數學科','數學A','數學B','數學甲','數學乙'];
 const TITLE_TOKENS=[['學校','school'],['學年度','year'],['學期','semester'],['考試類別','examType'],['年級','grade'],['科目','subject'],['卷別','titleSuffix']];
 const DEFAULT_TITLE='【學校】　【學年度】 學年度第【學期】學期 【考試類別】　【年級】 【科目】 【卷別】';
 const cval=v=>String(v==null?'':v).trim();
@@ -2443,7 +2443,6 @@ function pickField(C,label,key,list,flag,id){
   sel.value=custom?'__c':(C[key]||'');
   sel.addEventListener('change',()=>{
     const v=sel.value;C[flag]=v==='__c';if(v!=='__c')C[key]=v;
-    if(key==='grade'&&/^數學[ABＡＢ甲乙]$/.test(C.subject)&&!subjectsFor(C.grade).includes(C.subject))C.subject='數學';
     rebuildHead();
     if(v==='__c'){const i=document.getElementById(id+'_t');if(i)i.focus();}
   });
@@ -2487,7 +2486,7 @@ function titleFields(C){
       pickField(C,'考試類別','examType',EXAM_TYPES,'examCustom','cfg_examType')),
     h('div',{class:'grid3'},
       pickField(C,'年級','grade',GRADES,'gradeCustom','cfg_grade'),
-      pickField(C,'科目','subject',subjectsFor(C.grade),'subjectCustom','cfg_subject'),
+      pickField(C,'科目','subject',SUBJECTS,'subjectCustom','cfg_subject'),
       pickField(C,'卷別','titleSuffix',SUFFIXES,'suffixCustom','cfg_titleSuffix')));
   return out;
 }
