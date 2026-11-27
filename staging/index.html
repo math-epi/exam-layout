@@ -138,7 +138,7 @@ input.mono{font-family:var(--font-mono);font-size:13.5px}
 .floatadd{border-left:4px solid var(--tc,var(--accent));position:fixed;left:16px;bottom:16px;z-index:35;display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.2);max-width:calc(100vw - 32px)}
 .warns{padding:8px 12px;border:1px solid #E4D3A8;background:#FCF8EE;border-radius:8px;font-size:13px;color:var(--warn)}
 .warns ul{margin:4px 0 0 18px;padding:0}
-.warns .warngo{display:inline;padding:2px 0;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;border-radius:4px}
+.warns .warngo{cursor:pointer;border-radius:4px}
 .warns .warngo:hover{text-decoration:underline;text-underline-offset:3px}
 .warns .warngo-a{display:inline-block;margin-left:8px;padding:0 8px;border:1px solid #CDB270;border-radius:999px;background:#fff;font-weight:700;font-size:12px;white-space:nowrap;line-height:1.7}
 .warns .warngo:hover .warngo-a{background:var(--warn);border-color:var(--warn);color:#fff}
@@ -526,10 +526,10 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.3';
-const APP_BUILD='2026-11-27 08:20';
+const APP_BUILD='2026-11-27 09:02';
 const APP_LOG=[
   {v:'1.3',items:[
-    '數學符號面板換新外觀（沉穩淺色），右上角可切換深色；按鈕改名為「插入並關閉」「連續插入」。','檢查提醒可以直接點，會跳到要修改的題目或設定欄位。',
+    '數學符號面板換新外觀（沉穩淺色、按鍵緊湊，筆電畫面可看到整個面板），右上角可切換深色；按鈕改名為「插入並關閉」「連續插入」。','檢查提醒可以直接點，會跳到要修改的題目或設定欄位。',
     '修正：ℝ、ℕ、ℤ 等雙線字母（\\mathbb）及部分少用符號在網頁上排不出來。',
     '新增「安裝工作台」按鈕：裝好後從桌面、Dock 或開始功能表點圖示就能開，不用記網址。安裝後第一次請連網開啟。'
   ]},
@@ -3121,7 +3121,7 @@ function refreshChips(){
 function warnItem(text,go){
   if(!go)return text;
   /* mousedown 不搶焦點：否則離開欄位時提醒清單重畫，這一下點擊會落空 */
-  return h('button',{type:'button',class:'warngo',title:'點一下前往修改',onmousedown:e=>e.preventDefault(),onclick:e=>{e.stopPropagation();goWarn(go);}},text,h('span',{class:'warngo-a'},'前往 →'));
+  return h('span',{role:'button',tabindex:0,class:'warngo',title:'點一下前往修改',onmousedown:e=>e.preventDefault(),onclick:e=>{e.stopPropagation();goWarn(go);},onkeydown:e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();goWarn(go);}}},text,h('span',{class:'warngo-a'},'前往 →'));
 }
 let warnRun=0;
 function goWarn(go){
@@ -5721,7 +5721,46 @@ function initMM(){
 .mm-f{padding:9px 16px;font-size:11.5px}
 .mm #mmVisWrap math-field:focus,.mm #mmVisWrap math-field:focus-within,.mm textarea#mmDraft:focus{outline:2px solid var(--accent);outline-offset:1px}
 .mm{overflow-x:hidden}
-@media (max-width:460px){.mm .mm-act{flex-wrap:wrap}.mm .mm-act .btn.primary{flex:1 1 100%}.mm-act .mm-key{display:none}}`;
+@media (max-width:460px){.mm .mm-act{flex-wrap:wrap}.mm .mm-act .btn.primary{flex:1 1 100%}.mm-act .mm-key{display:none}}
+/* ===== 緊湊版：矮螢幕（筆電、放大顯示）也要看得到整個面板；細格線與藍色光暈的科技感 ===== */
+.mm{--glow:rgba(47,128,237,.30);--dot:rgba(30,64,124,.13);right:12px;bottom:calc(var(--stagebar,0px) + 8px);width:min(428px,calc(100vw - 24px));height:min(640px,calc(100dvh - var(--stagebar,0px) - 16px));max-height:calc(100dvh - var(--stagebar,0px) - 16px);border-color:#9DB3D6;border-radius:12px}
+.mm.mm-dark{--glow:rgba(96,165,250,.38);--dot:rgba(143,180,240,.16);border-color:#34528A}
+.mm-h{min-height:40px;padding:0 6px 0 11px;gap:8px;background:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px) 0 0/100% 10px,linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px) 0 0/10px 100%,linear-gradient(100deg,#0D1B38,#1C3C76)}
+.mm.mm-dark .mm-h{background:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px) 0 0/100% 10px,linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px) 0 0/10px 100%,linear-gradient(100deg,#070D1A,#14264A)}
+.mm-h::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,#22D3EE,#3B82F6 55%,transparent)}
+.mm-logo{width:23px;height:23px;font-size:15px;border-color:#5EC8F2;color:#D6F2FF;box-shadow:0 0 9px rgba(56,189,248,.55),inset 0 0 6px rgba(56,189,248,.35)}
+.mm-h b{font-size:14px;letter-spacing:.14em}
+.mm-h button{font-size:11.5px;padding:1px 8px;border-radius:5px}.mm-h .mm-close{font-size:19px;padding:5px 8px}
+.mm-kbd{font-size:10px;padding:0 5px}
+.mm-ed{position:relative;padding:7px 12px 0}
+.mm-modes{margin-bottom:6px;padding:2px;border-radius:8px}.mm .mm-modes .btn{padding:2px 10px;font-size:12px;border-radius:6px;min-height:0}
+.mm-vc{position:absolute;top:7px;right:12px;margin:0;gap:3px;flex-wrap:nowrap}.mm-vc .hint{font-size:11px;white-space:nowrap}
+.mm .mm-vc .btn{font-size:11px;padding:2px 5px;min-height:0;border-radius:5px;white-space:nowrap}
+.mm #mmVisWrap math-field{min-height:50px;max-height:130px;overflow:auto;font-size:20px;padding:4px 10px;border-radius:8px;background:radial-gradient(var(--dot) 1px,transparent 1.3px) 0 0/11px 11px var(--panel);box-shadow:0 0 0 3px var(--glow)}
+.mm textarea#mmDraft{height:48px;min-height:42px;font-size:12.5px;padding:5px 9px;border-radius:8px;box-shadow:0 0 0 3px var(--glow)}
+.mm #mmVisWrap math-field:focus,.mm #mmVisWrap math-field:focus-within,.mm textarea#mmDraft:focus{outline:1px solid var(--accent);outline-offset:0}
+.mm-pv{min-height:36px;max-height:86px;margin-top:6px;padding:3px 8px;font-size:16px;border-radius:8px}.mm-pv.empty{font-size:11.5px}
+.mm-lx{margin-top:5px;padding:1px 8px;font-size:10.5px;max-height:2.9em;border-left:2px solid var(--accent);border-radius:0 5px 5px 0}
+.mm-err{font-size:11.5px}
+.mm-act{margin-top:7px;gap:6px}.mm .mm-act .btn{min-height:30px;padding:2px 10px;font-size:12.5px;border-radius:7px}
+.mm .mm-act .btn.primary{background:linear-gradient(180deg,#2D6BD0,#1E4A95);border-color:#1E4A95;box-shadow:0 2px 10px var(--glow),inset 0 1px 0 rgba(255,255,255,.22)}
+.mm-act .mm-key{font-size:9.5px;margin-left:5px}
+.mm-c{margin-top:8px;padding:7px 12px 0;gap:6px}.mm .mm-c input,.mm .mm-c select{font-size:12px;padding:3px 8px;height:28px;border-radius:7px}
+.mm .mm-c input:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--glow)}
+.mm-tabs{flex-wrap:wrap;overflow:visible;gap:3px;padding:7px 12px}
+.mm .mm-tabs button{font-size:11.5px;line-height:1.5;padding:1px 7px;border:1px solid var(--line);border-radius:5px;background:var(--panel)}
+.mm .mm-tabs button:hover{border-color:var(--accent);color:var(--accent)}
+.mm .mm-tabs button[aria-selected]:not([aria-selected="false"]){background:var(--mm-btn);border-color:var(--mm-btn);color:#fff;box-shadow:0 0 8px var(--glow)}
+.mm-grid{grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:max-content;align-content:start;gap:5px;padding:8px 12px;min-height:116px;flex:1 1 0;background:var(--soft)}
+.mm-b{position:relative;gap:0;min-height:50px;padding:3px 2px;border-radius:7px;transition:border-color .12s,box-shadow .12s,transform .12s}
+.mm-b::before{content:'';position:absolute;left:-1px;top:-1px;width:8px;height:8px;border:solid transparent;border-width:2px 0 0 2px;border-radius:7px 0 0 0}
+button.mm-b:hover,button.mm-b:focus-visible{background:var(--panel);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 3px 12px var(--glow);transform:translateY(-1px)}
+button.mm-b:hover::before,button.mm-b:focus-visible::before{border-color:#22D3EE}
+.mm-x{font-size:13.5px;line-height:1.25}.mm-t{font-size:11.5px}.mm-n{font-size:9.5px;line-height:1.15}
+.mm-grid .mm-b2{grid-column:span 3;min-height:88px}.mm-b2 .mm-x{min-height:56px;font-size:12px}.mm .mm-2 button{font-size:11px;padding:1px 7px}
+.mm-f{padding:4px 12px 5px;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (prefers-reduced-motion:reduce){.mm-b{transition:none}button.mm-b:hover{transform:none}}
+@media (max-width:460px){.mm-ed .mm-vc{position:static;margin-top:5px}.mm-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.mm-grid .mm-b2{grid-column:span 5}.mm .mm-act .btn.primary{flex:1 1 auto}.mm .mm-act{flex-wrap:nowrap}.mm-h .mm-kbd{display:none}}`;
   document.head.append(style);
   const close=h('button',{type:'button',class:'mm-close','aria-label':'關閉數學符號面板',title:'關閉（Esc）',onclick:closeMM},'×');
   /* 外觀：預設淺色，老師切換後記在這台電腦 */
@@ -6425,6 +6464,7 @@ if(STAGING){
   bar.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99998;background:#FBF0D5;color:#6B4A00;border-top:2px solid #C8962E;text-align:center;font:600 13px/1.4 "Noto Sans TC","Microsoft JhengHei",sans-serif;padding:3px 8px;pointer-events:none';
   bar.textContent='測試版（非正式）：資料與正式版分開存放，不會影響線上的老師';
   document.body.append(bar);
+  const barH=()=>document.documentElement.style.setProperty('--stagebar',bar.offsetHeight+'px');barH();addEventListener('resize',barH);
 }
 initVersion();initBoxFab();
 </script>
