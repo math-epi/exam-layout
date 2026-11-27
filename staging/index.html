@@ -415,6 +415,17 @@ input.sw:checked+.swstate::after{content:'開'}
 .cfgwin .figcard{display:flex;gap:10px;padding:10px}
 .cfgwin .figcard .fignum{background:var(--bc);color:#fff;border-radius:5px;padding:2px 9px;font-size:12.5px;align-self:center}
 @media print{.cfgwin,.cfgtabs{display:none!important}}
+.wd-btn{position:fixed;right:16px;z-index:35;display:flex;align-items:center;gap:4px;padding:6px 13px;border:1px solid #D9BC72;border-radius:999px;background:#FCF4DF;color:#735208;font:600 13px/1.4 inherit;font-family:inherit;box-shadow:0 3px 10px rgba(12,22,44,.18);cursor:pointer}
+.wd-btn:hover{background:#F9ECC8}
+.wd-btn.mute{width:20px;height:20px;padding:0;justify-content:center;background:#E0A52C;border:3px solid #fff;opacity:.75}
+.wd-btn.mute:hover{opacity:1;background:#E0A52C}
+.wd-btn[hidden],.wd-pan[hidden]{display:none}
+.wd-pan{position:fixed;right:16px;z-index:41;width:min(430px,calc(100vw - 32px));display:flex;flex-direction:column;background:#fff;border:2px solid #D9BC72;border-radius:12px;box-shadow:0 14px 40px rgba(12,22,44,.28);overflow:hidden}
+.wd-h{flex:none;display:flex;align-items:center;gap:8px;padding:8px 10px 8px 14px;background:#FCF4DF;color:#735208;border-bottom:1px solid #E4D3A8;font-size:13.5px}.wd-h b{flex:1}
+.wd-pan ul{margin:0;padding:8px 14px 10px 30px;overflow-y:auto;min-height:0;font-size:13px;line-height:1.65;color:#5C4306}.wd-pan li{margin:0 0 6px}
+.wd-pan .warngo{cursor:pointer}.wd-pan .warngo-a{display:inline-block;margin-left:8px;padding:0 8px;border:1px solid #CDB270;border-radius:999px;background:#fff;font-weight:700;font-size:12px;white-space:nowrap}
+.wd-pan .warngo:hover .warngo-a{background:#735208;border-color:#735208;color:#fff}
+@media print{.wd-btn,.wd-pan{display:none!important}}
 </style>
 </head>
 <body>
@@ -597,9 +608,10 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.5';
-const APP_BUILD='2026-11-28 06:45';
+const APP_BUILD='2026-11-28 06:58';
 const APP_LOG=[
   {v:'1.5',items:[
+    '上方的檢查提醒捲出畫面時，右下角出現「⚠ 提醒 N」小標籤，點了才展開、可直接前往修改，也能「這次先不提醒」；「列印 / 存檔」視窗會列出尚未處理的提醒（不阻擋輸出）。',
     '配分不再預先帶入：新增的大題「每題配分」是空白，由老師自己填；同一大題各題分數不同時留空，到各題填「這題配分」。還沒配分的題目上方會提醒。',
     '「配分與作答」區塊取消：書寫列數移到計算證明題方塊，滿分檢查獨立一框。',
     '「題型與配分」的題型區塊分左右兩欄，上下緣對齊。',
@@ -3336,12 +3348,62 @@ function refreshChips(){
   const w=$('#warns');
   if(comp.warns.length){w.hidden=false;w.replaceChildren(h('b',{},'檢查提醒（'+comp.warns.length+'）'),h('ul',{},...comp.warns.slice(0,12).map((x,i)=>h('li',{},warnItem(x,comp.gos[i])))),...(comp.warns.length>12?[h('span',{class:'hint'},'還有 '+(comp.warns.length-12)+' 則…')]:[]));}
   else w.hidden=true;
+  wdUpdate(comp);
+}
+/* ===== 浮動提醒標籤：上方提醒框看不到時，右下角（數學式編輯器按鈕上方）出現「提醒 N」。
+   預設收合、不彈窗不閃爍；點了才展開；「這次先不提醒」縮成小圓點（只記在這次開啟的網頁）。 ===== */
+var WD={comp:null,open:false,muted:false,btn:null,pan:null,sig:''};
+function wdInit(){
+  if(WD.btn)return;
+  WD.btn=h('button',{type:'button',id:'wdBtn',class:'wd-btn','aria-haspopup':'true',hidden:true,onmousedown:e=>e.preventDefault(),onclick:()=>{WD.open=!WD.open;wdDraw();}});
+  WD.pan=h('div',{id:'wdPan',class:'wd-pan',role:'dialog','aria-label':'檢查提醒',hidden:true});
+  document.body.append(WD.pan,WD.btn);
+  addEventListener('scroll',wdPlace,{passive:true});addEventListener('resize',wdPlace);
+  document.addEventListener('mousedown',e=>{if(WD.open&&!WD.pan.contains(e.target)&&!WD.btn.contains(e.target)){WD.open=false;wdDraw();}},true);
+  /* 擷取階段：面板開著時 Esc 只收面板，不連帶關掉設定視窗 */
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&WD.open){e.preventDefault();e.stopPropagation();WD.open=false;wdDraw();}},true);
+}
+function wdUpdate(comp){
+  wdInit();WD.comp=comp;
+  const sig=JSON.stringify([comp.warns,comp.gos]);
+  if(sig!==WD.sig){WD.sig=sig;wdDraw();}else wdPlace();
+}
+function wdDraw(){
+  const c=WD.comp,n=c?c.warns.length:0;if(!n)WD.open=false;
+  WD.btn.classList.toggle('mute',WD.muted);
+  WD.btn.replaceChildren(...(WD.muted?[]:['⚠ 提醒 ',h('b',{},String(n))]));
+  WD.btn.title=WD.muted?`檢查提醒 ${n} 項（點一下查看）`:'點一下查看檢查提醒';
+  WD.btn.setAttribute('aria-label',`檢查提醒 ${n} 項`);
+  WD.btn.setAttribute('aria-expanded',WD.open?'true':'false');
+  if(WD.open){
+    const old=WD.pan.querySelector('ul'),y=old?old.scrollTop:0;
+    const ul=h('ul',{},...c.warns.map((x,i)=>h('li',{},warnItem(x,c.gos[i],()=>{WD.open=false;wdDraw();}))));
+    WD.pan.replaceChildren(h('div',{class:'wd-h'},h('b',{},`檢查提醒（${n}）`),
+      h('button',{type:'button',class:'btn small',id:'wdMute',onclick:()=>{WD.muted=!WD.muted;WD.open=false;wdDraw();}},WD.muted?'恢復提醒標籤':'這次先不提醒'),
+      h('button',{type:'button',class:'btn small',id:'wdClose','aria-label':'收起',onclick:()=>{WD.open=false;wdDraw();}},'✕')),ul);
+    ul.scrollTop=y;
+  }
+  wdPlace();
+}
+function wdPlace(){
+  if(!WD.btn)return;
+  const box=$('#warns'),lz=document.getElementById('mmLaunch');
+  const r=box&&!box.hidden?box.getBoundingClientRect():null;
+  const seen=!!r&&r.height>0&&r.bottom>TOPH()+40&&r.top<innerHeight-60;
+  /* 數學式編輯器開著時讓位給它 */
+  const show=!!(WD.comp&&WD.comp.warns.length)&&!(lz&&lz.hidden)&&(!seen||WD.open);
+  WD.btn.hidden=!show;if(!show){WD.open=false;WD.pan.hidden=true;return;}
+  const bottom=lz?Math.max(16,innerHeight-lz.getBoundingClientRect().top+8):70;
+  WD.btn.style.bottom=bottom+'px';
+  WD.pan.hidden=!WD.open;
+  if(WD.open){const b=bottom+WD.btn.offsetHeight+8;WD.pan.style.bottom=b+'px';WD.pan.style.maxHeight=Math.max(160,innerHeight-b-12)+'px';}
 }
 /* 檢查提醒：有對應位置的項目整則可以點，直接跳到要修改的地方 */
-function warnItem(text,go){
+function warnItem(text,go,before){
   if(!go)return text;
+  const jump=()=>{if(before)before();goWarn(go);};
   /* mousedown 不搶焦點：否則離開欄位時提醒清單重畫，這一下點擊會落空 */
-  return h('span',{role:'button',tabindex:0,class:'warngo',title:'點一下前往修改',onmousedown:e=>e.preventDefault(),onclick:e=>{e.stopPropagation();goWarn(go);},onkeydown:e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();goWarn(go);}}},text,h('span',{class:'warngo-a'},'前往 →'));
+  return h('span',{role:'button',tabindex:0,class:'warngo',title:'點一下前往修改',onmousedown:e=>e.preventDefault(),onclick:e=>{e.stopPropagation();jump();},onkeydown:e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();jump();}}},text,h('span',{class:'warngo-a'},'前往 →'));
 }
 let warnRun=0;
 function ptsInput(q){const e=bindInput(q,'pts',{type:'text',after:changed});e.dataset.warn='pts';return e;}
@@ -4956,11 +5018,17 @@ function openSave(){
     window.open('wasm/compile.html','_blank');say('已在新分頁開啟編譯。第一次要下載約 110 MB（約 1 分鐘），之後只要幾秒。');
   });
   b3.addEventListener('click',async()=>{await saveFile('exam-project.json',projectJson(1));});
+  /* 輸出前再看一次尚未處理的提醒：只告知、不阻擋 */
+  const wc=compute();
+  const wbox=wc.warns.length?h('div',{id:'saveWarns',class:'warns',style:'margin-bottom:8px'},
+    h('b',{},`還有 ${wc.warns.length} 項檢查提醒`),h('span',{class:'hint',style:'margin-left:8px'},'僅供確認，仍可照常列印、存檔。'),
+    h('ul',{style:'max-height:min(132px,20vh);overflow-y:auto'},...wc.warns.map((x,i)=>h('li',{},warnItem(x,wc.gos[i],close))))):null;
   /* 標題列與底列固定，中間捲動：畫面再小也看得到離開的按鈕 */
   const head=h('div',{style:'flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;border-bottom:1px solid var(--line)'},
     h('div',{style:'font-weight:700;font-size:16px'},'列印 / 存檔'),bc);
   const body=h('div',{id:'saveBody',style:'flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:10px 20px'},
     h('div',{id:'saveVerNote',style:'padding:7px 12px;margin-bottom:8px;border-radius:8px;background:var(--soft);font-size:13.5px'},'預設輸出版本：',h('b',{},verName(verOf())),pvVerOf()!==verOf()?`（右邊預覽目前看的是${verName(pvVerOf())}，不影響這裡）`:'','。要改預設，到「⚙ 設定」的「輸出與字型」。'),
+    wbox,
     h('div',{class:'hint'},(CAN_COMPILE?'要印出正式考卷，請用「編譯成 PDF」（或下載 Overleaf 專案）':'要印出正式考卷，請用「下載 Overleaf 專案」')+'；要之後接著改，存成「考卷檔」就夠了。「列印 / 另存 PDF」是備用，由瀏覽器排版，結果和 LaTeX 編譯有差異。'),
     CAN_COMPILE?row(bw,'用 XeLaTeX 直接在這個瀏覽器編譯成 PDF，排版與 Overleaf 完全相同，不需要 Overleaf 帳號。第一次使用要下載約 110 MB（約 1 分鐘），之後只要幾秒。編譯頁上方可以切換學生版、簡答版、詳解版。'):'',
     row(b0,'用瀏覽器內建的列印功能，可選版本（學生版／簡答版／詳解版）並預覽。【備用】由瀏覽器排版輸出，不是用 LaTeX 編譯，字型、行距、數學式和分頁可能和 LaTeX 編譯的結果不同。建議只在其他輸出方式不能用時使用。'),
@@ -6022,7 +6090,7 @@ function mmRender(){
 function openMM(ta){
   if(ta)lastTa=ta;
   if(ta&&ta._tok&&ta._tok.on)ta._tok.editAt(false);
-  mmBox.hidden=false;$('#mmLaunch').hidden=true;mmRender();
+  mmBox.hidden=false;$('#mmLaunch').hidden=true;wdPlace();mmRender();
   const d=mmDraftEl();
   if(ta&&d&&!mmGet().trim()&&ta.selectionStart!==ta.selectionEnd){mmSetVal(ta.value.slice(ta.selectionStart,ta.selectionEnd).trim().replace(/^\$\$?|\$\$?$/g,''));}
   mmEdit=null;
@@ -6033,7 +6101,7 @@ function openMM(ta){
   mmPrev();mmFocus();
   if(!mlEl&&mlState!=='loading'){let pref='visual';try{pref=localStorage.getItem('exam-mm-mode')||'visual';}catch(e){}if(pref==='visual')mmSetMode('visual',true);}
 }
-function closeMM(){mmBox.hidden=true;$('#mmLaunch').hidden=false;}
+function closeMM(){mmBox.hidden=true;$('#mmLaunch').hidden=false;wdPlace();}
 function initMM(){
   const style=document.createElement('style');
   style.textContent=`.mm{position:fixed;right:16px;bottom:16px;z-index:40;width:min(400px,calc(100vw - 32px));max-height:min(88dvh,720px);display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.28)}
@@ -6196,7 +6264,7 @@ button.mm-b:hover::before,button.mm-b:focus-visible::before{border-color:#22D3EE
   });
   const launch=h('button',{type:'button',id:'mmLaunch',class:'btn primary mm-launch',onmousedown:e=>e.preventDefault(),onclick:()=>openMM()},'∑ 數學式編輯器',h('span',{class:'mm-key'},'（'+KEY_ALT+'+M）'));
   launch.title='快速鍵 '+KEY_ALT+'+M';
-  document.body.append(mmBox,launch);
+  document.body.append(mmBox,launch);wdPlace();
   let th='light';try{th=localStorage.getItem('exam-mm-theme')||'light';}catch(e){}
   setTheme(th==='dark',false);
   mmCat=mmRecent.length?'recent':'c0';
