@@ -194,6 +194,7 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 #hdDlg h3{margin:0 0 4px;font-size:17px}
 #hdDlg .pick{display:block;width:100%;text-align:left;border:1px solid #C9D0DC;border-radius:10px;background:#fff;color:inherit;padding:12px 14px;margin-top:12px;cursor:pointer;font:inherit}
 #hdDlg .pick:hover,#hdDlg .pick.cur{border:2px solid #1E407C;padding:11px 13px}
+#hdDlg .pickacts{display:flex;gap:8px;margin-top:8px}
 #hdDlg .mini{margin-top:8px;border:1.5px solid #3A5896;font-size:12px;text-align:center}
 #hdDlg .mini div{display:flex}#hdDlg .mini div+div{border-top:1.5px solid #3A5896}
 #hdDlg .hdtop{display:flex;align-items:center;gap:10px;position:sticky;top:-20px;background:#fff;z-index:2;margin:-20px 0 4px;padding:14px 0 8px}
@@ -564,9 +565,12 @@ function hfEditor(C){
 const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
-const APP_VER='1.4';
-const APP_BUILD='2026-11-27 18:07';
+const APP_VER='1.5';
+const APP_BUILD='2026-11-27 22:18';
 const APP_LOG=[
+  {v:'1.5',items:[
+    '版頭版型視窗：「三列版型」「兩列版型」預覽左上方新增「直接套用」「細部調整」。細部調整會套用版型並打開版頭設定；要改欄位或框線，可從設定裡改用自訂版型。',
+  ]},
   {v:'1.4',items:[
     '數學式 $…$ 裡的全形英數、全形符號（＝＋＜（）％等）和全形空格，會自動改成半形；注音符號比照中文處理。\\text{…} 裡面的內容不動。',
     '集合 \\{ \\}、圓括號、方括號裡的中文，改成原地加上 \\text{}，不再把式子從括號中間拆開。',
@@ -2534,6 +2538,15 @@ function tplThumb(data){
   return h('div',{class:'paper tplthumb'},el);
 }
 function hdTipDone(){try{localStorage.setItem(HDTIP_KEY,'1');}catch(e){}document.querySelectorAll('.hdtip').forEach(e=>e.remove());}
+/* 固定版型 → 自訂版型（同樣的起點），可復原 */
+function tuneAsCustom(){
+  const src=S.cfg.hdStyle==='title'?'title':'three';
+  swapHead(()=>{
+    if(S.cfg.custom)switchCust(src);else S.cfg.custom=newCust(src);
+    S.cfg.hdStyle='custom';
+  },'已改用自訂版型，可以調整欄位與框線。');
+  const e=document.querySelector('.hdedit');if(e)e.scrollIntoView({block:'start'});
+}
 /* 預覽上方：換版型的按鈕（第一次附一句提示） */
 function hdBar(width){
   let seen=false;try{seen=localStorage.getItem(HDTIP_KEY)==='1';}catch(e){}
@@ -2558,6 +2571,12 @@ function openHdDlg(){
     if(k==='custom'){openCfg('head');setTimeout(()=>{const e=document.querySelector('.hdedit');if(e)e.scrollIntoView({block:'start'});},60);}
   };
   const card=(k,name,desc,demo)=>h('button',{type:'button',class:'pick'+(S.cfg.hdStyle===k?' cur':''),'data-hd':k,onclick:()=>pickStyle(k)},h('b',{},name),h('div',{class:'hint'},desc),demo);
+  /* 固定版型：直接套用，或套用後打開版頭設定 */
+  const fixed=(k,name,desc,demo)=>{
+    const act=(label,a,fn,cls)=>h('button',{type:'button',class:'btn small'+(cls||''),'data-act':a,'aria-label':name+'：'+label,onclick:e=>{e.stopPropagation();fn();}},label);
+    return h('div',{class:'pick'+(S.cfg.hdStyle===k?' cur':''),'data-hd':k,onclick:()=>pickStyle(k)},h('b',{},name),h('div',{class:'hint'},desc),
+      h('div',{class:'pickacts'},act('直接套用','use',()=>pickStyle(k),' primary'),act('細部調整','tune',()=>{pickStyle(k);openCfg('head');$('#cfgWinB').scrollTop=0;})),demo);
+  };
   const mine=h('div',{id:'tplList'}),msg=h('div',{class:'hint',id:'tplMsg',role:'status'});
   const say=(t,bad)=>{msg.textContent=t;msg.style.color=bad?'var(--danger)':'var(--ok)';};
   const commit=(T2,ok)=>{if(writeTpls(T2)){if(ok)say(ok);draw();return true;}say('瀏覽器無法儲存（可能被停用或已滿）。',true);return false;};
@@ -2619,9 +2638,9 @@ function openHdDlg(){
   const $x=h('button',{type:'button',class:'btn small',id:'tplExport',onclick:()=>exportTpls(readTpls().list,'我的版型.json')},'匯出全部版型檔');
   const d=h('div',{id:'hdDlg',role:'dialog','aria-modal':'true','aria-label':'版頭版型',onclick:e=>{if(e.target===d)close();}},h('div',{class:'box'},
     h('div',{class:'hdtop'},h('h3',{},'版頭版型'),h('button',{type:'button',class:'btn small',id:'hdDlgX',onclick:close},'關閉')),
-    h('div',{class:'hint'},'點一下就可以套用，已經打好的題目不會受到影響'),
-    card('three','三列版型（有框線）','大標題、命題範圍與班級座號姓名、讀卡與備註。',mini('',[[T],['命題範圍：','班級：　座號：　姓名：'],['是否電腦讀卡','是否回收題目卷','共 2 頁','備註：']])),
-    card('title','兩列版型（無框線）','大標題，下一列是靠右的班級、座號、姓名。',mini(' solo',[[T],['班級：　　座號：　　姓名：　　　']])),
+    h('div',{class:'hint'},'按「直接套用」或點預覽圖就套用；想改版頭內容按「細部調整」。已經打好的題目不會受到影響'),
+    fixed('three','三列版型（有框線）','大標題、命題範圍與班級座號姓名、讀卡與備註。',mini('',[[T],['命題範圍：','班級：　座號：　姓名：'],['是否電腦讀卡','是否回收題目卷','共 2 頁','備註：']])),
+    fixed('title','兩列版型（無框線）','大標題，下一列是靠右的班級、座號、姓名。',mini(' solo',[[T],['班級：　　座號：　　姓名：　　　']])),
     card('custom','自訂版型',S.cfg.custom?'列數、欄數、內容與框線自己決定；之前設計的內容還在。':'從空白開始，列數、欄數、內容與框線自己決定。',h('div',{class:'blank'},'自訂版型')),
     h('h4',{},'我的版型'),mine,
     h('div',{class:'tplsave'},h('div',{class:'hint'},'把目前這份考卷的版頭（含校名、頁首頁尾、試卷邊線、試卷提醒與卷尾提醒）存起來：'),h('div',{class:'tplrow'},nameIn,saveBtn),msg),
@@ -2638,7 +2657,8 @@ function buildSettings(){
   head.replaceChildren(
     sgroup('版型',
       field('版型',bindInput(C,'hdStyle',{id:'cfg_hdStyle',type:'select',options:HD_STYLES,after:rebuildHead}),solo?'大標題下面是靠右的班級、座號、姓名，沒有框線。':cust?'列數、欄數、內容與框線都自己決定（在下面的「自訂版頭」）。':'版頭固定三列、有框線。'),
-      h('div',{},h('button',{type:'button',class:'btn small',id:'cfg_hdPick',onclick:openHdDlg},'我的版型：儲存／叫出…'))),
+      h('div',{style:'display:flex;gap:8px;flex-wrap:wrap'},h('button',{type:'button',class:'btn small',id:'cfg_hdPick',onclick:openHdDlg},'我的版型：儲存／叫出…'),
+        cust?null:h('button',{type:'button',class:'btn small',id:'cfg_toCustom',onclick:tuneAsCustom},'要改欄位或框線 → 用自訂版型調整'))),
     ...(cust?[hdEditor()]:[]),
     sgroup('標題文字',...titleFields(C),
       field('命題範圍',bindInput(C,'scope',{id:'cfg_scope',mm:true}))),
