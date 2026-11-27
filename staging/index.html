@@ -402,6 +402,8 @@ input.sw:checked+.swstate::after{content:'開'}
 .cfgwin #typeDetail .pfrow,.cfgwin #typeDetail .slotinfo{margin-left:0!important}
 /* 題型區塊分左右兩欄，兩欄上緣、下緣對齊 */
 .cfgwin #typeDetail{columns:auto}
+.cfgwin #setOpt{columns:auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:12px;align-items:stretch}
+@media(max-width:860px){.cfgwin #setOpt{grid-template-columns:minmax(0,1fr)}}
 .cfgwin .tcols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:12px;align-items:stretch}
 .cfgwin .tcol{display:flex;flex-direction:column;gap:10px;min-width:0}
 .cfgwin .tcol>.tblk{flex:1 0 auto;margin:0}
@@ -595,9 +597,11 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.5';
-const APP_BUILD='2026-11-28 06:35';
+const APP_BUILD='2026-11-28 06:45';
 const APP_LOG=[
   {v:'1.5',items:[
+    '配分不再預先帶入：新增的大題「每題配分」是空白，由老師自己填；同一大題各題分數不同時留空，到各題填「這題配分」。還沒配分的題目上方會提醒。',
+    '「配分與作答」區塊取消：書寫列數移到計算證明題方塊，滿分檢查獨立一框。',
     '「題型與配分」的題型區塊分左右兩欄，上下緣對齊。',
     '「安裝工作台」按鈕改名為「安裝到電腦」，安裝圖示換新（深藍底，Σ 上「試卷」下「數學」）。',
     '設定視窗分區更清楚：每個區塊有自己的顏色外框、標題色帶與編號；正在操作的區塊會亮起來。',
@@ -1154,7 +1158,7 @@ function noteEditor(C,k){
 function defaultCfg(){
   return {hdStyle:'three',school:'',schoolHide:false,year:String(autoYear()),semester:autoSem(),yearMode:'auto',semMode:'auto',yearUser:false,semUser:false,titleMode:'fill',titleText:'',top:[],end:[],endPos:50,custom:null,frameOn:false,frameStyle:'solid',frameW:'mid',frameColor:'black',examCustom:false,gradeCustom:false,subjectCustom:false,suffixCustom:false,examType:'期初考',grade:'二年級',subject:'數學科',titleSuffix:'試題',
     scope:'',card:'math',cardSlots:50,recycle:false,note:'',optStyle:'auto',paper:'b4',vecStyle:'harpoon',circStyle:'teacher',hdRows:'auto',hdRepeat:true,pageFmt:'p',showAnswers:false,showSolutions:false,minusSlot:false,autoFixCjk:true,autoMath:true,
-    fillName:'選填題',multiP1:'',multiP2:'',multiP3:'',multiN:5,singleN:5,multiPts:'8',singlePts:'6',fillPts:'7',mixedPts:'',calcPts:'10',calcRows:'6',expectedTotal:'',ansColor:'#B01E2E',lineSpacing:'',choiceSkip:'',fillSkip:'',secBefore:'',secAfter:'',stemSkip:'',paraSkip:'',flexLine:true,
+    fillName:'選填題',multiP1:'',multiP2:'',multiP3:'',multiN:5,singleN:5,multiPts:'',singlePts:'',fillPts:'',mixedPts:'',calcPts:'',calcRows:'6',expectedTotal:'',ansColor:'#B01E2E',lineSpacing:'',choiceSkip:'',fillSkip:'',secBefore:'',secAfter:'',stemSkip:'',paraSkip:'',flexLine:true,
     fonts:{sans:'',sansBold:'',serif:'',serifBold:'',latin:'',math:''}};
 }
 function newId(){return S.nextId++;}
@@ -1166,17 +1170,16 @@ function newQ(kind,cfg){
   return q;
 }
 function newSection(type){
-  const c=S.cfg;
-  const pts={multi:c.multiPts,single:c.singlePts,fill:c.fillPts,mixed:c.mixedPts,calc:c.calcPts,custom:''}[type];
-  return {id:newId(),type,name:type==='fill'?(c.fillName||'選填題'):TYPE_INFO[type].name,pts:pts||'',desc:type==='fill'?'答案若為分數，請化為最簡分數':'',collapsed:false,qs:[]};
+  const c=S.cfg;   // 配分不預帶：各校、各老師配法不同，由老師自己填
+  return {id:newId(),type,name:type==='fill'?(c.fillName||'選填題'):TYPE_INFO[type].name,pts:'',desc:type==='fill'?'答案若為分數，請化為最簡分數':'',collapsed:false,qs:[]};
 }
 const R=String.raw;
 function sampleState(){
   S={v:1,nextId:1,nextFig:1,figs:[],cfg:defaultCfg(),sections:[]};
   Object.assign(S.cfg,{examType:'期末考',grade:'一年級',subject:'數學科',
     scope:'數學1 第三章 多項式函數',note:'應考班級 102~113',card:'math',recycle:false,pageFmt:'pt',
-    multiPts:'6',fillPts:'5',fillName:'填充題',expectedTotal:'100',top:[noteBlock(NOTE_CARD)]});
-  const s1=newSection('multi');
+    fillName:'填充題',expectedTotal:'100',top:[noteBlock(NOTE_CARD)]});
+  const s1=newSection('multi');s1.pts='6';
   Object.assign(S.cfg,{multiP1:'4',multiP2:'2',multiP3:'0'});
   const mq=(stem,opts,ans)=>{const q=newQ('multi');q.stem=stem;q.opts=opts;q.ans=ans;q.cols=1;return q;};
   s1.qs.push(mq(R`下列哪些選項是正確的？`,[
@@ -1203,7 +1206,7 @@ function sampleState(){
     R`$y=f(x)$ 在 $x=0$ 附近的局部特徵近似於 $y=3x$`,
     R`$f(2)=0$`,
     R`不等式 $f(x)\times f(x-2)\le 0$ 的解為 $2\le x\le 4$`],'1,4,5'));
-  const s2=newSection('fill');
+  const s2=newSection('fill');s2.pts='5';
   const fq=(stem,ans)=>{const q=newQ('fill');q.stem=stem;q.ans=ans;q.space='45';return q;};
   [
    [R`求多項式 $f(x)=2x^3-5x^2+1$ 除以 $x+2$ 的商式為 \blank 。`,R`\sn{2}x^2-\sn{9}x+\sn{18}`],
@@ -1431,6 +1434,10 @@ function compute(){
       }}
     });
     secs[s.id]={sum,count,no:CNUM[si]||String(si+1)};total+=sum;
+    {const on=s.qs.filter(q=>q.inc!==false&&q.kind!=='group'),has=v=>String(v==null?'':v).trim()!=='';
+     const none=on.filter(q=>!has(q.pts)&&!has(s.pts)),diff=has(s.pts)?on.filter(q=>has(q.pts)&&num(q.pts)!==num(s.pts)):[];
+     if(none.length)warn(`大題「${noBox(s.name)}」有 ${none.length} 題還沒有配分。整個大題同分就到「題型與配分」填「每題配分」；各題分數不同就到各題填「這題配分」。`,{q:none[0].id,f:'pts'});
+     if(diff.length)warn(`大題「${noBox(s.name)}」的標題會印「每題 ${s.pts} 分」，但有 ${diff.length} 題的「這題配分」不同。各題分數不同時，請把「每題配分」留空。`,{cfg:'cfg_secpts_'+s.id,pane:'opt'});}
     if(s.qs.every(q=>q.inc===false))warn(`大題「${noBox(s.name)}」沒有排進考卷的題目。`,{s:s.id});
   });
   const imgs=new Set();
@@ -2284,7 +2291,7 @@ function genTex(){
     const cmd={multi:'\\multisection',single:'\\singlesection',fill:'\\fillsection',mixed:'\\mixedsection',calc:'\\calcsection',custom:'\\examsection'}[s.type];
     const keys=[`name={${plainEsc(s.name)}}`,`pts={${s.pts}}`];
     if(inCalc)keys.push(`cols=${calcOn===1?1:2}`);
-    {const dd=secDesc(s);if(dd)keys.push(`desc={${plainEsc(dd)}}`);}
+    {const dd=secDesc(s);if(dd)keys.push(`desc={${plainEsc(dd)}}`);else if(s.type==='multi'&&String(s.pts).trim()==='')keys.push('desc={}');}
     L.push('%% ===== '+s.name+' =====',`${cmd}[${keys.join(', ')}]`,'');
     s.qs.forEach(q=>{
       if(q.inc===false)return;
@@ -2707,7 +2714,7 @@ function openHdDlg(){
   draw();
   document.body.append(d);document.addEventListener('keydown',key,true);
 }
-const SG_COLOR={'版型':'blue','標題文字':'teal','讀卡與回收':'amber','版頭其他':'green','紙張與邊線':'blue','行距與間距':'teal','選項與題型':'blue','配分與作答':'green','輸出版本與樣式':'blue','題目文字自動處理':'teal','字型':'amber','加入圖形':'blue'};
+const SG_COLOR={'版型':'blue','標題文字':'teal','讀卡與回收':'amber','版頭其他':'green','紙張與邊線':'blue','行距與間距':'teal','選項與題型':'blue','全卷滿分檢查':'green','輸出版本與樣式':'blue','題目文字自動處理':'teal','字型':'amber','加入圖形':'blue'};
 function sgroup(title,...kids){return h('section',{class:'sg','data-bc':SG_COLOR[title]||'blue'},h('h4',{},title),...kids.filter(Boolean));}
 function buildSettings(){
   const C=S.cfg,F=C.fonts;
@@ -2763,14 +2770,8 @@ function buildSettings(){
       field('單選題預設選項數',bindInput(C,'singleN',{id:'cfg_singleN',type:'number',int:true,min:2,max:9,after:changed}))),
       field('填空題的大題名稱',bindInput(C,'fillName',{id:'cfg_fillName',type:'select',options:[['填充題','填充題'],['選填題','選填題']],after:()=>{S.sections.forEach(s=>{if(s.type==='fill'&&(s.name==='填充題'||s.name==='選填題'))s.name=C.fillName;});rerender(true);}}),'填空題型的名稱（「本試卷題型」的勾選項與浮動按鈕也會一起改）；已加入的填空題型區塊會一起改名。'),
       field('選填題：算式中間的減號（如 2x−4 的 −）是否佔答案卡一格',bindInput(C,'minusSlot',{id:'cfg_minusSlot',type:'select',options:[['false','預設不佔格'],['true','預設佔一格']],after:()=>{C.minusSlot=($('#cfg_minusSlot').value==='true');changed();rerender();}}),'佔格時會自動在減號格前面補一個 +（2x−4 印成 2x＋□□）。每一題也可以在題目裡單獨改。數字前面的負號一律佔格。')),
-    sgroup('配分與作答',
-      h('div',{class:'grid3'},
-      field('多選題每題配分',bindInput(C,'multiPts',{id:'cfg_multiPts'})),field('單選題每題配分',bindInput(C,'singlePts',{id:'cfg_singlePts'})),field('填空題每題配分',bindInput(C,'fillPts',{id:'cfg_fillPts'}))),
-      h('div',{class:'grid2'},
-      field('計算證明題每題配分',bindInput(C,'calcPts',{id:'cfg_calcPts'})),
-      field('計算證明題書寫空間預設列數',bindInput(C,'calcRows',{id:'cfg_calcRows',type:'text',after:changed,placeholder:'6'}),'新增計算證明題時帶入的列數（每題仍可單獨修改）。')),
-      field('全卷滿分檢查（選填）',bindInput(C,'expectedTotal',{id:'cfg_expectedTotal',placeholder:'例如 100'}),'配分合計不等於這個數字時，上方會提醒。'),
-      h('span',{class:'hint'},'這些是「新增大題」時帶入的預設值，每個大題之後仍可單獨改配分與說明。')));
+    sgroup('全卷滿分檢查',
+      field('全卷滿分（選填）',bindInput(C,'expectedTotal',{id:'cfg_expectedTotal',placeholder:'例如 100'}),'配分合計不等於這個數字時，上方會提醒。')));
   $('#setOut').replaceChildren(
     sgroup('輸出版本與樣式',
       field('預設輸出的版本',(()=>{const sel=h('select',{id:'cfg_showAnswers'},VERS.map(([v,n])=>h('option',{value:v},n)));sel.value=verOf();sel.addEventListener('change',()=>{setVer(sel.value);pvVer=null;renderOut();save();});return sel;})(),'列印／存檔時預設用這一版（那裡還可以另選）。右邊預覽上方的版本鈕只切換畫面，不會改這一項。學生版：只有題目；簡答版：加紅字答案（選擇題選項、Ans:）；詳解版：簡答版再加上每題的詳解。'),
@@ -3128,7 +3129,7 @@ function qCard(s,q){
     const ans=bindInput(q,'ans',{type:'text',mono:true,after:changed,placeholder:q.kind==='multi'?'例如 2,3,5':'例如 3'});
     ansIn=ans;ans.dataset.warn='ans';
     b.append(h('div',{class:'grid2'},field('解答（正確選項）',ans,q.kind==='multi'?'填選項編號，多個用逗號隔開；一般卡可填 B,D。':'填選項編號。'),
-      field('這題配分（留空＝用大題的）',bindInput(q,'pts',{type:'text',after:changed}))));
+      field('這題配分（留空＝用大題的）',ptsInput(q))));
     const more=h('details',{},h('summary',{class:'hint',style:'cursor:pointer'},'更多：選項分欄排列'),
       h('div',{class:'card-b',style:'padding:8px 0 0'},
         field('選項排成幾欄（0＝接續排）',bindInput(q,'cols',{type:'number',int:true,min:0,max:5,after:changed})),
@@ -3170,18 +3171,18 @@ function qCard(s,q){
       h('button',{class:'btn small',type:'button',title:'題目有多個空格時，用分號分隔每個空格的答案',onclick:()=>insertAtEl(ans,'；')},'＋下一個空格的答案（；）'),ocrIconBtn(q,'ans','手寫／拍照辨識，放進解答欄'));
     b.append(field('解答',ans,'直接輸入答案，也可用右下角「∑ 數學式編輯器」插入根號、分數。數字和負號會自動變成答案卡格子，例如 -56/7、\\sqrt{27}、(3,2)。題目有兩個空格時，兩個答案用分號 ； 隔開。'),dtip,bar,info,conv);
     const mSel=bindInput(q,'minus',{type:'select',options:[['','跟全卷設定（目前：'+(S.cfg.minusSlot?'佔一格':'不佔格')+'）'],['no','不佔格'],['yes','佔一格']],after:()=>{updateSlotInfo();changed();}});
-    b.append(h('div',{class:'grid2'},field('這題配分（留空＝用大題的）',bindInput(q,'pts',{type:'text',after:changed})),
+    b.append(h('div',{class:'grid2'},field('這題配分（留空＝用大題的）',ptsInput(q)),
       field('算式中間的減號（如 2x−4 的 −）要不要佔答案卡一格',mSel,'只管算式「中間」的減號；佔格時會自動在前面補一個 +（2x−4 印成 2x＋□□）。數字前面的負號（如 −56/7、(−3,2)）一律佔格。')));
     setTimeout(updateSlotInfo,0);
   }
   if(q.kind==='calc'){
     if(q.rows==null)q.rows=String(S.cfg.calcRows||6);
     const rowsIn=bindInput(q,'rows',{type:'text',placeholder:String(S.cfg.calcRows||6),after:changed});rowsIn.inputMode='numeric';
-    b.append(h('div',{class:'grid2'},field('這題配分（留空＝用大題的）',bindInput(q,'pts',{type:'text',after:changed})),
+    b.append(h('div',{class:'grid2'},field('這題配分（留空＝用大題的）',ptsInput(q)),
       field('學生書寫空間（列數，預設 6）',rowsIn,'1 列約等於一行文字的高度。')));
   }
   if(q.kind==='open'){
-    b.append(h('div',{class:'grid2'},field('這題配分（留空＝用大題的）',bindInput(q,'pts',{type:'text',after:changed})),field('作答留白高度（pt）',bindInput(q,'space',{type:'text',after:changed}))));
+    b.append(h('div',{class:'grid2'},field('這題配分（留空＝用大題的）',ptsInput(q)),field('作答留白高度（pt）',bindInput(q,'space',{type:'text',after:changed}))));
   }
   {
     const strip=h('div',{class:'procstrip',style:'display:flex;flex-direction:column;gap:6px;margin:6px 0;padding:8px 10px;border:1px dashed var(--line);border-radius:8px;background:#FAFBFD'});
@@ -3343,6 +3344,7 @@ function warnItem(text,go){
   return h('span',{role:'button',tabindex:0,class:'warngo',title:'點一下前往修改',onmousedown:e=>e.preventDefault(),onclick:e=>{e.stopPropagation();goWarn(go);},onkeydown:e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();goWarn(go);}}},text,h('span',{class:'warngo-a'},'前往 →'));
 }
 let warnRun=0;
+function ptsInput(q){const e=bindInput(q,'pts',{type:'text',after:changed});e.dataset.warn='pts';return e;}
 function goWarn(go){
   const run=++warnRun;
   const flash=el=>{el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),1500);};
@@ -3439,7 +3441,7 @@ function renderTypePicker(){
         list.length>1?h('div',{class:'hint',style:'margin-bottom:2px'},`第 ${k+1} 個${typeLabel(t)}區塊`):null,
         h('div',{class:'grid3'},
           field('題型名稱',bindInput(sec,'name',{type:'text',after:changed})),
-          field('每題配分',bindInput(sec,'pts',{type:'text',after:()=>{changed();updPartialUI();}})),
+          field('每題配分',bindInput(sec,'pts',{id:'cfg_secpts_'+sec.id,type:'text',placeholder:'各題不同可留空',after:()=>{changed();updPartialUI();}})),
           field('說明（標題括號內）',desc))));
     });
     if(list.length){wrap.style.cssText=tcStyle(t);wrap.prepend(h('div',{class:'cfgdetail-t'},typeLabel(t)));}
@@ -3457,10 +3459,11 @@ function renderTypePicker(){
         h('span',{class:'hint'},'（留空＝依大考規則自動算；錯三個以上填 0 或留空＝不給分）')),sentence);
       updPartialUI();
     }
-    if(wrap.childNodes.length){wrap.className='tblk';detParts.push({el:wrap,t,size:list.length+(t==='multi'?1:0)});}
+    if(t==='calc'&&list.length>0)wrap.append(field('學生書寫空間預設列數',bindInput(S.cfg,'calcRows',{id:'cfg_calcRows',type:'text',after:changed,placeholder:'6'}),'新增計算證明題時帶入的列數（每題仍可單獨修改）。'));
+    if(wrap.childNodes.length){wrap.className='tblk';detParts.push({el:wrap,t,size:list.length+(t==='multi'||t==='calc'?1:0)});}
     return row;
   }));
-  if(detBox)detBox.replaceChildren(...(detParts.length?[h('div',{class:'hint'},'各題型區塊的名稱、每題配分與說明（勾選的題型才會出現在這裡）。')]:[h('div',{class:'hint'},'還沒有勾選題型。請先按題目區上方的「本試卷題型」標籤勾選。')]),typeCols(detParts));
+  if(detBox)detBox.replaceChildren(...(detParts.length?[h('div',{class:'hint'},'各題型區塊的名稱、每題配分與說明（勾選的題型才會出現在這裡）。同一大題各題分數不同時，「每題配分」留空，到各題填「這題配分」。')]:[h('div',{class:'hint'},'還沒有勾選題型。請先按題目區上方的「本試卷題型」標籤勾選。')]),typeCols(detParts));
 }
 /* 導覽列：每個大題一顆有顏色的按鈕，點了捲到該大題，目前所在的大題反白 */
 function renderNav(){
