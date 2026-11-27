@@ -526,7 +526,7 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.3';
-const APP_BUILD='2026-11-27 10:25';
+const APP_BUILD='2026-11-27 10:40';
 const APP_LOG=[
   {v:'1.3',items:[
     '數學符號面板換新外觀（沉穩淺色、按鍵緊湊，筆電畫面可看到整個面板），右上角可切換深色；按鈕改名為「插入並關閉」「連續插入」。','檢查提醒可以直接點，會跳到要修改的題目或設定欄位。','數學符號面板變窄，常用符號可以自訂快速鍵（面板上方「快速鍵」）。',
@@ -5754,6 +5754,16 @@ window.addEventListener('keydown',e=>{
   if(mmBox.hidden)openMM(field?a:null);else mmFocus();
   mkInsert(it);
 },true);
+/* 右鍵：面板和快速鍵視窗裡一律不跳 MathJax 的英文選單；在符號格上（含符號圖案）按右鍵就是設定快速鍵。
+   要在擷取階段攔，否則 MathJax 掛在公式上的選單會先接走。 */
+window.addEventListener('contextmenu',e=>{
+  const t=e.target&&e.target.closest?e.target:e.target&&e.target.parentElement;if(!t)return;
+  const tile=t.closest('#mm .mm-grid [data-k], #mmKeyDlg .mk-pick [data-k]');
+  if(!tile&&!(t.closest('#mm, #mmKeyDlg')&&t.closest('mjx-container')))return;
+  e.preventDefault();e.stopImmediatePropagation();
+  if(!tile)return;
+  if(mkDlg)tile.click();else openKeyDlg(tile.dataset.k);
+},true);
 function mmRender(){
   if(!mmBox)return;
   const tabs=mmBox.querySelector('.mm-tabs'),grid=mmBox.querySelector('.mm-grid');
@@ -5761,12 +5771,12 @@ function mmRender(){
   const items=mmItems();
   if(!items.length){grid.replaceChildren(h('span',{class:'hint',style:'grid-column:1/-1'},mmQuery?'找不到符合的符號':'還沒有最近使用的符號，從其他分類點選後會出現在這裡。'));return;}
   const tileX=it=>mmReady?h('span',{class:'mm-x'},'\\('+mmShow(it)+'\\)'):h('span',{class:'mm-t'},it.n);
-  grid.replaceChildren(...items.map(it=>it.d?h('div',{class:'mm-b mm-b2',title:it.n+'\n'+it.t.replace(/§/g,'').replace(/\n/g,' ')},
-      tileX(it),mmReady?h('span',{class:'mm-n'},it.n):null,
+  grid.replaceChildren(...items.map(it=>it.d?h('div',{class:'mm-b mm-b2'+(mmKeys[it.k]?' has-sk':''),'data-k':it.k,title:it.n+'\n'+it.t.replace(/§/g,'').replace(/\n/g,' ')+(mmKeys[it.k]?'\n快速鍵：'+mkLabel(mmKeys[it.k]):'\n按右鍵可設定快速鍵')},
+      mmKeys[it.k]?h('span',{class:'mm-sk'},mkShort(mmKeys[it.k])):null,tileX(it),mmReady?h('span',{class:'mm-n'},it.n):null,
       h('div',{class:'mm-2'},
         h('button',{type:'button',title:'放在句子中間，不換行（$…$）',onmousedown:e=>e.preventDefault(),onclick:()=>mmInsert(it,false)},'行內'),
         h('button',{type:'button',title:'獨立一行、置中（$$…$$）',onmousedown:e=>e.preventDefault(),onclick:()=>mmInsert(it,true)},'置中換行'))):
-    h('button',{type:'button',class:'mm-b'+(mmKeys[it.k]?' has-sk':''),'data-k':it.k,title:it.n+'\n'+it.t.replace(/§/g,'').replace(/\n/g,' ')+(mmKeys[it.k]?'\n快速鍵：'+mkLabel(mmKeys[it.k]):'\n按右鍵可設定快速鍵'),onmousedown:e=>e.preventDefault(),onclick:()=>mmInsert(it),oncontextmenu:e=>{e.preventDefault();openKeyDlg(it.k);}},
+    h('button',{type:'button',class:'mm-b'+(mmKeys[it.k]?' has-sk':''),'data-k':it.k,title:it.n+'\n'+it.t.replace(/§/g,'').replace(/\n/g,' ')+(mmKeys[it.k]?'\n快速鍵：'+mkLabel(mmKeys[it.k]):'\n按右鍵可設定快速鍵'),onmousedown:e=>e.preventDefault(),onclick:()=>mmInsert(it)},
     mmKeys[it.k]?h('span',{class:'mm-sk'},mkShort(mmKeys[it.k])):null,mmReady?h('span',{class:'mm-x'},'\\('+mmShow(it)+'\\)'):h('span',{class:'mm-t'},it.n),mmReady?h('span',{class:'mm-n'},it.n):null)));
   if(mmReady)typeset(grid);
 }
@@ -5935,7 +5945,7 @@ button.mm-b:hover::before,button.mm-b:focus-visible::before{border-color:#22D3EE
     h('div',{id:'mmLx',class:'mm-lx'}));
   const ed=h('div',{class:'mm-ed'},h('div',{class:'mm-edl'},'公式輸入框（不用打 $）'),modes,visWrap,draft,pv,er,h('div',{class:'mm-act'},ins,ins2,clr));
   mmBox=h('div',{id:'mm',class:'mm',hidden:true,role:'dialog','aria-label':'數學符號'},hd,ed,h('div',{class:'mm-c'},search,mode),h('div',{class:'mm-tabs',role:'tablist'}),h('div',{class:'mm-grid'}),
-    h('div',{class:'mm-f',title:'視覺輸入時，打 x^2、1/3、sqrt 也會自動排好。'+KEY_ALT+'+M 開啟；'+(IS_MAC?'⌘':'Ctrl')+'+Enter 插入並關閉；'+KEY_ALT+'+Enter 連續插入；Esc 關閉。'},'點考卷欄位 → 選符號或直接輸入 → 插入　·　Esc 關閉'));
+    h('div',{class:'mm-f',title:'視覺輸入時，打 x^2、1/3、sqrt 也會自動排好。'+KEY_ALT+'+M 開啟；'+(IS_MAC?'⌘':'Ctrl')+'+Enter 插入並關閉；'+KEY_ALT+'+Enter 連續插入；Esc 關閉。'},'點考卷欄位 → 選符號或輸入 → 插入　·　右鍵設快速鍵'));
   hd.addEventListener('pointerdown',e=>{
     if(e.target.closest('button'))return;
     const r=mmBox.getBoundingClientRect(),dx=e.clientX-r.left,dy=e.clientY-r.top;
