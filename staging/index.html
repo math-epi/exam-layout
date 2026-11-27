@@ -138,6 +138,10 @@ input.mono{font-family:var(--font-mono);font-size:13.5px}
 .floatadd{border-left:4px solid var(--tc,var(--accent));position:fixed;left:16px;bottom:16px;z-index:35;display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.2);max-width:calc(100vw - 32px)}
 .warns{padding:8px 12px;border:1px solid #E4D3A8;background:#FCF8EE;border-radius:8px;font-size:13px;color:var(--warn)}
 .warns ul{margin:4px 0 0 18px;padding:0}
+.warns .warngo{display:inline;padding:2px 0;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;border-radius:4px}
+.warns .warngo:hover{text-decoration:underline;text-underline-offset:3px}
+.warns .warngo-a{display:inline-block;margin-left:8px;padding:0 8px;border:1px solid #CDB270;border-radius:999px;background:#fff;font-weight:700;font-size:12px;white-space:nowrap;line-height:1.7}
+.warns .warngo:hover .warngo-a{background:var(--warn);border-color:var(--warn);color:#fff}
 .tabs{display:flex;gap:4px;padding:8px 10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:center}
 .tabs button{border:1px solid var(--line);border-bottom:none;background:var(--bg);padding:5px 12px;border-radius:8px 8px 0 0;font-size:13.5px}
 .tabs button[aria-selected="true"]{background:var(--panel);font-weight:600;color:var(--accent);margin-bottom:-1px}
@@ -522,10 +526,10 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.3';
-const APP_BUILD='2026-11-27 07:42';
+const APP_BUILD='2026-11-27 08:20';
 const APP_LOG=[
   {v:'1.3',items:[
-    '數學符號面板換新外觀（沉穩淺色），右上角可切換深色；按鈕改名為「插入並關閉」「連續插入」。',
+    '數學符號面板換新外觀（沉穩淺色），右上角可切換深色；按鈕改名為「插入並關閉」「連續插入」。','檢查提醒可以直接點，會跳到要修改的題目或設定欄位。',
     '修正：ℝ、ℕ、ℤ 等雙線字母（\\mathbb）及部分少用符號在網頁上排不出來。',
     '新增「安裝工作台」按鈕：裝好後從桌面、Dock 或開始功能表點圖示就能開，不用記網址。安裝後第一次請連網開啟。'
   ]},
@@ -1286,7 +1290,8 @@ function secDesc(s){
 }
 function compute(){
   const math=S.cfg.card==='math';
-  let qn=0,fl=0,total=0;const info={},secs={},warns=[];
+  let qn=0,fl=0,total=0;const info={},secs={},warns=[],gos=[];
+  const warn=(t,go)=>{warns.push(t);gos.push(go||null);};   // go：點提醒時要跳去哪裡
   S.sections.forEach((s,si)=>{
     let open=0,sum=0,count=0;
     s.qs.forEach(q=>{
@@ -1295,17 +1300,17 @@ function compute(){
       if(q.kind==='single'||q.kind==='multi'){
         qn++;if(s.type==='mixed'){fl++;qi.label=fillLetter(fl)+'.';}else qi.label=qn+'.';qi.cardNo=qn;count++;sum+=ptsOf(q,s);
         const idx=parseChoiceAns(q.ans);qi.idx=idx;
-        if(!idx.length)warns.push(`第 ${qn} 題（${kn(q.kind)}）還沒有填解答。`);
-        else if(idx.some(i=>i<1||i>q.opts.length))warns.push(`第 ${qn} 題的解答超出選項範圍。`);
-        else if(q.kind==='single'&&idx.length>1)warns.push(`第 ${qn} 題是單選題，解答有多個選項。`);
+        if(!idx.length)warn(`第 ${qn} 題（${kn(q.kind)}）還沒有填解答。`,{q:q.id,f:'ans'});
+        else if(idx.some(i=>i<1||i>q.opts.length))warn(`第 ${qn} 題的解答超出選項範圍。`,{q:q.id,f:'ans'});
+        else if(q.kind==='single'&&idx.length>1)warn(`第 ${qn} 題是單選題，解答有多個選項。`,{q:q.id,f:'ans'});
       }else if(q.kind==='fill'){
         fl++;qi.label=fillLetter(fl)+'.';count++;sum+=ptsOf(q,s);
         const items=splitAns(normAns(q.ans,minusOf(q)));let used=0;items.forEach(it=>used+=slotCount(it));
         const nb=blankCount(q.stem);
-        if(nb===0)warns.push(`選填題 ${fillLetter(fl)} 的題目裡沒有空格（用「＋空格」插入 \\blank）。`);
-        else if(nb!==items.length)warns.push(`選填題 ${fillLetter(fl)} 有 ${nb} 個空格，但解答欄有 ${items.length} 段（多個空格的答案請用分號 ； 分隔）。`);
-        if(q.ans.trim()==='')warns.push(`選填題 ${fillLetter(fl)} 還沒有填解答。`);
-        else if(used===0&&math)warns.push(`選填題 ${fillLetter(fl)} 的解答裡沒有數字或正負號，不會產生答案卡格子。`);
+        if(nb===0)warn(`選填題 ${fillLetter(fl)} 的題目裡沒有空格（用「＋空格」插入 \\blank）。`,{q:q.id,f:'stem'});
+        else if(nb!==items.length)warn(`選填題 ${fillLetter(fl)} 有 ${nb} 個空格，但解答欄有 ${items.length} 段（多個空格的答案請用分號 ； 分隔）。`,{q:q.id,f:'ans'});
+        if(q.ans.trim()==='')warn(`選填題 ${fillLetter(fl)} 還沒有填解答。`,{q:q.id,f:'ans'});
+        else if(used===0&&math)warn(`選填題 ${fillLetter(fl)} 的解答裡沒有數字或正負號，不會產生答案卡格子。`,{q:q.id,f:'ans'});
         qi.items=items;qi.used=used;
         if(math&&used>0){qi.from=qn+1;qi.to=qn+used;qn+=used;}
       }else if(q.kind==='open'||q.kind==='calc'){open++;qi.label=open+'.';count++;sum+=ptsOf(q,s);}
@@ -1315,21 +1320,21 @@ function compute(){
       {const mi=mathCjkInfo(q);if(mi.n){
         const nm=qi.label.replace(/\.$/,'');
         const lb=q.kind==='group'?'題組':q.kind==='fill'||(s.type==='mixed'&&(q.kind==='single'||q.kind==='multi'))?'選填題 '+nm:q.kind==='single'||q.kind==='multi'?`第 ${nm} 題`:`大題「${s.name}」第 ${nm} 題`;
-        warns.push(`${lb}的數學式 $…$ 裡有中文（${mi.n} 處）。到該題按「一鍵修正」，中文會移到 $…$ 外面，或加上 \\text{}。`);
+        warn(`${lb}的數學式 $…$ 裡有中文（${mi.n} 處）。到該題按「一鍵修正」，中文會移到 $…$ 外面，或加上 \\text{}。`,{q:q.id,f:'cjk'});
       }}
     });
     secs[s.id]={sum,count,no:CNUM[si]||String(si+1)};total+=sum;
-    if(s.qs.every(q=>q.inc===false))warns.push(`大題「${noBox(s.name)}」沒有排進考卷的題目。`);
+    if(s.qs.every(q=>q.inc===false))warn(`大題「${noBox(s.name)}」沒有排進考卷的題目。`,{s:s.id});
   });
   const imgs=new Set();
-  S.sections.forEach(s=>s.qs.forEach(q=>{if(q.inc===false)return;eachFigRef(q,id=>{const f=findFig(id);if(!f)warns.push('有題目指定的附圖（圖 '+id+'）已不在圖庫。');else if(f.kind==='image')imgs.add(f.file);});}));
-  if(imgs.size)warns.push('圖片檔 '+[...imgs].join('、')+'：用「列印 / 存檔」下載 Overleaf zip 會自動包含；若只複製 main.tex，要把圖片上傳到 Overleaf 專案（與 main.tex 同一層），檔名要完全一致。');
-  if(math&&qn>cardSlots())warns.push(`數學卡的答案只有 ${cardSlots()} 格（可在「全域設定」修改數學卡格數），目前選擇題與選填格子共 ${qn} 格，超過 ${qn-cardSlots()} 格。第 ${cardSlots()+1} 格起不會畫圈圈編號，請減少題數或選填的格子數。`);
+  S.sections.forEach(s=>s.qs.forEach(q=>{if(q.inc===false)return;eachFigRef(q,id=>{const f=findFig(id);if(!f)warn('有題目指定的附圖（圖 '+id+'）已不在圖庫。',{q:q.id,f:'fig'});else if(f.kind==='image')imgs.add(f.file);});}));
+  if(imgs.size)warn('圖片檔 '+[...imgs].join('、')+'：用「列印 / 存檔」下載 Overleaf zip 會自動包含；若只複製 main.tex，要把圖片上傳到 Overleaf 專案（與 main.tex 同一層），檔名要完全一致。');
+  if(math&&qn>cardSlots())warn(`數學卡的答案只有 ${cardSlots()} 格（可在「全域設定」修改數學卡格數），目前選擇題與選填格子共 ${qn} 格，超過 ${qn-cardSlots()} 格。第 ${cardSlots()+1} 格起不會畫圈圈編號，請減少題數或選填的格子數。`,{cfg:'cfg_cardSlots'});
   const ex=S.cfg.expectedTotal.trim();
-  if(ex!==''&&num(ex)!==total)warns.push(`全卷配分合計 ${fmt(total)} 分，與設定的滿分 ${ex} 分不符。`);
-  if(!S.cfg.schoolHide&&!cval(S.cfg.school)&&(S.cfg.titleMode!=='free'||String(S.cfg.titleText).includes('【學校】')))warns.push('還沒有填學校名稱，目前會印「○○高級中學」（「⚙ 設定」→「標頭與版面」；不想印校名可勾「不顯示校名」）。');
-  const cw=cardTextWarn();if(cw)warns.push(cw);
-  return {info,secs,warns,total,qn};
+  if(ex!==''&&num(ex)!==total)warn(`全卷配分合計 ${fmt(total)} 分，與設定的滿分 ${ex} 分不符。`,{cfg:'cfg_expectedTotal'});
+  if(!S.cfg.schoolHide&&!cval(S.cfg.school)&&(S.cfg.titleMode!=='free'||String(S.cfg.titleText).includes('【學校】')))warn('還沒有填學校名稱，目前會印「○○高級中學」（「⚙ 設定」→「標頭與版面」；不想印校名可勾「不顯示校名」）。',{cfg:'cfg_school'});
+  const cw=cardTextWarn();if(cw)warn(cw,{cfg:'',pane:'head',sel:'.hdedit'});
+  return {info,secs,warns,gos,total,qn};
 }
 
 /* ================= LaTeX 轉預覽 HTML ================= */
@@ -2850,6 +2855,7 @@ function qCard(s,q){
   const after=()=>{const e=card.querySelector('[data-sum]');if(e)e.textContent=summary(q);changed();};
   const stemLabel={single:'題目',multi:'題目',fill:'題目（要填答案的地方按「＋空格」）',open:'題目',calc:'題目（題號與題目會印在方格左上角）',group:'共用題幹'}[q.kind];
   const stem=bindInput(q,'stem',{type:'textarea',rows:q.kind==='group'?3:3,mm:true,after,placeholder:'直接打文字；數學式用 $…$，或按右下角「∑ 數學符號」（Alt+M）'});
+  stem.dataset.warn='stem';
   {
     const bar=h('div',{class:'tools fmtbar'});
     if(q.kind==='fill')bar.append(h('button',{class:'btn small',type:'button',onclick:()=>insertAtEl(stem,' \\blank ')},'＋空格 \\blank'));
@@ -2901,7 +2907,7 @@ function qCard(s,q){
     };
     drawOpts();b.append(box);
     const ans=bindInput(q,'ans',{type:'text',mono:true,after:changed,placeholder:q.kind==='multi'?'例如 2,3,5':'例如 3'});
-    ansIn=ans;
+    ansIn=ans;ans.dataset.warn='ans';
     b.append(h('div',{class:'grid2'},field('解答（正確選項）',ans,q.kind==='multi'?'填選項編號，多個用逗號隔開；一般卡可填 B,D。':'填選項編號。'),
       field('這題配分（留空＝用大題的）',bindInput(q,'pts',{type:'text',after:changed}))));
     const more=h('details',{},h('summary',{class:'hint',style:'cursor:pointer'},'更多：選項分欄排列'),
@@ -2914,6 +2920,7 @@ function qCard(s,q){
     const ans=bindInput(q,'ans',{type:'text',mono:true,mm:true,after:()=>{updateSlotInfo();changed();},placeholder:'例如 (3,2)、-56/7、\\sqrt{27}'});
     ans.dataset.nobox='1';
     ans.dataset.nodollar='1';
+    ans.dataset.warn='ans';
     const dtip=h('div',{class:'dtip',style:'display:none'},'💡 解答區的數學式不用打 $，已幫你去掉。');
     let dtimer=0;
     const stripDollar=()=>{
@@ -2975,7 +2982,7 @@ function qCard(s,q){
     const mcMsg=h('div',{class:'hint',style:'flex:1 1 16em;min-width:0;white-space:pre-wrap;word-break:break-all;color:#6B4E00'});
     const mcBtn=h('button',{class:'btn small',type:'button'},'一鍵修正');
     const mcUndo=h('button',{class:'btn small',type:'button'},'復原');
-    const mcRow=h('div',{style:'display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px;padding:6px 8px;border:1px solid #E8CF8A;border-radius:6px;background:#FFF8E6'},
+    const mcRow=h('div',{'data-warn':'cjk',style:'display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px;padding:6px 8px;border:1px solid #E8CF8A;border-radius:6px;background:#FFF8E6'},
       h('b',{style:'font-size:13px;color:#6B4E00;white-space:nowrap'},'⚠ 數學式裡有中文'),mcMsg,mcBtn,mcUndo);
     let mcPrev=null,mcAutoN=0,mcSkip=false;
     const setVal=(e,v)=>{
@@ -3107,8 +3114,62 @@ function refreshChips(){
     });
   });
   const w=$('#warns');
-  if(comp.warns.length){w.hidden=false;w.replaceChildren(h('b',{},'檢查提醒（'+comp.warns.length+'）'),h('ul',{},...comp.warns.slice(0,12).map(x=>h('li',{},x))),...(comp.warns.length>12?[h('span',{class:'hint'},'還有 '+(comp.warns.length-12)+' 則…')]:[]));}
+  if(comp.warns.length){w.hidden=false;w.replaceChildren(h('b',{},'檢查提醒（'+comp.warns.length+'）'),h('ul',{},...comp.warns.slice(0,12).map((x,i)=>h('li',{},warnItem(x,comp.gos[i])))),...(comp.warns.length>12?[h('span',{class:'hint'},'還有 '+(comp.warns.length-12)+' 則…')]:[]));}
   else w.hidden=true;
+}
+/* 檢查提醒：有對應位置的項目整則可以點，直接跳到要修改的地方 */
+function warnItem(text,go){
+  if(!go)return text;
+  /* mousedown 不搶焦點：否則離開欄位時提醒清單重畫，這一下點擊會落空 */
+  return h('button',{type:'button',class:'warngo',title:'點一下前往修改',onmousedown:e=>e.preventDefault(),onclick:e=>{e.stopPropagation();goWarn(go);}},text,h('span',{class:'warngo-a'},'前往 →'));
+}
+let warnRun=0;
+function goWarn(go){
+  const run=++warnRun;
+  const flash=el=>{el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),1500);};
+  if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();
+  if(go.cfg!=null){
+    let el=go.cfg?document.getElementById(go.cfg):null;
+    const pane=go.pane||(el&&el.closest('[data-pane]')&&el.closest('[data-pane]').dataset.pane);if(!pane)return;
+    openCfg(pane);
+    setTimeout(()=>{
+      if(!el&&go.sel)el=document.querySelector('#cfgWinB '+go.sel);
+      if(!el)return;
+      const box=el.closest('.f')||el;box.scrollIntoView({block:'center'});flash(box);
+      if(el.matches('input,select,textarea'))el.focus({preventScroll:true});
+    },60);
+    return;
+  }
+  const s=S.sections.find(x=>go.q!=null?x.qs.some(q=>q.id===go.q):x.id===go.s);if(!s)return;
+  const q=go.q!=null?s.qs.find(x=>x.id===go.q):null;
+  let need=false;
+  if(s.collapsed){s.collapsed=false;need=true;}if(q&&q.collapsed){q.collapsed=false;need=true;}
+  if(cfgOpen)closeCfg();
+  lastFocusQ=q?q.id:null;userScrolled=false;lastPvQ=null;markProg();
+  if(need)rerender();
+  setTimeout(()=>{
+    const card=document.querySelector(q?`#sections [data-qid="${q.id}"]`:`#sections [data-sid="${s.id}"]`);if(!card)return;
+    let field=q&&go.f?card.querySelector(`[data-warn="${go.f}"]`):null;
+    if(field&&field.hidden)field=null;
+    const tg=field?(field.closest('.f')||field):card;
+    const top=()=>{const nh=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--navh'))||0;return Math.max(TOPH()+nh+16,q?innerHeight*0.22:0);};
+    const place=b=>{markProg();userScrolled=false;window.scrollTo({top:Math.max(0,tg.getBoundingClientRect().top+window.scrollY-top()),behavior:b});};
+    let stop=false;const ab=()=>{stop=true;},evs=['wheel','touchstart','keydown','mousedown'];
+    evs.forEach(v=>window.addEventListener(v,ab,{passive:true}));
+    place('smooth');flash(tg);
+    if(field){
+      if(go.f==='cjk'){const bt=field.querySelector('button:not([hidden])');if(bt)bt.focus({preventScroll:true});}
+      else if(field.matches('input,textarea')){
+        field.focus({preventScroll:true});
+        if(field._rtv&&field._rtv.classList.contains('rte')&&richOn(field))field._rtv.focus({preventScroll:true});
+      }
+    }
+    /* 上方的欄位排版、數學式排好後高度會變，稍後再對一次位置；老師自己捲動或操作就停手 */
+    [700,1400].forEach((ms,i)=>setTimeout(()=>{
+      if(!stop&&run===warnRun&&tg.isConnected&&Math.abs(tg.getBoundingClientRect().top-top())>24)place('smooth');
+      if(i){evs.forEach(v=>window.removeEventListener(v,ab));updateFloat();}
+    },ms));
+  },need?120:30);
 }
 function changed(){save();scheduleOutput();refreshChips();drawHdEdit();if(window.syncBulkBtns)syncBulkBtns();}
 function rerender(keepOnlyStructure){buildSettingsIfNeeded();buildFigLib();renderSections();renderOut();save();if(window.syncBulkBtns)syncBulkBtns();}
