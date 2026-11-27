@@ -279,6 +279,8 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 .tbl-ed{display:flex;flex-direction:column;gap:6px;margin:4px 0}
 .tbl-ed input[type=text]{width:100%;min-width:0;box-sizing:border-box}
 .opts{font-family:'Times New Roman','Noto Serif TC',serif}
+/* MathJax 以周圍字型的小寫字高決定大小：選項與紅字解答裡的數學式要用和題幹相同的字型，大小才會一致 */
+.paper .opts mjx-container,.paper .ans mjx-container{font-family:'Noto Serif TC','Noto Serif CJK TC','Source Han Serif TC','Songti TC','PMingLiU',serif}
 .opts .o{display:flex;align-items:baseline;gap:.25em;min-width:0}
 .opts .ol{flex:none}.opts .ot{min-width:0}
 .opts.auto{display:flex;flex-wrap:nowrap;align-items:baseline;gap:0 1.1em}
@@ -527,9 +529,11 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.3';
-const APP_BUILD='2026-11-27 10:57';
+const APP_BUILD='2026-11-27 11:37';
 const APP_LOG=[
   {v:'1.3',items:[
+    '修正：網頁列印時，填充題與選填題的圈號圓圈沒有印出來（\\boxed 框線、\\cancel 刪除線也一併修正）',
+    '修正：選項與紅字解答裡的數學式比題幹小約一成，現在大小一致',
     '數學式編輯器換新外觀（沉穩淺色、按鍵緊湊，筆電畫面可看到整個面板），右上角可切換深色；按鈕改名為「插入並關閉」「連續插入」。','檢查提醒可以直接點，會跳到要修改的題目或設定欄位。','數學式編輯器變窄，常用符號可以自訂快速鍵（編輯器上方「快速鍵」）。','關閉數學式上的英文右鍵選單（避免誤改顯示方式）。','「數學符號」面板改名為「數學式編輯器」。',
     '修正：ℝ、ℕ、ℤ 等雙線字母（\\mathbb）及部分少用符號在網頁上排不出來。',
     '新增「安裝工作台」按鈕：裝好後從桌面、Dock 或開始功能表點圖示就能開，不用記網址。安裝後第一次請連網開啟。'
@@ -4545,7 +4549,7 @@ function printCss(mm){
 }
 /* MathJax 自己的樣式表（含隱藏朗讀用 MathML 的規則）：列印網頁檔是獨立檔案，要一起帶進去，否則每個數學式會多出一份文字 */
 function mjStyleText(){
-  let t='mjx-assistive-mml{display:none!important}\nmjx-container svg,mjx-container svg *{stroke:none!important}\n';
+  let t='mjx-assistive-mml{display:none!important}\nmjx-container svg,mjx-container svg *{stroke:none!important}\nmjx-container svg [data-mml-node="menclose"]>:not(g){stroke:currentColor!important}\n';
   document.querySelectorAll('style').forEach(st=>{if(/^MJX/i.test(st.id||''))t+=st.textContent+'\n';});
   return t;
 }
@@ -4557,6 +4561,7 @@ function nativePrint(res){
   st.textContent=`@page{size:${res.mm[0]}mm ${res.mm[1]}mm;margin:0}
 @media print{html,body{height:auto!important;background:#fff!important;overflow:visible!important}
 mjx-container svg,mjx-container svg *{stroke:none!important}
+mjx-container svg [data-mml-node="menclose"]>:not(g){stroke:currentColor!important}
 body.prn>*:not(.prn-host){display:none!important}
 .prn-host{position:static!important;width:auto!important;z-index:auto!important;left:auto!important;top:auto!important}
 .prn-host .pg{margin:0!important;box-shadow:none!important;break-after:page;page-break-after:always}
