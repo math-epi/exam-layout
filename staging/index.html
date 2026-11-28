@@ -571,14 +571,14 @@ body.fx-open .cfgwin,body.fx-open .wd-btn{z-index:38}
   <button class="btn small" id="btnFocus" type="button" title="先專心打題目：上面看這一題的排版，下面用大畫面輸入">✎ 專注出題</button>
   <button class="btn small" id="btnNew" type="button">新考卷</button>
   <button class="btn small" id="btnImport" type="button" title="開啟之前存的考卷檔">開啟舊檔</button>
-  <button class="btn small" id="btnImportTex" type="button" title="匯入 Word 考卷或題庫（.docx），或 LaTeX 題目（.tex、.zip），自動分到各題型">匯入 Word／LaTeX</button>
+  <button class="btn small" id="btnImportTex" type="button" title="匯入 Word 考卷或題庫（.docx）、PDF（請 AI 協助辨識），或 LaTeX 題目（.tex、.zip），自動分到各題型">匯入 Word／PDF／LaTeX</button>
   <button class="btn small danger" id="btnReset" type="button">載入範例</button>
   <button class="btn small" id="btnInstall" type="button" title="像一般軟體一樣點圖示開啟，不用記網址；連網開過後可離線編輯與列印" hidden>安裝到電腦</button>
   <a class="btn small" id="lnkManual" href="manual.html" target="_blank" rel="noopener" style="text-decoration:none">使用手冊</a>
   <span class="themeseg" id="themeSeg" role="group" aria-label="外觀"><button type="button" data-th="light" title="淺色外觀" aria-label="淺色"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg></button><button type="button" data-th="dark" title="深色外觀" aria-label="深色"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.6A8.4 8.4 0 0 1 9.4 4a8.4 8.4 0 1 0 10.6 10.6z"/></svg></button><button type="button" data-th="auto" title="跟隨系統：跟著電腦或瀏覽器的深淺色設定" aria-label="跟隨系統"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="12" rx="1.8"/><path d="M8.5 20.5h7M12 16.8v3.4"/></svg></button></span>
   <span id="saveStatus" aria-live="polite" style="font-size:12px;margin-left:10px;padding:3px 10px;border-radius:999px;background:var(--b-eaf0fa);color:var(--t-5b6577);white-space:nowrap"></span>
   <input type="file" id="fileImport" accept=".json,.zip,application/json,application/zip" hidden>
-  <input type="file" id="fileTex" accept=".docx,.doc,.tex,.txt,.zip" multiple hidden>
+  <input type="file" id="fileTex" accept=".docx,.doc,.pdf,.tex,.txt,.zip" multiple hidden>
 </div>
 <div class="banner" id="saveWarn" hidden></div>
 <div class="banner" id="guide">
@@ -755,10 +755,11 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.8';
-const APP_BUILD='2026-11-28 15:05';
+const APP_BUILD='2026-11-28 15:30';
 const APP_LOG=[
   {v:'1.8',items:[
-    '新增匯入 Word 考卷（.docx，試用）：上方「匯入 Word／LaTeX」可把題目、選項、答案、詳解讀進各題型；Word 內建方程式會轉成數學式，PNG／JPG 圖片會放進圖庫。MathType／舊版方程式也能轉換；舊版 .doc 請先另存成 .docx。匯入後請逐題核對。',
+    '新增匯入 Word 考卷（.docx，試用）：上方「匯入 Word／PDF／LaTeX」可把題目、選項、答案、詳解讀進各題型；Word 內建方程式會轉成數學式，PNG／JPG 圖片會放進圖庫。MathType／舊版方程式也能轉換；舊版 .doc 請先另存成 .docx。匯入後請逐題核對。',
+    '新增匯入 PDF（借用自己的 AI）：選 PDF 後依視窗步驟複製指令，把 PDF 交給 Claude、ChatGPT、Gemini 等 AI，再把回覆貼回來讀入各題型。需要 AI 帳號和可用額度。',
     '中文和數學式緊貼時，輸出的考卷會自動空一格（題目、選項、詳解；預覽、列印、編譯 PDF、.tex 都一樣），原本打的字不會被改動。不需要可到「⚙ 設定」的「題目文字自動處理」關掉。',
     '中文輸入法提醒：在解答、配分、數學式編輯器等該打英文數字的地方打出注音或中文時，欄位旁會提示切換輸入法（不會擋住輸入）。電腦的切換設定寫在使用手冊。',
     '修正：題目的數學式外面打 \\$、\\{ 這類符號時，預覽和輸出會出錯。',
@@ -3908,7 +3909,7 @@ function initCfgWin(){
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape'&&cfgMenuOpen){cfgMenuOpen=false;renderCfgTabs();return;}
     if(e.key!=='Escape'||e.defaultPrevented||!cfgOpen)return;
-    if(document.querySelector('.ocr-modal,#texDlg,#saveDlg')||(typeof prState!=='undefined'&&prState))return;
+    if(document.querySelector('.ocr-modal,#texDlg,#pdfDlg,#saveDlg')||(typeof prState!=='undefined'&&prState))return;
     closeCfg();
   });
   addEventListener('resize',cfgPlace);addEventListener('scroll',cfgPlace,{passive:true});
@@ -5626,7 +5627,7 @@ async function importFigs(secs,images){
     for(const r of x.more)await get(r);
   }
 }
-function openTexImport(parsed,fileNames,title){
+function openTexImport(parsed,fileNames,title,onDone){
   if(document.getElementById('texDlg'))return;
   const secs=texBuildSections(parsed);
   const total=secs.reduce((a,s)=>a+s.qs.filter(q=>q.kind!=='group').length,0);
@@ -5660,6 +5661,7 @@ function openTexImport(parsed,fileNames,title){
     });
     lastFocusQ=null;settingsBuilt=false;rerender();close();
     flashMsg('已匯入 '+total+' 題，請逐題檢查數學式與答案。');
+    if(onDone)onDone();
   });
   const card=h('div',{style:'background:var(--b-ffffff);border-radius:12px;max-width:620px;width:100%;max-height:88vh;overflow:auto;padding:16px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)'},
     h('div',{style:'font-weight:700;font-size:16px;margin-bottom:4px'},title||'匯入 LaTeX'),
@@ -5674,6 +5676,127 @@ function openTexImport(parsed,fileNames,title){
     h('div',{style:'text-align:right;margin-top:12px;display:flex;gap:8px;justify-content:flex-end'},bNo,...(rows.length?[bOk]:[])));
   ov.append(card);document.body.append(ov);
 }
+/* ================= 匯入 PDF（借用老師自己的 AI）=================
+   工作台不呼叫任何 AI：提供固定指令，老師把 PDF 和指令交給 AI，再把回覆貼回來，用 texParse 讀入。 */
+const PDF_PROMPT=String.raw`請把我附上的考卷或題庫 PDF 轉成下面指定的 LaTeX 格式。我要把結果貼進考卷排版軟體，請嚴格照格式輸出。
+
+【抄錄原則】
+1. 題目、選項、答案、詳解照原檔逐字抄錄，保持原題序；不要改寫、不要省略任何一題。
+2. 原檔沒有的答案或詳解一律留空，不要自己解題或猜答案。
+3. 看不清楚的地方寫【請核對】；圖、表格無法轉成文字的地方寫【圖】或【表】。
+4. 不要抄頁首、頁尾、頁碼、班級姓名欄、出處標籤。
+
+【輸出格式】
+- 全部放在一個程式碼區塊裡，只放內容，不要 \documentclass、\usepackage、\begin{document}。
+- 每個大題先寫一行標題（單獨一行），例如：一、單選題（每題 5 分）
+  題型名稱用：單選題、多選題、填充題、混合題、計算證明題。原卷有寫配分才寫括號裡的配分。
+- 標題下面用一組 \begin{enumerate} … \end{enumerate}，每題以 \item 開頭，不寫題號。
+- 數學式一律用 $…$ 包起來（分數用 \dfrac，線段用 \overline{AB}，向量用 \overrightarrow{AB}），不要用自訂指令。中文不要放進 $…$ 裡。一般文字裡的百分號寫 \%。
+- 題目裡的小題直接分行寫 (1)、(2)，不要再用 enumerate；不要使用 tabular、figure、\includegraphics。
+- 選擇題的選項（正確選項前面寫 1，其他寫 0；原檔沒給答案就全部寫 0；選項不寫編號）：
+\begin{choices}
+\choice0 第一個選項
+\choice1 第二個選項
+\end{choices}
+- 填充題每個空格的位置寫 \ansunderline{}。
+- 答案和詳解放在該題最後的 answer 環境：
+  填充題：第一行只寫答案（多個空格的答案用全形分號；隔開），接著寫 \\，下一行起寫詳解。
+\begin{answer}
+$\dfrac{1}{2}$ \\
+詳解文字
+\end{answer}
+  填充題有詳解但沒有答案時，answer 環境第一行只寫 \\。
+  其他題型：answer 環境裡只寫詳解（選擇題的答案已用 0、1 標示）。沒有詳解就整個省略。
+- 混合題的題組共同敘述，寫在該大題標題之後、\begin{enumerate} 之前。
+
+【範例】
+一、單選題（每題 5 分）
+\begin{enumerate}
+\item 下列何者等於 $2^{3}$？
+\begin{choices}
+\choice0 $6$
+\choice1 $8$
+\end{choices}
+\end{enumerate}
+二、填充題
+\begin{enumerate}
+\item 方程式 $2x=1$ 的解為 $x=$ \ansunderline{}。
+\begin{answer}
+$\dfrac{1}{2}$
+\end{answer}
+\end{enumerate}
+
+題目很多、一次寫不完時，請停在某一題完整結束的地方；我回覆「繼續」後，重新寫目前的大題標題與 \begin{enumerate}，接著下一題。`;
+/* AI 回覆：有程式碼區塊就只取區塊內容（分多次回覆時全部接起來） */
+function pdfCleanReply(s){
+  s=s.replace(/\r\n?/g,'\n');
+  const blocks=[...s.matchAll(/^[ \t]*(`{3,}|~{3,})[^\n]*\n([\s\S]*?)(?:^[ \t]*\1[ \t]*$|(?![\s\S]))/gm)].map(m=>m[2]);
+  if(blocks.length)s=blocks.join('\n');
+  return s;
+}
+function pdfParse(reply){
+  const parsed=texParse([{name:'AI 回覆.tex',text:pdfCleanReply(reply)}]);
+  /* 分段回覆會重複大題標題：相鄰的同一大題合併 */
+  const out=[];
+  parsed.sections.forEach(s=>{
+    const p=out[out.length-1];
+    if(p&&p.type===s.type&&p.name===s.name){p.qs.push(...s.qs.filter(q=>q.kind!=='group'||!p.qs.some(x=>x.kind==='group'&&x.stem===q.stem)));if(p.pts==='')p.pts=s.pts;}
+    else out.push(s);
+  });
+  /* 多個空格的答案「$1$；$2$」：解答欄用不加 $ 的寫法 */
+  out.forEach(s=>s.qs.forEach(q=>{if(q.kind==='fill'&&q.ans.includes('$')&&q.ans.includes('；'))q.ans=q.ans.split('；').map(x=>x.trim().replace(/^\$+|\$+$/g,'')).join('；');}));
+  const all=out.flatMap(s=>s.qs),has=re=>all.filter(q=>re.test([q.stem,q.sol||'',...(q.opts||[])].join('\n'))).length;
+  const warns=['AI 可能抄錯數字、符號或漏題，請對照原 PDF 逐題核對。'];
+  const nf=has(/【[圖表]】/),nc=has(/【請核對】/);
+  if(nf)warns.push('有 '+nf+' 題標了【圖】或【表】，請自行插入圖片或表格。');
+  if(nc)warns.push('有 '+nc+' 題標了【請核對】。');
+  return {sections:out,warns:warns.concat(parsed.warns.map(w=>w.replace('（沒有 \\ansunderline）','')))};
+}
+let PDF_PASTE='';
+function openPdfImport(fileName){
+  if(document.getElementById('pdfDlg'))return;
+  const ov=h('div',{id:'pdfDlg',style:'position:fixed;inset:0;background:rgba(24,30,46,.7);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px'});
+  const close=()=>{ov.remove();document.removeEventListener('keydown',onKey);};
+  const onKey=e=>{if(e.key==='Escape'&&!document.getElementById('texDlg'))close();};document.addEventListener('keydown',onKey);
+  const promptBox=h('textarea',{readonly:'',rows:7,spellcheck:'false','aria-label':'給 AI 的指令'});promptBox.value=PDF_PROMPT;
+  const copied=h('span',{class:'hint',role:'status',style:'margin-left:8px'});
+  const bCopy=h('button',{class:'btn primary',type:'button',id:'pdfCopy'},'複製指令');
+  bCopy.addEventListener('click',async()=>{
+    let ok=false;
+    try{await navigator.clipboard.writeText(PDF_PROMPT);ok=true;}
+    catch(e){det.open=true;promptBox.select();try{ok=document.execCommand('copy');}catch(_){}}
+    copied.textContent=ok?'已複製':'沒有複製成功，請在下面全選後自行複製。';
+  });
+  const det=h('details',{style:'margin-top:6px'},h('summary',{class:'hint',style:'cursor:pointer'},'查看指令內容'),promptBox);
+  const paste=h('textarea',{rows:6,id:'pdfPaste',spellcheck:'false',placeholder:'把 AI 回覆的內容貼在這裡（整段貼上即可；分好幾次回覆就依序貼在一起）','aria-label':'AI 的回覆'});
+  paste.value=PDF_PASTE;paste.addEventListener('input',()=>{PDF_PASTE=paste.value;err.textContent='';});
+  const err=h('div',{role:'alert',style:'color:#b3261e;font-size:13px;margin-top:4px'});
+  const bRead=h('button',{class:'btn primary',type:'button',id:'pdfRead'},'讀取題目'),bNo=h('button',{class:'btn',type:'button'},'關閉');
+  bNo.addEventListener('click',close);
+  bRead.addEventListener('click',()=>{
+    if(!paste.value.trim()){err.textContent='請先貼上 AI 的回覆。';return;}
+    let parsed;try{parsed=pdfParse(paste.value);}catch(e){err.textContent='讀取失敗：'+(e&&e.message||e);return;}
+    if(!parsed.sections.some(s=>s.qs.some(q=>q.kind!=='group'))){err.textContent='沒有讀到題目。請確認貼的是 AI 輸出的程式碼（要有大題標題和 \\item），或請 AI「照指定格式重新輸出」。';return;}
+    openTexImport(parsed,[fileName?fileName+' 的 AI 辨識結果':'AI 辨識結果'],'匯入 PDF',()=>{PDF_PASTE='';close();});
+  });
+  const ai=(name,url)=>h('a',{href:url,target:'_blank',rel:'noopener noreferrer'},name);
+  const step=t=>h('div',{style:'font-weight:700;margin:14px 0 6px'},t);
+  const card=h('div',{style:'background:var(--b-ffffff);border-radius:12px;max-width:640px;width:100%;max-height:90vh;overflow:auto;padding:16px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)'},
+    h('div',{style:'font-weight:700;font-size:16px;margin-bottom:4px'},'匯入 PDF（請 AI 協助辨識）'),
+    h('div',{class:'hint'},'工作台無法直接讀 PDF 的數學式，要請你用自己的 AI 轉成文字再貼回來。'+(fileName?'你選的檔案：'+fileName:'')),
+    h('div',{style:'margin-top:10px;padding:8px 10px;background:var(--b-fff4e0);border-radius:8px;font-size:13px'},h('b',{},'使用前請注意'),
+      h('ul',{style:'margin:4px 0 0 18px;padding:0'},
+        h('li',{},'需要自己的 AI 帳號，而且還有可用額度。免費帳號有用量或上傳次數限制，用完要等重置或升級方案。'),
+        h('li',{},'PDF 會上傳到你選的 AI 服務。尚未施測的試題、題庫授權、學生個資，請先確認可以上傳。'),
+        h('li',{},'有 Word 檔（.docx）時，建議直接匯入 Word，不必經過 AI。'))),
+    step('1. 複製指令'),h('div',{},bCopy,copied),det,
+    step('2. 開啟 AI，上傳 PDF、貼上指令後送出'),
+    h('div',{},ai('Claude','https://claude.ai/'),'　',ai('ChatGPT','https://chatgpt.com/'),'　',ai('Gemini','https://gemini.google.com/'),h('span',{class:'hint',style:'margin-left:8px'},'擇一即可')),
+    step('3. 把 AI 的回覆貼回來'),paste,err,
+    h('div',{style:'display:flex;gap:8px;justify-content:flex-end;margin-top:12px'},bNo,bRead));
+  ov.append(card);document.body.append(ov);
+}
+
 async function texImportFiles(fileList){
   try{
     const list=Array.from(fileList),word=list.filter(f=>/\.docx?$/i.test(f.name));
@@ -5682,7 +5805,8 @@ async function texImportFiles(fileList){
       if(/\.doc$/i.test(word[0].name)){toast('舊版 .doc 讀不到：請先在 Word 用「另存新檔」存成 .docx。');return;}
       await docxImport(word[0]);return;
     }
-    if(list.some(f=>/\.pdf$/i.test(f.name))){toast('目前還不能匯入 PDF。');return;}
+    const pdf=list.find(f=>/\.pdf$/i.test(f.name));
+    if(pdf){openPdfImport(pdf.name);return;}
     const files=await texReadFiles(list);
     if(!files.length){flashMsg('沒有找到 .tex 檔。',true);return;}
     const parsed=texParse(files);
@@ -8271,7 +8395,7 @@ var FX=(()=>{
   document.addEventListener('keydown',e=>{
     if(!X.on||e.key!=='Escape'||cfgOpen||cfgMenuOpen||WD.open||(mmBox&&!mmBox.hidden))return;
     if(document.activeElement&&document.activeElement!==document.body)return;
-    if(document.querySelector('.ocr-modal,#texDlg,#saveDlg,#hdDlg'))return;
+    if(document.querySelector('.ocr-modal,#texDlg,#pdfDlg,#saveDlg,#hdDlg'))return;
     X.close();
   },true);
   return X;
