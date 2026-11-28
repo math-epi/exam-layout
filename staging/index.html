@@ -505,9 +505,11 @@ body.fx-open{overflow:hidden}
 .fx-h .btn{background:transparent;color:#fff;border-color:rgba(255,255,255,.45)}
 .fx-h .btn:hover{background:rgba(255,255,255,.14)}
 .fx-h .btn[aria-pressed="true"],.fx-h .btn.fx-x{background:#fff;color:#1E407C;border-color:#fff;font-weight:700}
-.fx-pv{flex:none;height:34%;min-height:90px;overflow:auto;position:relative;background:var(--b-e9ecf2);padding:10px 12px}
+.fx-pv{flex:none;height:30%;min-height:90px;overflow:auto;position:relative;background:var(--b-e9ecf2);padding:10px 12px;display:flex;flex-direction:column}
+/* 題目短的時候放在上方區塊中間；比區塊高時照常從上面開始捲動 */
+.fx-pv>div:not(.fx-stage){flex:none;margin:auto 0}
 .fx-pv .paper{margin:0 auto}
-.fx-pv .fx-empty{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--muted)}
+.fx-pv>.fx-empty{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--muted)}
 .fx-pv .fx-stage{position:absolute;left:12px;right:12px;top:10px;visibility:hidden;pointer-events:none}
 .fx-split{flex:none;height:10px;cursor:row-resize;touch-action:none;background:var(--panel);border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:center}
 .fx-split::after{content:'';width:54px;height:3px;border-radius:3px;background:var(--l-b3bed1)}
@@ -742,11 +744,13 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.7';
-const APP_BUILD='2026-11-28 12:00';
+const APP_BUILD='2026-11-28 12:40';
 const APP_LOG=[
   {v:'1.7',items:[
     '新增「專注出題」（上方「列印 / 存檔」旁）：浮出大視窗，上面即時顯示目前這一題的排版，下面按題型按鈕新增下一題，用大畫面輸入；題目卡功能和左側相同。中間的分隔線可上下拖曳。',
     '專注出題：題型列只有目前所在的題型以實色標示；回到工作台時，左右兩邊都定位到剛才那一題。',
+    '專注出題：上方預覽的題目改放在區塊中間，下方輸入區預設加大。',
+    '數學式編輯器（視覺輸入）：上標、下標打完按 → 或空白鍵才回到原位置，例如打 y^2a+1 就是 y 的 2a+1 次方。習慣「打一個數字自動跳出」的老師，可以勾輸入框下方的「數字次方自動跳出」。',
   ]},
   {v:'1.6',items:[
     '新增深色模式：上方「使用手冊」旁的太陽／月亮／螢幕圖示可選淺色、深色、跟隨系統（預設跟隨系統）。考卷預覽與列印維持白紙黑字；數學式編輯器沒另外選過時跟著工作台。',
@@ -6012,6 +6016,7 @@ function mmApplyMode(){
   if(w)w.hidden=!vis;if(d)d.hidden=vis;if(pv)pv.hidden=vis;
   mmBox.querySelectorAll('.mm-modes button').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.m==='visual')===vis)));
 }
+const mmSupAuto=()=>{try{return localStorage.getItem('exam-mm-supauto')==='on';}catch(e){return false;}};
 function mmBuildML(){
   if(mlEl||!mmBox||mlState!=='ready')return;
   const wrap=mmBox.querySelector('#mmVisWrap');
@@ -6026,6 +6031,8 @@ function mmBuildML(){
     }else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeMM();if(lastTa&&document.contains(lastTa))lastTa.focus();}
   },true);
   wrap.prepend(mf);mlEl=mf;
+  /* 上下標打完按 → 或空白鍵才跳出（上標、下標同一個規則）；開關打開才用「次方打一個數字就自動跳出」 */
+  try{mf.smartSuperscript=mmSupAuto();}catch(e){}
   try{mf.menuItems=[];}catch(e){}
 }
 function mmPrev(){
@@ -6353,6 +6360,8 @@ function initMM(){
 .mm textarea#mmDraft{height:48px;min-height:42px;font-size:12.5px;padding:5px 9px;border-radius:8px;box-shadow:0 0 0 3px var(--glow)}
 .mm #mmVisWrap math-field:focus,.mm #mmVisWrap math-field:focus-within,.mm textarea#mmDraft:focus{outline:1px solid var(--accent);outline-offset:0}
 .mm-pv{min-height:36px;max-height:86px;margin-top:6px;padding:3px 8px;font-size:16px;border-radius:8px}.mm-pv.empty{font-size:11.5px}
+.mm-sup{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:2px 10px;margin-top:5px;font-size:11.5px;color:var(--muted)}
+.mm-sup label{display:inline-flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap}.mm-sup input{margin:0}
 .mm-lx{margin-top:5px;padding:1px 8px;font-size:10.5px;max-height:2.9em;border-left:2px solid var(--accent);border-radius:0 5px 5px 0}
 .mm-err{font-size:11.5px}
 .mm-act{margin-top:7px;gap:6px}.mm .mm-act .btn{min-height:30px;padding:2px 10px;font-size:12.5px;border-radius:7px}
@@ -6422,8 +6431,12 @@ button.mm-b:hover::before,button.mm-b:focus-visible::before{border-color:#22D3EE
   const mB=(m,n)=>{const b=h('button',{type:'button',class:'btn small','data-m':m,onmousedown:e=>e.preventDefault(),onclick:()=>mmSetMode(m)},n);return b;};
   const modes=h('div',{class:'mm-modes'},mB('visual','視覺輸入'),mB('text','LaTeX 文字'));
   const ctl=(n,cmd,tip)=>h('button',{type:'button',class:'btn small',title:tip,onmousedown:e=>e.preventDefault(),onclick:()=>{if(mlEl){mlEl.focus();mlEl.executeCommand(cmd);mmPrev();}}},n);
+  const supChk=h('input',{type:'checkbox',id:'mmSupAuto'});supChk.checked=mmSupAuto();
+  supChk.addEventListener('change',()=>{try{localStorage.setItem('exam-mm-supauto',supChk.checked?'on':'off');}catch(e){}if(mlEl){try{mlEl.smartSuperscript=supChk.checked;}catch(e){}mlEl.focus();}});
+  const supBox=h('label',{title:'打開後：次方的第一個字是數字時，打完那一個數字就自動回到原位置（例如打 x^2+1 不用按 →）。要打多位數或 2a+1 時，按 ← 回到上標。'},supChk,'數字次方自動跳出');
   const visWrap=h('div',{id:'mmVisWrap',hidden:true},
     h('div',{class:'mm-vc'},h('span',{class:'hint',title:'矩陣、聯立方程式增減列與欄'},'矩陣'),ctl('＋列','addRowAfter','在目前這一列下面加一列'),ctl('＋欄','addColumnAfter','在目前這一欄右邊加一欄'),ctl('−列','removeRow','刪除目前這一列'),ctl('−欄','removeColumn','刪除目前這一欄')),
+    h('div',{class:'mm-sup'},h('span',{},'上標、下標打完，按 → 或空白鍵回到原位置'),supBox),
     h('div',{id:'mmLx',class:'mm-lx'}));
   const ed=h('div',{class:'mm-ed'},h('div',{class:'mm-edl'},'公式輸入框（不用打 $）'),modes,visWrap,draft,pv,er,h('div',{class:'mm-act'},ins,ins2,clr));
   mmBox=h('div',{id:'mm',class:'mm',hidden:true,role:'dialog','aria-label':'數學式編輯器'},hd,ed,h('div',{class:'mm-c'},search,mode),h('div',{class:'mm-tabs',role:'tablist'}),h('div',{class:'mm-grid'}),
@@ -7139,15 +7152,15 @@ var FX=(()=>{
       ev.preventDefault();split.setPointerCapture(ev.pointerId);split.classList.add('on');
       let r=null;const mv=e=>{const b=pv.parentNode.getBoundingClientRect();r=setH((e.clientY-pv.getBoundingClientRect().top)/b.height);};
       const up=()=>{split.removeEventListener('pointermove',mv);split.removeEventListener('pointerup',up);split.removeEventListener('pointercancel',up);split.classList.remove('on');
-        if(r!=null)try{localStorage.setItem('exam-fx-h',String(r));}catch(e){}};
+        if(r!=null)try{localStorage.setItem('exam-fx-h2',String(r));}catch(e){}};
       split.addEventListener('pointermove',mv);split.addEventListener('pointerup',up);split.addEventListener('pointercancel',up);
     });
-    split.addEventListener('dblclick',()=>{setH(innerHeight<700?.28:.34);try{localStorage.removeItem('exam-fx-h');}catch(e){}});
+    split.addEventListener('dblclick',()=>{setH(innerHeight<700?.26:.3);try{localStorage.removeItem('exam-fx-h2');}catch(e){}});
     ov=h('div',{class:'fx-ov',id:'fx'},h('div',{class:'fx',role:'dialog','aria-label':'專注出題'},
       h('div',{class:'fx-h'},h('b',{},'專注出題'),h('span',{class:'hint'},'畫面顯示版本：'),...vers,h('span',{class:'hint',style:'margin-left:8px'},'縮放：'),z('－','縮小',-.1),zl,z('＋','放大',.1),h('span',{class:'sp'}),
         h('button',{class:'btn small fx-x',type:'button',id:'fxClose',onclick:()=>X.close()},'回到排版工作台 ✕')),
       pv,split,low));
-    let v=innerHeight<700?.28:.34;try{v=parseFloat(localStorage.getItem('exam-fx-h'))||v;}catch(e){}setH(v);
+    let v=innerHeight<700?.26:.3;try{v=parseFloat(localStorage.getItem('exam-fx-h2'))||v;}catch(e){}setH(v);
   }
   X.open=()=>{
     if(X.on)return;
