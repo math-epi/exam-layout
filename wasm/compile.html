@@ -1,4 +1,8 @@
 <!DOCTYPE html>
+<!-- 考卷排版工作台：瀏覽器內編譯頁
+     Copyright (C) 2026 math.epi
+     SPDX-License-Identifier: AGPL-3.0-or-later
+     本頁使用 TeXlyre-BusyTeX（AGPL-3.0-or-later）。本程式不附任何擔保；授權全文見 ../licenses/AGPL-3.0.txt。 -->
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
@@ -45,6 +49,7 @@ textarea{width:100%;height:160px;font:12px/1.4 ui-monospace,Menlo,monospace;box-
 </div>
 <div class="card" id="logCard" hidden><pre id="log"></pre></div>
 <iframe id="pdf" hidden title="PDF 預覽"></iframe>
+<footer style="font-size:12px;color:#5B6577;text-align:right;padding:8px 0 18px">本編譯頁使用 TeXlyre-BusyTeX，本頁程式依 <a href="../licenses/AGPL-3.0.txt" target="_blank" rel="noopener">AGPL-3.0-or-later</a> 提供，不附任何擔保。　<a href="https://github.com/math-epi/exam-layout" target="_blank" rel="noopener">原始碼</a>　·　<a href="../third-party.html" target="_blank" rel="noopener">第三方元件聲明</a></footer>
 </main>
 <script type="module">
 import {BusyTexRunner,XeLatex} from './lib/index.js';
