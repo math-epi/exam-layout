@@ -751,9 +751,13 @@ function hfEditor(C){
 const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
-const APP_VER='1.7';
-const APP_BUILD='2026-11-28 12:55';
+const APP_VER='1.8';
+const APP_BUILD='2026-11-28 13:40';
 const APP_LOG=[
+  {v:'1.8',items:[
+    '中文和數學式緊貼時，輸出的考卷會自動空一格（題目、選項、詳解；預覽、列印、編譯 PDF、.tex 都一樣），原本打的字不會被改動。不需要可到「⚙ 設定」的「題目文字自動處理」關掉。',
+    '修正：題目的數學式外面打 \\$、\\{ 這類符號時，預覽和輸出會出錯。',
+  ]},
   {v:'1.7',items:[
     '新增「專注出題」（上方「列印 / 存檔」旁）：浮出大視窗，上面即時顯示目前這一題的排版，下面按題型按鈕新增下一題，用大畫面輸入；題目卡功能和左側相同。中間的分隔線可上下拖曳。',
     '專注出題：題型列只有目前所在的題型以實色標示；回到工作台時，左右兩邊都定位到剛才那一題。',
@@ -1334,7 +1338,7 @@ function noteEditor(C,k){
 }
 function defaultCfg(){
   return {hdStyle:'three',school:'',schoolHide:false,year:String(autoYear()),semester:autoSem(),yearMode:'auto',semMode:'auto',yearUser:false,semUser:false,titleMode:'fill',titleText:'',top:[],end:[],endPos:50,custom:null,frameOn:false,frameStyle:'solid',frameW:'mid',frameColor:'black',examCustom:false,gradeCustom:false,subjectCustom:false,suffixCustom:false,examType:'期初考',grade:'二年級',subject:'數學科',titleSuffix:'試題',
-    scope:'',card:'math',cardSlots:50,recycle:false,note:'',optStyle:'auto',paper:'b4',vecStyle:'harpoon',circStyle:'teacher',hdRows:'auto',hdRepeat:true,pageFmt:'p',showAnswers:false,showSolutions:false,minusSlot:false,autoFixCjk:true,autoMath:true,
+    scope:'',card:'math',cardSlots:50,recycle:false,note:'',optStyle:'auto',paper:'b4',vecStyle:'harpoon',circStyle:'teacher',hdRows:'auto',hdRepeat:true,pageFmt:'p',showAnswers:false,showSolutions:false,minusSlot:false,autoFixCjk:true,autoMath:true,autoSpace:true,
     fillName:'選填題',multiP1:'',multiP2:'',multiP3:'',multiN:5,singleN:5,multiPts:'',singlePts:'',fillPts:'',mixedPts:'',calcPts:'',calcRows:'6',expectedTotal:'',ansColor:'#B01E2E',lineSpacing:'',choiceSkip:'',fillSkip:'',secBefore:'',secAfter:'',stemSkip:'',paraSkip:'',flexLine:true,
     fonts:{sans:'',sansBold:'',serif:'',serifBold:'',latin:'',math:''}};
 }
@@ -1652,12 +1656,12 @@ function solLines(s){
   out.push(cur);return out.map(x=>x.replace(/\r/g,'').trim());
 }
 function solHtml(s,q){
-  const parts=solLines(s).map(x=>q&&autoMathOn(q)?autoMathTx(x).text:x);let html='',gap=false;
+  const parts=solLines(s).map(x=>cjkSpace(q&&autoMathOn(q)?autoMathTx(x).text:x));let html='',gap=false;
   parts.forEach(x=>{if(x===''){gap=true;return;}html+=(html?(gap?'<div style="height:.4em"></div>':'<br>'):'')+richHtml(x,()=>'');gap=false;});
   return html;
 }
 function solTex(s,q){
-  const parts=solLines(s).map(x=>q&&autoMathOn(q)?autoMathTx(x).text:x);let o='',gap=false;
+  const parts=solLines(s).map(x=>cjkSpace(q&&autoMathOn(q)?autoMathTx(x).text:x));let o='',gap=false;
   parts.forEach(x=>{if(x===''){gap=true;return;}o+=(o?(gap?' \\par ':' \\\\ '):'')+rawEsc(x);gap=false;});
   return o;
 }
@@ -2004,7 +2008,7 @@ function amUnits(txt){
       o=txt.slice(m.index,e);re.lastIndex=e;
     }
     let s=o;
-    if(o[0]==='\\'&&o.length>1&&AM_CMD.test(o.match(/^\\[A-Za-z]+/)[0]))s=o;
+    if(o[0]==='\\'&&o.length>1&&AM_CMD.test((o.match(/^\\[A-Za-z]+/)||[''])[0]))s=o;
     else if(AM_FW.test(o[0]))s=o.replace(/[！-～]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/．/g,'.');
     let k;
     if(s[0]==='\\')k=s==='\\%'?'pct':(AM_CMD.test(s.match(/^\\[A-Za-z]+/)?s.match(/^\\[A-Za-z]+/)[0]:'')?'v':'x');
@@ -2153,11 +2157,26 @@ function autoMathTx(t){
 }
 /* 這一題要不要自動改數學式：全卷設定（預設開）＋這題的勾選（預設開） */
 function autoMathOn(q){return S.cfg.autoMath!==false&&q.autoMath!==false;}
+/* 中文和行內數學式緊貼時補一個空白（只在輸出時補，不改老師打的字）。標點旁邊不補；獨立一行的 $$…$$ 不處理。
+   數學式外面包著底線、外框等格式指令時，空白補在中文那一側。 */
+const SP_L=/([ㄅ-ㄯ぀-ヿ㐀-䶿一-鿿豈-﫿])((?:\\[A-Za-z]+\{|\})*)$/;
+const SP_R=/^((?:\}|\\[A-Za-z]+\{)*)([ㄅ-ㄯ぀-ヿ㐀-䶿一-鿿豈-﫿])/;
+function cjkSpace(t){
+  if(S.cfg.autoSpace===false)return t;
+  const sg=splitMath(t),inline=x=>x.m&&!/^(\$\$|\\\[)/.test(x.t);
+  sg.forEach((x,i)=>{
+    if(!inline(x))return;
+    const a=sg[i-1],b=sg[i+1];
+    if(a&&!a.m)a.t=a.t.replace(SP_L,'$1 $2');
+    if(b&&!b.m)b.t=b.t.replace(SP_R,'$1 $2');
+  });
+  return sg.map(x=>x.t).join('');
+}
 /* 題目（題幹、選項）輸出前的統一處理 */
 function qp(q,t){
   let x=String(t==null?'':t);
   if(autoMathOn(q))x=autoMathTx(x).text;
-  return fracFix(x,q.frac==='f'?'f':'d');
+  return cjkSpace(fracFix(x,q.frac==='f'?'f':'d'));
 }
 /* 這一題的幹與選項合起來：有沒有分數、有哪些地方會被自動改數學式 */
 function qProcInfo(q){
@@ -2970,6 +2989,7 @@ function buildSettings(){
       field('圈圈數字（答案卡格子）',bindInput(C,'circStyle',{id:'cfg_circStyle',type:'select',options:[['teacher','老師版（細線襯線小圈）'],['classic','原本（粗體大圈）']]}))),
     sgroup('題目文字自動處理',
       field('題目文字：離開欄位或貼上時，直接修正輸入的文字',bindInput(C,'autoFixCjk',{id:'cfg_autoFixCjk',type:'select',options:[['true','開（預設）'],['false','關']],after:()=>{C.autoFixCjk=($('#cfg_autoFixCjk').value==='true');changed();rerender();}}),'例如 $x 的最大值為M$ 會改成 $x$ 的最大值為 $M$，$x＝２$ 會改成 $x=2$，「設 x,y 為實數」會改成「設 $x,y$ 為實數」（與預覽相同規則，只處理題幹與選項，「題目文字：自動把數字…」關閉的題目不改）；也會處理貼上、手寫辨識、LaTeX 匯入的文字。每一題也可以單獨取消；改完可按「復原」。'),
+      field('題目文字：中文和數學式之間自動補空白',bindInput(C,'autoSpace',{id:'cfg_autoSpace',type:'select',options:[['true','開（預設）'],['false','關']],after:()=>{C.autoSpace=($('#cfg_autoSpace').value==='true');changed();rerender();}}),'中文緊貼著數學式時，預覽與輸出的考卷會空一格（題目、選項、詳解）；您打的原文不會被改動。標點旁邊不補。'),
       field('題目文字：自動把數字、單一英文字母改成數學式',bindInput(C,'autoMath',{id:'cfg_autoMath',type:'select',options:[['true','開（預設）'],['false','關']],after:()=>{C.autoMath=($('#cfg_autoMath').value==='true');changed();rerender();}}),'只處理數學式 $…$ 以外的文字；有意義的英文單字（at、of、you）不會動。每一題也可以單獨取消。')),
     sgroup('字型',
       h('span',{class:'hint'},'字型留空就用範本預設（標頭 PingFang TC、內文儷宋、英數 Times New Roman）。可填多個，用逗號分隔，依序找系統裡有的。'),
