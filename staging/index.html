@@ -104,6 +104,14 @@ input.mono{font-family:var(--font-mono);font-size:13.5px}
 .flash{animation:fl 1.1s ease-out}@keyframes fl{from{box-shadow:0 0 0 3px var(--accent)}to{box-shadow:0 0 0 0 transparent}}
 @media(prefers-reduced-motion:reduce){.flash{animation:none}}
 .optrow{display:flex;align-items:center;gap:6px}
+/* 滑鼠停留說明：深藍底、題型色邊框發光（取代瀏覽器的白色小框） */
+#tip{position:fixed;inset:auto;margin:0;left:0;top:0;z-index:100000;width:max-content;max-width:min(320px,calc(100vw - 16px));padding:7px 12px;overflow:visible;background:linear-gradient(180deg,#213258,#101B36);color:#EEF3FF;border:1px solid color-mix(in srgb,var(--c,#5B8DEF) 50%,#fff);border-radius:9px;box-shadow:0 0 0 3px color-mix(in srgb,var(--c,#5B8DEF) 30%,transparent),0 8px 22px rgba(8,14,32,.38);font:600 12.5px/1.55 "Noto Sans TC","Microsoft JhengHei",sans-serif;letter-spacing:.03em;text-align:left;white-space:pre-line;overflow-wrap:anywhere;pointer-events:none}
+#tip:not(.on){display:none}
+#tip.on{animation:tipin .14s ease-out}@keyframes tipin{from{opacity:0;translate:0 3px}to{opacity:1;translate:0 0}}
+#tip i{position:absolute;left:var(--ax,50%);bottom:-5px;width:8px;height:8px;margin-left:-4px;background:#101B36;border:solid color-mix(in srgb,var(--c,#5B8DEF) 50%,#fff);border-width:0 1px 1px 0;transform:rotate(45deg)}
+#tip.below i{bottom:auto;top:-5px;background:#213258;border-width:1px 0 0 1px}
+@media(prefers-reduced-motion:reduce){#tip.on{animation:none}}
+@media print{#tip{display:none!important}}
 /* 上移／下移（選項直式、題目與大題橫式 .mvh）：一體的膠囊鈕，顏色跟著題型；滑過時實色發亮 */
 .optmv{flex:none;display:flex;flex-direction:column;width:34px;border:1.5px solid color-mix(in srgb,var(--tc,var(--accent)) 45%,#fff);border-radius:11px;background:linear-gradient(180deg,#fff,var(--tt,var(--soft)));box-shadow:0 1px 3px rgba(12,22,44,.12),inset 0 1px 0 #fff}
 .mvb{display:flex;align-items:center;justify-content:center;width:100%;height:22px;padding:0;margin:0;border:0;background:transparent;color:var(--tc,var(--accent));cursor:pointer;transition:background .15s,color .15s,box-shadow .15s}
@@ -629,9 +637,10 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.5';
-const APP_BUILD='2026-11-28 08:16';
+const APP_BUILD='2026-11-28 08:21';
 const APP_LOG=[
   {v:'1.5',items:[
+    '滑鼠停在按鈕上的說明改為深色提示框，邊框顏色跟著題型。',
     '選項、題目、大題的上移／下移按鈕改為同一套一體式新樣式，滑鼠停在上面會顯示作用說明。',
     '題目卡片的「展開」「收合」按鈕更容易看到（展開為實色按鈕，收合為彩色框按鈕）。',
     '上方的檢查提醒捲出畫面時，右下角出現「⚠ 提醒 N」小標籤，點了才展開、可直接前往修改，也能「這次先不提醒」；「列印 / 存檔」視窗會列出尚未處理的提醒（不阻擋輸出）。',
@@ -6958,6 +6967,61 @@ function openVerDlg(){
       h('div',{style:'text-align:right'},x)));
   document.body.append(ov);document.addEventListener('keydown',key,true);x.focus();
 }
+/* ===== 滑鼠停留說明（自訂樣式） =====
+   沿用各元件原本的 title 文字：停留期間暫時清成空字串（擋掉瀏覽器內建小框），移開後放回去。
+   用 popover 放到最上層，在彈出視窗裡也看得到；觸控不顯示。 */
+function initTips(){
+  const box=document.createElement('div'),body=document.createElement('span'),arrow=document.createElement('i');
+  box.id='tip';box.setAttribute('role','tooltip');box.append(body,arrow);
+  const pop=typeof box.showPopover==='function';if(pop)box.popover='manual';
+  document.body.append(box);
+  let el=null,text='',timer=0,named=false,mx=0,my=0,last=0;
+  const hide=()=>{clearTimeout(timer);if(!box.classList.contains('on'))return;last=Date.now();box.classList.remove('on');if(pop&&box.matches(':popover-open'))box.hidePopover();};
+  const draw=()=>{
+    if(!el||!el.isConnected||!text){hide();return;}
+    body.textContent=text;
+    box.style.setProperty('--c',getComputedStyle(el).getPropertyValue('--tc').trim()||'#5B8DEF');
+    if(pop){if(box.matches(':popover-open'))box.hidePopover();box.showPopover();}
+    box.classList.add('on');box.style.left='0';box.style.top='0';
+    const r=el.getBoundingClientRect(),big=r.height>120||r.width>480,cx=big?mx:r.left+r.width/2,top=big?my-12:r.top,bot=big?my+18:r.bottom;
+    const w=box.offsetWidth,ht=box.offsetHeight,vw=document.documentElement.clientWidth;
+    const x=Math.max(8,Math.min(vw-w-8,cx-w/2)),below=top-ht-10<6;
+    box.classList.toggle('below',below);
+    box.style.left=x+'px';box.style.top=(below?bot+10:top-ht-10)+'px';
+    box.style.setProperty('--ax',Math.max(12,Math.min(w-12,cx-x))+'px');
+  };
+  const take=()=>{const t=el.getAttribute('title');if(!t)return false;text=t;el.setAttribute('title','');return true;};
+  const mo=new MutationObserver(()=>{if(el&&take()&&box.classList.contains('on'))draw();});
+  const release=()=>{
+    hide();if(!el)return;mo.disconnect();
+    if(el.getAttribute('title')==='')el.setAttribute('title',text);
+    if(named)el.removeAttribute('aria-label');el.removeAttribute('aria-describedby');
+    el=null;text='';named=false;
+  };
+  const hold=t=>{
+    release();el=t;if(!take()){el=null;return;}
+    if(!t.hasAttribute('aria-label')&&!t.textContent.trim()){t.setAttribute('aria-label',text);named=true;}
+    t.setAttribute('aria-describedby','tip');
+    mo.observe(t,{attributes:true,attributeFilter:['title']});
+    timer=setTimeout(draw,Date.now()-last<400?80:280);
+  };
+  document.addEventListener('pointerover',e=>{
+    if(e.pointerType==='touch')return;
+    mx=e.clientX;my=e.clientY;
+    const t=e.target.closest?.('[title]');
+    if(t===el&&el)return;
+    if(t&&t!==document.documentElement&&t!==document.body&&t.getAttribute('title'))hold(t);else release();
+  },true);
+  document.addEventListener('pointermove',e=>{mx=e.clientX;my=e.clientY;},{capture:true,passive:true});
+  document.addEventListener('pointerout',e=>{if(!e.relatedTarget)release();},true);
+  document.addEventListener('pointerdown',hide,true);
+  document.addEventListener('keydown',hide,true);
+  document.addEventListener('focusin',e=>{const t=e.target;if(t.matches?.('button[title]')&&t.matches(':focus-visible')&&t.getAttribute('title'))hold(t);},true);
+  document.addEventListener('focusout',e=>{if(e.target===el)release();},true);
+  for(const ev of ['scroll','wheel','resize','blur'])addEventListener(ev,hide,{capture:true,passive:true});
+  /* 元件被重畫掉時一併收起 */
+  new MutationObserver(()=>{if(el&&!el.isConnected)release();}).observe(document.body,{childList:true,subtree:true});
+}
 function initVersion(){const b=$('#verBtn');if(!b)return;b.textContent=verLabel();b.addEventListener('click',openVerDlg);}
 figFromHash();
 if(STAGING){
@@ -6969,7 +7033,7 @@ if(STAGING){
   document.body.append(bar);
   const barH=()=>document.documentElement.style.setProperty('--stagebar',bar.offsetHeight+'px');barH();addEventListener('resize',barH);
 }
-initVersion();initBoxFab();
+initVersion();initBoxFab();initTips();
 </script>
 </body>
 </html>
