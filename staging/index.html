@@ -104,7 +104,7 @@ input.mono{font-family:var(--font-mono);font-size:13.5px}
 .flash{animation:fl 1.1s ease-out}@keyframes fl{from{box-shadow:0 0 0 3px var(--accent)}to{box-shadow:0 0 0 0 transparent}}
 @media(prefers-reduced-motion:reduce){.flash{animation:none}}
 .optrow{display:flex;align-items:center;gap:6px}
-/* 選項上移／下移：上下一體的膠囊鈕，顏色跟著題型；滑過時實色發亮 */
+/* 上移／下移（選項直式、題目與大題橫式 .mvh）：一體的膠囊鈕，顏色跟著題型；滑過時實色發亮 */
 .optmv{flex:none;display:flex;flex-direction:column;width:34px;border:1.5px solid color-mix(in srgb,var(--tc,var(--accent)) 45%,#fff);border-radius:11px;background:linear-gradient(180deg,#fff,var(--tt,var(--soft)));box-shadow:0 1px 3px rgba(12,22,44,.12),inset 0 1px 0 #fff}
 .mvb{display:flex;align-items:center;justify-content:center;width:100%;height:22px;padding:0;margin:0;border:0;background:transparent;color:var(--tc,var(--accent));cursor:pointer;transition:background .15s,color .15s,box-shadow .15s}
 .mvb:first-child{border-radius:9.5px 9.5px 0 0}.mvb:last-child{border-radius:0 0 9.5px 9.5px}
@@ -116,6 +116,10 @@ input.mono{font-family:var(--font-mono);font-size:13.5px}
 .mvb:active:not(:disabled){filter:brightness(.88)}
 .mvb:disabled{opacity:.22;cursor:default}
 @media(pointer:coarse){.mvb{height:28px}}
+.optmv.mvh{flex-direction:row;width:auto;height:32px;align-self:center}
+.optmv.mvh .mvb{width:34px;height:100%}
+.optmv.mvh .mvb:first-child{border-radius:9.5px 0 0 9.5px}.optmv.mvh .mvb:last-child{border-radius:0 9.5px 9.5px 0}
+.optmv.mvh .mvb+.mvb{border-top:0;border-left:1px solid color-mix(in srgb,var(--tc,var(--accent)) 25%,#fff)}
 @media(prefers-reduced-motion:reduce){.mvb,.mvb svg{transition:none}}
 .optrow.moved{animation:optmoved 1.2s ease-out}@keyframes optmoved{from{background:#DCE8FB}to{background:transparent}}
 .ocrbtn{flex:none;padding:3px 8px;font-size:12px}
@@ -625,10 +629,10 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.5';
-const APP_BUILD='2026-11-28 08:11';
+const APP_BUILD='2026-11-28 08:16';
 const APP_LOG=[
   {v:'1.5',items:[
-    '單選、多選的選項上移／下移按鈕改為上下一體的新樣式。',
+    '選項、題目、大題的上移／下移按鈕改為同一套一體式新樣式，滑鼠停在上面會顯示作用說明。',
     '題目卡片的「展開」「收合」按鈕更容易看到（展開為實色按鈕，收合為彩色框按鈕）。',
     '上方的檢查提醒捲出畫面時，右下角出現「⚠ 提醒 N」小標籤，點了才展開、可直接前往修改，也能「這次先不提醒」；「列印 / 存檔」視窗會列出尚未處理的提醒（不阻擋輸出）。',
     '配分不再預先帶入：新增的大題「每題配分」是空白，由老師自己填；同一大題各題分數不同時留空，到各題填「這題配分」。還沒配分的題目上方會提醒。',
@@ -2854,6 +2858,21 @@ function makeDrag(card,handle,arr,item){
     dragInfo=null;rerender();
   });
 }
+/* 上移／下移按鈕：選項、題目、大題共用 */
+function mvBtn(d,disabled,title,aria,onclick){
+  const x=h('button',{type:'button',class:'mvb','data-mv':d,disabled,title,'aria-label':aria,onclick});
+  x.innerHTML=`<svg viewBox="0 0 16 16" aria-hidden="true"><path d="${d<0?'M3.5 10 8 5.5 12.5 10':'M3.5 6 8 10.5 12.5 6'}"/></svg>`;
+  return x;
+}
+/* 題目、大題的橫式一組；移動後焦點留在移動的那張卡片上，方便連續按 */
+function mvPair(arr,item,what,sel){
+  const i=arr.indexOf(item);
+  return h('span',{class:'optmv mvh'},...[-1,1].map(d=>{const t=what+(d<0?'往上移':'往下移');
+    return mvBtn(d,i+d<0||i+d>=arr.length,t,t,()=>{
+      moveItem(arr,item,d);
+      const box=document.querySelector(sel)?.querySelector('.mvh');if(!box)return;
+      const x=box.querySelector(`[data-mv="${d}"]`);(x.disabled?box.querySelector(`[data-mv="${-d}"]`):x).focus({preventScroll:true});});}));
+}
 function moveItem(arr,item,d){const i=arr.indexOf(item),j=i+d;if(j<0||j>=arr.length)return;arr.splice(i,1);arr.splice(j,0,item);rerender();}
 function insertAtEl(el,text,caretBack){
   el.focus();const s=el.selectionStart,e=el.selectionEnd;
@@ -3095,8 +3114,7 @@ function qCard(s,q){
   pbCb.addEventListener('change',()=>{q.pbAfter=pbCb.checked;changed();});
   const pbLb=h('label',{class:'chk',style:'font-size:12.5px;white-space:nowrap'},pbCb,'此題後換頁');
   const tools=h('div',{class:'q-tools'},
-    h('button',{class:'btn small',type:'button',title:'上移',onclick:()=>moveItem(s.qs,q,-1)},'↑'),
-    h('button',{class:'btn small',type:'button',title:'下移',onclick:()=>moveItem(s.qs,q,1)},'↓'),
+    mvPair(s.qs,q,'這一題','[data-qid="'+q.id+'"]'),
     h('button',{class:'btn small q-fold '+(q.collapsed?'to-open':'to-close'),type:'button','aria-expanded':q.collapsed?'false':'true',onclick:()=>toggleCollapse(q,'[data-qid="'+q.id+'"]')},q.collapsed?'▼ 展開':'▲ 收合'),
     h('button',{class:'btn small',type:'button',onclick:()=>{const c=JSON.parse(JSON.stringify(q));c.id=newId();s.qs.splice(s.qs.indexOf(q)+1,0,c);rerender();focusQ(c.id);}},'複製'),
     twoClick(h('button',{class:'btn small danger',type:'button'},'刪除'),()=>{s.qs.splice(s.qs.indexOf(q),1);rerender();}));
@@ -3134,11 +3152,7 @@ function qCard(s,q){
       if(String(q.sol||'').trim())msg.push('詳解裡如果提到選項編號，請自己確認');
       if(msg.length)toast('選項已移動；'+msg.join('；')+'。');
     };
-    const mvBtn=(i,d)=>{
-      const x=h('button',{type:'button',class:'mvb','data-mv':d,disabled:i+d<0||i+d>=q.opts.length,title:d<0?'這個選項往上移':'這個選項往下移','aria-label':`第 ${i+1} 個選項${d<0?'上移':'下移'}`,onclick:()=>moveOpt(i,d)});
-      x.innerHTML=`<svg viewBox="0 0 16 16" aria-hidden="true"><path d="${d<0?'M3.5 10 8 5.5 12.5 10':'M3.5 6 8 10.5 12.5 6'}"/></svg>`;
-      return x;
-    };
+    const optMv=(i,d)=>mvBtn(d,i+d<0||i+d>=q.opts.length,d<0?'這個選項往上移':'這個選項往下移',`第 ${i+1} 個選項${d<0?'上移':'下移'}`,()=>moveOpt(i,d));
     const drawOpts=()=>{
       box.replaceChildren(h('div',{class:'stepper'},h('span',{class:'lb hint'},'選項數'),
         h('button',{class:'btn small',type:'button',onclick:()=>{if(q.opts.length>2){q.opts.pop();if(q.optFigs)q.optFigs.length=Math.min(q.optFigs.length,q.opts.length);drawOpts();changed();}}},'－'),h('b',{},q.opts.length),
@@ -3157,7 +3171,7 @@ function qCard(s,q){
             fs.title=fs.value===''?(S.figs.some(x=>x.kind!=='table')?'附圖：目前沒有，點一下從圖庫選':tip0):`附圖：圖 ${fs.value}${f&&f.name?'｜'+f.name:''}（點一下更換或移除）`;};
           fs.addEventListener('change',()=>{optFigsSet(q,i,fs.value);showFig();changed();});
           showFig();
-          return h('div',{class:'optrow','data-opt':i},h('span',{class:'ol','data-ol':i},optLabel(i+1)),ip,fp,ocrIconBtn(q,'opt'+i,'手寫／拍照辨識，放進這個選項'),h('span',{class:'optmv'},mvBtn(i,-1),mvBtn(i,1)));
+          return h('div',{class:'optrow','data-opt':i},h('span',{class:'ol','data-ol':i},optLabel(i+1)),ip,fp,ocrIconBtn(q,'opt'+i,'手寫／拍照辨識，放進這個選項'),h('span',{class:'optmv'},optMv(i,-1),optMv(i,1)));
         }));
     };
     drawOpts();b.append(box);
@@ -3315,8 +3329,7 @@ function secCard(s,si){
   const grip=h('span',{class:'grip',title:'按住拖曳排序大題'},'⠿');
   const tot=h('span',{class:'sec-total','data-stot':s.id});
   const hd=h('div',{class:'sec-h'},grip,h('span',{class:'sec-title','data-stitle':s.id},''),tot,
-    h('button',{class:'btn small',type:'button',onclick:()=>moveItem(S.sections,s,-1)},'↑'),
-    h('button',{class:'btn small',type:'button',onclick:()=>moveItem(S.sections,s,1)},'↓'),
+    mvPair(S.sections,s,'整個大題','[data-sid="'+s.id+'"]'),
     h('button',{class:'btn small',type:'button',onclick:()=>toggleCollapse(s,'[data-sid="'+s.id+'"]')},s.collapsed?'展開':'收合'),
     twoClick(h('button',{class:'btn small danger',type:'button'},'刪除大題'),()=>{S.sections.splice(S.sections.indexOf(s),1);rerender();}));
   card.append(hd);makeDrag(card,grip,S.sections,s);
