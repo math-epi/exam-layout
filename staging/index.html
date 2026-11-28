@@ -571,14 +571,14 @@ body.fx-open .cfgwin,body.fx-open .wd-btn{z-index:38}
   <button class="btn small" id="btnFocus" type="button" title="先專心打題目：上面看這一題的排版，下面用大畫面輸入">✎ 專注出題</button>
   <button class="btn small" id="btnNew" type="button">新考卷</button>
   <button class="btn small" id="btnImport" type="button" title="開啟之前存的考卷檔">開啟舊檔</button>
-  <button class="btn small" id="btnImportTex" type="button" title="匯入其他老師用 LaTeX 打的題目（.tex 或 .zip），自動分到各題型">匯入 LaTeX</button>
+  <button class="btn small" id="btnImportTex" type="button" title="匯入 Word 考卷或題庫（.docx），或 LaTeX 題目（.tex、.zip），自動分到各題型">匯入 Word／LaTeX</button>
   <button class="btn small danger" id="btnReset" type="button">載入範例</button>
   <button class="btn small" id="btnInstall" type="button" title="像一般軟體一樣點圖示開啟，不用記網址；連網開過後可離線編輯與列印" hidden>安裝到電腦</button>
   <a class="btn small" id="lnkManual" href="manual.html" target="_blank" rel="noopener" style="text-decoration:none">使用手冊</a>
   <span class="themeseg" id="themeSeg" role="group" aria-label="外觀"><button type="button" data-th="light" title="淺色外觀" aria-label="淺色"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg></button><button type="button" data-th="dark" title="深色外觀" aria-label="深色"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.6A8.4 8.4 0 0 1 9.4 4a8.4 8.4 0 1 0 10.6 10.6z"/></svg></button><button type="button" data-th="auto" title="跟隨系統：跟著電腦或瀏覽器的深淺色設定" aria-label="跟隨系統"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="12" rx="1.8"/><path d="M8.5 20.5h7M12 16.8v3.4"/></svg></button></span>
   <span id="saveStatus" aria-live="polite" style="font-size:12px;margin-left:10px;padding:3px 10px;border-radius:999px;background:var(--b-eaf0fa);color:var(--t-5b6577);white-space:nowrap"></span>
   <input type="file" id="fileImport" accept=".json,.zip,application/json,application/zip" hidden>
-  <input type="file" id="fileTex" accept=".tex,.txt,.zip" multiple hidden>
+  <input type="file" id="fileTex" accept=".docx,.doc,.tex,.txt,.zip" multiple hidden>
 </div>
 <div class="banner" id="saveWarn" hidden></div>
 <div class="banner" id="guide">
@@ -755,9 +755,10 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.8';
-const APP_BUILD='2026-11-28 14:00';
+const APP_BUILD='2026-11-28 15:00';
 const APP_LOG=[
   {v:'1.8',items:[
+    '新增匯入 Word 考卷（.docx，試用）：上方「匯入 Word／LaTeX」可把題目、選項、答案、詳解讀進各題型；Word 內建方程式會轉成數學式，PNG／JPG 圖片會放進圖庫。MathType 公式目前讀不到，匯入後請逐題核對。',
     '中文和數學式緊貼時，輸出的考卷會自動空一格（題目、選項、詳解；預覽、列印、編譯 PDF、.tex 都一樣），原本打的字不會被改動。不需要可到「⚙ 設定」的「題目文字自動處理」關掉。',
     '中文輸入法提醒：在解答、配分、數學式編輯器等該打英文數字的地方打出注音或中文時，欄位旁會提示切換輸入法（不會擋住輸入）。電腦的切換設定寫在使用手冊。',
     '修正：題目的數學式外面打 \\$、\\{ 這類符號時，預覽和輸出會出錯。',
@@ -5604,12 +5605,28 @@ function texBuildSections(parsed){
       if(pq.sol)q.sol=pq.sol;
       if(pq.pts!=='')q.pts=pq.pts;
       if(S.cfg.autoFixCjk!==false)mathCjkApply(q,true);
+      if(pq.imgs)q._imp={imgs:pq.imgs,optImgs:pq.optImgs||[],more:pq.moreImgs||[]};
       s.qs.push(q);
     });
     return s;
   });
 }
-function openTexImport(parsed,fileNames){
+/* Word 裡的圖片：按下「匯入」時才加進圖庫 */
+async function importFigs(secs,images){
+  const done={};
+  const get=async rid=>{
+    if(rid==null||!images||!images[rid])return null;
+    if(!(rid in done)){const im=images[rid];const ids=await addImages([new File([im.data],im.name,{type:im.type})]);done[rid]=ids.length?ids[0]:null;}
+    return done[rid];
+  };
+  for(const s of secs)for(const q of s.qs){
+    const x=q._imp;delete q._imp;if(!x)continue;
+    if(x.imgs[0]!=null)q.figId=await get(x.imgs[0]);
+    for(let i=0;i<x.optImgs.length;i++){const id=await get(x.optImgs[i]);if(id!=null)optFigsSet(q,i,String(id));}
+    for(const r of x.more)await get(r);
+  }
+}
+function openTexImport(parsed,fileNames,title){
   if(document.getElementById('texDlg'))return;
   const secs=texBuildSections(parsed);
   const total=secs.reduce((a,s)=>a+s.qs.filter(q=>q.kind!=='group').length,0);
@@ -5629,7 +5646,10 @@ function openTexImport(parsed,fileNames){
   const bOk=h('button',{class:'btn primary',type:'button'},'匯入'),bNo=h('button',{class:'btn',type:'button'},'取消');
   const cbAns=h('input',{type:'checkbox',checked:true}),cbSol=h('input',{type:'checkbox',checked:true});
   bNo.addEventListener('click',close);
-  bOk.addEventListener('click',()=>{
+  bOk.addEventListener('click',async()=>{
+    bOk.disabled=true;
+    if(!cbSol.checked)secs.forEach(s=>s.qs.forEach(q=>{if(q._imp)q._imp.more=[];}));
+    await importFigs(secs,parsed.images);
     if(!cbAns.checked)secs.forEach(s=>s.qs.forEach(q=>{q.ans='';}));
     if(!cbSol.checked)secs.forEach(s=>s.qs.forEach(q=>{q.sol='';}));
     if(rep.checked)S.sections=secs;
@@ -5642,7 +5662,7 @@ function openTexImport(parsed,fileNames){
     flashMsg('已匯入 '+total+' 題，請逐題檢查數學式與答案。');
   });
   const card=h('div',{style:'background:var(--b-ffffff);border-radius:12px;max-width:620px;width:100%;max-height:88vh;overflow:auto;padding:16px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)'},
-    h('div',{style:'font-weight:700;font-size:16px;margin-bottom:4px'},'匯入 LaTeX'),
+    h('div',{style:'font-weight:700;font-size:16px;margin-bottom:4px'},title||'匯入 LaTeX'),
     h('div',{class:'hint',style:'margin-bottom:8px'},'讀到 '+fileNames.join('、')+'，共 '+total+' 題。只讀題目，版頭與版面設定不會動。'),
     ...(rows.length?rows:[h('div',{class:'hint'},'沒有讀到任何題目。')]),
     warns,
@@ -5656,11 +5676,561 @@ function openTexImport(parsed,fileNames){
 }
 async function texImportFiles(fileList){
   try{
-    const files=await texReadFiles(Array.from(fileList));
+    const list=Array.from(fileList),word=list.filter(f=>/\.docx?$/i.test(f.name));
+    if(word.length){
+      if(word.length>1||list.length>1){flashMsg('Word 檔請一次選一個。',true);toast('Word 檔請一次選一個。');return;}
+      if(/\.doc$/i.test(word[0].name)){toast('舊版 .doc 讀不到：請先在 Word 用「另存新檔」存成 .docx。');return;}
+      await docxImport(word[0]);return;
+    }
+    if(list.some(f=>/\.pdf$/i.test(f.name))){toast('目前還不能匯入 PDF。');return;}
+    const files=await texReadFiles(list);
     if(!files.length){flashMsg('沒有找到 .tex 檔。',true);return;}
     const parsed=texParse(files);
     openTexImport(parsed,files.map(f=>f.name.replace(/^.*[\\/]/,'')));
-  }catch(e){flashMsg('讀取失敗：'+(e&&e.message||e),true);}
+  }catch(e){const m='讀取失敗：'+(e&&e.message||e);flashMsg(m,true);toast(m);}
+}
+
+/* ================= 匯入 Word（.docx）=================
+   docxParse(entries) 只做解析，回傳和 texParse 相同的資料（題目另帶 imgs / optImgs）。
+   流程：解壓 → 每個段落轉成「一行工作台寫法的文字」（Word 方程式轉 LaTeX）→ 依大題標題、題號、答案／詳解標記分欄。 */
+async function docxUnzip(buf){
+  const dv=new DataView(buf),u8=new Uint8Array(buf);
+  let e=-1;for(let i=buf.byteLength-22;i>=Math.max(0,buf.byteLength-65557);i--){if(dv.getUint32(i,true)===0x06054b50){e=i;break;}}
+  if(e<0)throw new Error('這個檔案不是 .docx（舊版 .doc 請先在 Word 另存成 .docx）');
+  const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);const out={};
+  for(let k=0;k<n;k++){
+    if(dv.getUint32(p,true)!==0x02014b50)break;
+    const method=dv.getUint16(p+10,true),csize=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);
+    const name=new TextDecoder().decode(u8.subarray(p+46,p+46+nl));
+    p+=46+nl+el+cl;
+    if(!/^word\/(document\.xml|numbering\.xml|styles\.xml|_rels\/document\.xml\.rels|media\/)/.test(name))continue;
+    const lnl=dv.getUint16(lo+26,true),lel=dv.getUint16(lo+28,true);
+    const data=u8.subarray(lo+30+lnl+lel,lo+30+lnl+lel+csize);
+    if(method===0)out[name]=data;
+    else if(method===8)out[name]=new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+  }
+  return out;
+}
+const dxKids=(el,name)=>el?Array.from(el.children).filter(c=>!name||c.localName===name):[];
+const dxKid=(el,name)=>dxKids(el,name)[0]||null;
+const dxAttr=(el,name)=>{if(!el)return null;for(const a of el.attributes)if(a.localName===name)return a.value;return null;};
+const dxVal=(el,name)=>dxAttr(dxKid(el,name),'val');
+const dxOn=(el,name)=>{const k=dxKid(el,name);return !!k&&!/^(0|false|none)$/.test(dxAttr(k,'val')||'');};
+
+/* ---- Word 方程式（OMML）→ LaTeX ---- */
+const OM_SYM={'α':'alpha','β':'beta','γ':'gamma','δ':'delta','ε':'varepsilon','ϵ':'epsilon','ζ':'zeta','η':'eta','θ':'theta','ι':'iota','κ':'kappa','λ':'lambda','μ':'mu','ν':'nu','ξ':'xi','π':'pi','ρ':'rho','σ':'sigma','τ':'tau','υ':'upsilon','φ':'varphi','ϕ':'phi','χ':'chi','ψ':'psi','ω':'omega','Γ':'Gamma','Δ':'Delta','Θ':'Theta','Λ':'Lambda','Ξ':'Xi','Π':'Pi','Σ':'Sigma','Φ':'Phi','Ψ':'Psi','Ω':'Omega',
+  '×':'times','÷':'div','±':'pm','∓':'mp','⋅':'cdot','∙':'cdot','·':'cdot','≤':'le','≦':'leqq','≥':'ge','≧':'geqq','≠':'ne','≈':'approx','≒':'fallingdotseq','≡':'equiv','∼':'sim','≅':'cong','∝':'propto','∞':'infty','∈':'in','∉':'notin','∋':'ni','⊂':'subset','⊆':'subseteq','⊃':'supset','⊇':'supseteq','⊄':'not\\subset','∪':'cup','∩':'cap','∅':'varnothing','∀':'forall','∃':'exists','¬':'neg','∧':'wedge','∨':'vee','→':'to','←':'leftarrow','↔':'leftrightarrow','⇒':'Rightarrow','⇐':'Leftarrow','⇔':'Leftrightarrow','⊥':'perp','∥':'parallel','⫽':'parallel','∠':'angle','△':'triangle','▵':'triangle','∆':'Delta','∇':'nabla','∂':'partial','∘':'circ','⋯':'cdots','…':'ldots','⋮':'vdots','⋱':'ddots','∴':'therefore','∵':'because','∑':'sum','∏':'prod','∫':'int','∮':'oint','⟨':'langle','⟩':'rangle','⌊':'lfloor','⌋':'rfloor','⌈':'lceil','⌉':'rceil','′':'prime','∖':'setminus','⊕':'oplus','⊗':'otimes','ℓ':'ell','↦':'mapsto','≪':'ll','≫':'gg'};
+const OM_CHR={'−':'-','–':'-','＋':'+','－':'-','＝':'=','＜':'<','＞':'>','（':'(','）':')','｜':'|','∣':'|','／':'/','°':'^{\\circ}','ℝ':'\\mathbb{R}','ℕ':'\\mathbb{N}','ℤ':'\\mathbb{Z}','ℚ':'\\mathbb{Q}','ℂ':'\\mathbb{C}','″':'\'\'','\u2061':'','\u2062':'','\u2063':'','\u200b':'','\u00a0':'~','\u3000':'\\quad ','\u2003':'\\quad ','\u2009':'\\,'};
+const OM_FUNC=/^(?:sin|cos|tan|cot|sec|csc|log|ln|lim|max|min|arg|deg|det|gcd|exp|sup|inf|Pr|arcsin|arccos|arctan|sinh|cosh|tanh)$/;
+function omText(t,plain){
+  let o='';
+  /* 有些文件用「數學英數字母」區段（𝑥）：先轉回一般字母 */
+  t=String(t).replace(/[\u{1D400}-\u{1D7FF}ℎ]/gu,c=>c.normalize('NFKC'));
+  const re=/([\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\u3001-\u303f\uff0c\uff1a\uff1b\uff1f\uff01]+)|[\s\S]/gu;let m;
+  while((m=re.exec(t))){
+    if(m[1]){o+='\\text{'+m[1]+'}';continue;}
+    const c=m[0];
+    if(OM_SYM[c])o+='\\'+OM_SYM[c]+' ';
+    else if(OM_CHR[c]!==undefined)o+=OM_CHR[c];
+    else if('{}%#&$_'.includes(c))o+='\\'+c;
+    else if(c==='\\')o+='\\backslash ';
+    else if(c==='^')o+='\\hat{}';
+    else if(c==='~')o+='\\sim ';
+    else if(c==='√')o+='\\surd ';
+    else o+=c;
+  }
+  return plain?o:o.replace(/(?<![\\A-Za-z])(arcsin|arccos|arctan|sinh|cosh|tanh|sin|cos|tan|cot|sec|csc|log|ln|lim|max|min)(?![a-z])/g,'\\$1 ');
+}
+const omGroup=s=>'{'+s.trim()+'}';
+function omBase(s){s=s.trim();return /^(?:[A-Za-z0-9]|\\[A-Za-z]+)$/.test(s)||/^(?:\(.*\)|\\left[\s\S]*\\right.|\\(?:vv|overline|widehat|text|mathrm|mathbb)\{[^{}]*\})$/.test(s)?s:'{'+s+'}';}
+function omDelim(c,left){
+  if(c==='')return '.';
+  const m={'{':'\\{','}':'\\}','⟨':'\\langle','⟩':'\\rangle','〈':'\\langle','〉':'\\rangle','‖':'\\|','⌊':'\\lfloor','⌋':'\\rfloor','⌈':'\\lceil','⌉':'\\rceil','∣':'|','｜':'|','（':'(','）':')'};
+  return m[c]||c;
+}
+function omml(el,st){
+  if(!el)return '';
+  const ch=()=>dxKids(el).map(c=>omml(c,st)).join('');
+  const arg=n=>omml(dxKid(el,n),st);
+  const pr=dxKid(el,el.localName+'Pr');
+  const chr=(n,dflt)=>{const k=dxKid(pr,n);return k?(dxAttr(k,'val')||''):dflt;};
+  switch(el.localName){
+    case 'r':{
+      const rp=dxKids(el,'rPr').find(x=>/math/i.test(x.namespaceURI||''));
+      const t=dxKids(el).map(c=>c.localName==='t'?c.textContent:c.localName==='sym'?docxSym(c,st):'').join('');
+      if(rp&&dxOn(rp,'nor')){return /[\\{}$]/.test(t)?omText(t):'\\text{'+t+'}';}
+      const sty=rp?dxVal(rp,'sty'):null,scr=rp?dxVal(rp,'scr'):null;
+      let s=omText(t);
+      if(scr==='double-struck')return '\\mathbb{'+s.trim()+'}';
+      if(sty==='p'&&/^[A-Za-z]{2,}$/.test(t)&&!OM_FUNC.test(t))s='\\mathrm{'+t+'}';
+      return s;
+    }
+    case 't':return omText(el.textContent);
+    case 'f':{
+      const n=arg('num').trim(),d=arg('den').trim(),ty=chr('type','bar');
+      if(ty==='lin'||ty==='skw')return omGroup(n)+'/'+omGroup(d);
+      if(ty==='noBar')return '\\genfrac{}{}{0pt}{}'+omGroup(n)+omGroup(d);
+      return '\\dfrac'+omGroup(n)+omGroup(d);
+    }
+    case 'sSup':return omBase(arg('e'))+'^'+omGroup(arg('sup'));
+    case 'sSub':return omBase(arg('e'))+'_'+omGroup(arg('sub'));
+    case 'sSubSup':return omBase(arg('e'))+'_'+omGroup(arg('sub'))+'^'+omGroup(arg('sup'));
+    case 'sPre':return '{}_'+omGroup(arg('sub'))+'^'+omGroup(arg('sup'))+omBase(arg('e'));
+    case 'rad':{
+      const deg=arg('deg').trim(),hide=dxOn(pr,'degHide');
+      return '\\sqrt'+(!hide&&deg?'['+deg+']':'')+omGroup(arg('e'));
+    }
+    case 'd':{
+      const b=chr('begChr','('),e=chr('endChr',')'),sep=chr('sepChr','|');
+      const es=dxKids(el,'e');
+      if(es.length===1){
+        const only=dxKids(es[0]).filter(c=>!/Pr$/.test(c.localName));
+        const one=only.length===1?only[0]:null;
+        if(one&&one.localName==='m'){
+          const env=b==='('&&e===')'?'pmatrix':b==='['&&e===']'?'bmatrix':/^[|∣]$/.test(b)&&/^[|∣]$/.test(e)?'vmatrix':null;
+          if(env)return omMatrix(one,st,env);
+        }
+        if(one&&b==='{'&&e===''&&(one.localName==='eqArr'||one.localName==='m')){
+          const rows=dxKids(one,one.localName==='m'?'mr':'e').map(r=>one.localName==='m'?dxKids(r,'e').map(x=>omml(x,st).trim()).join(' & '):omml(r,st).trim());
+          return '\\begin{cases}'+rows.join(' \\\\ ')+'\\end{cases}';
+        }
+      }
+      const inner=es.map(x=>omml(x,st).trim()).join(sep?' '+omDelim(sep)+' ':'');
+      if(b==='('&&e===')'&&es.length===1&&/^\\genfrac\{\}\{\}\{0pt\}\{\}/.test(inner)&&dxKids(dxKids(es[0])[0]).length&&dxKids(es[0]).length===1)return '\\binom'+inner.slice('\\genfrac{}{}{0pt}{}'.length);
+      const tall=/\\(?:dfrac|sum|int|prod|begin|genfrac)/.test(inner);
+      if(!tall&&b!==''&&e!=='')return omDelim(b)+(/[A-Za-z]$/.test(omDelim(b))?' ':'')+inner+omDelim(e);
+      return '\\left'+omDelim(b)+' '+inner+' \\right'+omDelim(e);
+    }
+    case 'm':return omMatrix(el,st,'matrix');
+    case 'eqArr':return '\\begin{aligned}'+dxKids(el,'e').map(r=>omml(r,st).trim()).join(' \\\\ ')+'\\end{aligned}';
+    case 'nary':{
+      const c=chr('chr','∫'),sub=arg('sub').trim(),sup=arg('sup').trim();
+      const op=OM_SYM[c]?'\\'+OM_SYM[c]:{'⋃':'\\bigcup','⋂':'\\bigcap','∬':'\\iint','∭':'\\iiint'}[c]||c;
+      const lim=chr('limLoc','')==='undOvr'&&/int/.test(op)?'\\limits':'';
+      return op+lim+(sub?'_'+omGroup(sub):'')+(sup?'^'+omGroup(sup):'')+' '+arg('e');
+    }
+    case 'func':{
+      let n=arg('fName').trim();const plain=n.replace(/^\\mathrm\{([^{}]*)\}$/,'$1');
+      if(OM_FUNC.test(plain))n='\\'+plain;
+      const a=arg('e').trim();
+      return n+(a.startsWith('\\left')||a.startsWith('(')?'':' ')+a+' ';
+    }
+    case 'limLow':{const e=arg('e').trim(),l=arg('lim').trim();return /^\\(?:lim|max|min|sup|inf)$/.test(e)?e+'_'+omGroup(l):'\\underset'+omGroup(l)+omGroup(e);}
+    case 'limUpp':return '\\overset'+omGroup(arg('lim'))+omGroup(arg('e'));
+    case 'acc':{
+      const c=chr('chr','\u0302'),e=arg('e').trim();
+      const long=e.replace(/\\[A-Za-z]+\s*/g,'x').length>1;
+      const cmd={'\u20d7':'\\vv','\u20d1':'\\vv','⇀':'\\vv','→':'\\vv','\u0305':'\\overline','‾':'\\overline','\u0304':'\\overline','¯':'\\overline','\u0302':long?'\\widehat':'\\hat','^':long?'\\widehat':'\\hat','\u0303':long?'\\widetilde':'\\tilde','\u0307':'\\dot','\u0308':'\\ddot','\u030c':'\\check','\u20d6':'\\overleftarrow','\u20e1':'\\overleftrightarrow','⏜':'\\overparen'}[c];
+      if(c==='⌢'||c==='\u0311'||c==='⏜')return '\\overset{\\frown}'+omGroup(e);
+      if(!cmd){st.badMath++;return e;}
+      return cmd+omGroup(e);
+    }
+    case 'bar':return (chr('pos','bot')==='top'?'\\overline':'\\underline')+omGroup(arg('e'));
+    case 'groupChr':{
+      const c=chr('chr','⏟'),e=arg('e').trim();
+      if(c==='⏞')return '\\overbrace'+omGroup(e);
+      if(c==='⏜'||c==='⌢')return '\\overset{\\frown}'+omGroup(e);
+      if(c==='→'||c==='⇀')return '\\vv'+omGroup(e);
+      return '\\underbrace'+omGroup(e);
+    }
+    case 'borderBox':return '\\boxed'+omGroup(arg('e'));
+    case 'phant':return dxKid(pr,'show')&&!dxOn(pr,'show')?'\\phantom'+omGroup(arg('e')):arg('e');
+    default:
+      if(/Pr$/.test(el.localName))return '';
+      return ch();
+  }
+}
+function omMatrix(m,st,env){
+  return '\\begin{'+env+'}'+dxKids(m,'mr').map(r=>dxKids(r,'e').map(x=>omml(x,st).trim()).join(' & ')).join(' \\\\ ')+'\\end{'+env+'}';
+}
+/* 「插入符號」用 Symbol 字型打的字 */
+const DX_SYMBOL={0x70:'π',0x71:'θ',0x61:'α',0x62:'β',0x67:'γ',0x64:'δ',0x44:'Δ',0x6C:'λ',0x6D:'μ',0x73:'σ',0x53:'Σ',0x77:'ω',0x66:'φ',0xA3:'≤',0xB3:'≥',0xB9:'≠',0xB4:'×',0xB8:'÷',0xB1:'±',0xD7:'⋅',0xA5:'∞',0xCE:'∈',0xCF:'∉',0xC7:'∩',0xC8:'∪',0xCC:'⊂',0xCD:'⊆',0xC6:'∅',0xAE:'→',0xDE:'⇒',0xDB:'⇔',0xD0:'∠',0x5E:'⊥',0xBB:'≈',0xBA:'≡',0xB0:'°',0x2D:'−',0xD6:'√',0xE5:'∑',0x5C:'∴'};
+function docxSym(el,st){
+  const font=dxAttr(el,'font')||'',code=parseInt(dxAttr(el,'char')||'0',16)&0xFF;
+  if(/symbol/i.test(font)&&DX_SYMBOL[code])return DX_SYMBOL[code];
+  st.badSym++;return '□';
+}
+
+/* ---- 段落 → 一行行文字 ---- */
+function docxNumbering(xml,styleXml){
+  const abs={},nums={},styles={};
+  if(xml){
+    const root=xml.documentElement;
+    dxKids(root,'abstractNum').forEach(a=>{const lv={};dxKids(a,'lvl').forEach(l=>{lv[dxAttr(l,'ilvl')]={fmt:dxVal(l,'numFmt')||'decimal',text:dxVal(l,'lvlText')||'',start:+(dxVal(l,'start')||1)};});abs[dxAttr(a,'abstractNumId')]=lv;});
+    dxKids(root,'num').forEach(n=>{const ov={};dxKids(n,'lvlOverride').forEach(o=>{const s=dxVal(o,'startOverride');if(s!=null)ov[dxAttr(o,'ilvl')]=+s;});nums[dxAttr(n,'numId')]={abs:dxVal(n,'abstractNumId'),ov};});
+  }
+  if(styleXml)dxKids(styleXml.documentElement,'style').forEach(s=>{const np=dxKid(dxKid(s,'pPr'),'numPr');styles[dxAttr(s,'styleId')]={num:np?dxVal(np,'numId'):null,lvl:np?dxVal(np,'ilvl'):null,base:dxVal(s,'basedOn')};});
+  const count={},seen={};
+  const cn=['零','一','二','三','四','五','六','七','八','九','十'];
+  const han=n=>n<=10?cn[n]:n<20?'十'+cn[n-10]:cn[Math.floor(n/10)]+'十'+(n%10?cn[n%10]:'');
+  const fmtNum=(n,f)=>{
+    if(/ideograph|taiwanese|chinese/i.test(f))return han(n);
+    if(f==='upperLetter')return String.fromCharCode(65+(n-1)%26);
+    if(f==='lowerLetter')return String.fromCharCode(97+(n-1)%26);
+    if(/Roman/.test(f)){let r='',x=n;[[10,'x'],[9,'ix'],[5,'v'],[4,'iv'],[1,'i']].forEach(([v,s])=>{while(x>=v){r+=s;x-=v;}});return f==='upperRoman'?r.toUpperCase():r;}
+    if(f==='decimalEnclosedCircle'||f==='decimalEnclosedCircleChinese')return n<=20?String.fromCharCode(0x245F+n):String(n);
+    return String(n);
+  };
+  return function label(pPr){
+    let np=dxKid(pPr,'numPr'),id=np?dxVal(np,'numId'):null,lvl=np?dxVal(np,'ilvl'):null;
+    let sid=dxVal(pPr,'pStyle');
+    for(let k=0;k<8&&sid&&styles[sid]&&id==null;k++){const s=styles[sid];if(s.num!=null){id=s.num;if(lvl==null)lvl=s.lvl;}sid=s.base;}
+    if(id==null||!nums[id])return null;
+    lvl=+(lvl||0);
+    const n=nums[id],def=abs[n.abs];if(!def||!def[lvl])return null;
+    const d=def[lvl];if(d.fmt==='bullet'||d.fmt==='none')return null;
+    const c=count[n.abs]||(count[n.abs]={});
+    if(n.ov[lvl]!=null&&!seen[id+':'+lvl]){c[lvl]=n.ov[lvl]-1;seen[id+':'+lvl]=1;}
+    c[lvl]=(c[lvl]==null?d.start-1:c[lvl])+1;
+    Object.keys(c).forEach(k=>{if(+k>lvl)delete c[k];});
+    const text=d.text.replace(/%(\d)/g,(m,i)=>{const L=+i-1,dd=def[L]||d;return fmtNum(c[L]!=null?c[L]:dd.start,dd.fmt);});
+    return {text,lvl,n:c[lvl],fmt:d.fmt};
+  };
+}
+const dxEsc=t=>t.replace(/\\/g,'＼').replace(/\$/g,'\\$').replace(/\{/g,'\\{').replace(/\}/g,'\\}');
+function docxLines(ent){
+  const xml=n=>ent[n]?new DOMParser().parseFromString(new TextDecoder().decode(ent[n]),'application/xml'):null;
+  const doc=xml('word/document.xml');
+  if(!doc||!doc.documentElement||doc.getElementsByTagName('parsererror').length)throw new Error('讀不到 Word 的內文');
+  const rels={};const rx=xml('word/_rels/document.xml.rels');
+  if(rx)dxKids(rx.documentElement).forEach(r=>{rels[r.getAttribute('Id')]=r.getAttribute('Target');});
+  const label=docxNumbering(xml('word/numbering.xml'),xml('word/styles.xml'));
+  const st={eqObj:0,eqField:0,badImg:0,badMath:0,badSym:0,table:0,textbox:0};
+  const images={},lines=[];
+  function image(rid){
+    const target=rels[rid];if(!target)return '';
+    const path=('word/'+target.replace(/^\/?(?:word\/)?/,''));
+    const ext=(path.split('.').pop()||'').toLowerCase();
+    const type={png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',bmp:'image/bmp'}[ext];
+    if(!type||!ent[path]){st.badImg++;return '【圖（格式無法讀取，請另外插入）】';}
+    images[rid]={data:ent[path],type,name:'Word '+path.split('/').pop()};
+    return '\u0001'+rid+'\u0002';
+  }
+  function paragraph(p){
+    const segs=[];   // {t, u, red, sup, sub, raw}
+    const add=(t,o)=>segs.push(Object.assign({t},o||{}));
+    let field=0,instr='',fieldHasEq=false;
+    const walk=el=>{
+      for(const c of el.children){
+        const n=c.localName;
+        if(/\/math$/.test(c.namespaceURI||'')){
+          if(n==='oMath'){const m=omml(c,st).trim();if(m)add('$'+m+'$',{raw:1});}
+          else if(n==='oMathPara'){const ms=dxKids(c,'oMath').map(x=>omml(x,st).trim()).filter(Boolean);if(ms.length)add(ms.map(m=>'$$'+m+'$$').join(' '),{raw:1});}
+          continue;
+        }
+        if(n==='r'){run(c);continue;}
+        if(n==='AlternateContent'){const k=dxKid(c,'Choice')||dxKid(c,'Fallback');if(k)walk(k);continue;}
+        if(n==='del'||n==='moveFrom'||n==='pPr')continue;
+        if(n==='fldSimple'){if(/^\s*eq\b/i.test(dxAttr(c,'instr')||'')){st.eqField++;add('【公式（請重打）】',{raw:1});}else walk(c);continue;}
+        walk(c);
+      }
+    };
+    const run=r=>{
+      const rp=dxKid(r,'rPr');
+      const color=(dxVal(rp,'color')||'').toUpperCase();
+      const u=dxKid(rp,'u'),va=dxVal(rp,'vertAlign');
+      const fmt={u:!!u&&dxAttr(u,'val')!=='none',red:/^(FF0000|C00000|EE0000|FF[0-3][0-9A-F]{3})$/.test(color),sup:va==='superscript',sub:va==='subscript'};
+      const inner=el=>{for(const c of el.children){
+        const n=c.localName;
+        if(n==='t'){if(!field)add(dxEsc(c.textContent),fmt);}
+        else if(n==='tab')add('\u3000',fmt);
+        else if(n==='br'||n==='cr'){if(dxAttr(c,'type')!=='page')add('\n',{raw:1});}
+        else if(n==='noBreakHyphen')add('-',fmt);
+        else if(n==='sym')add(docxSym(c,st),fmt);
+        else if(n==='fldChar'){
+          const t=dxAttr(c,'fldCharType');
+          if(t==='begin'){field++;instr='';}
+          else if(t==='separate'||t==='end'){
+            if(/^\s*eq\b/i.test(instr)){st.eqField++;add('【公式（請重打）】',{raw:1});fieldHasEq=true;instr='';}
+            if(t==='separate'&&!fieldHasEq)field=Math.max(0,field-1);
+            else if(t==='end'){if(field>0)field--;fieldHasEq=false;}
+          }
+        }
+        else if(n==='instrText')instr+=c.textContent;
+        else if(n==='object'){
+          const ole=c.getElementsByTagName('*');let isEq=false;
+          for(const x of ole)if(x.localName==='OLEObject'&&/equation|mathtype/i.test(x.getAttribute('ProgID')||''))isEq=true;
+          if(isEq){st.eqObj++;add('【公式（請重打）】',{raw:1});}else walk2(c);
+        }
+        else if(n==='drawing'||n==='pict')walk2(c);
+        else if(n==='AlternateContent'){const k=dxKid(c,'Choice')||dxKid(c,'Fallback');if(k)inner(k);}
+        else if(n==='ruby'){const b=dxKid(c,'rubyBase');if(b)walk(b);}
+      }};
+      inner(r);
+    };
+    const walk2=el=>{
+      const all=Array.from(el.getElementsByTagName('*'));
+      if(all.some(x=>x.localName==='txbxContent'))st.textbox++;
+      const seen=new Set();
+      all.forEach(x=>{
+        const rid=x.localName==='blip'?dxAttr(x,'embed'):x.localName==='imagedata'?dxAttr(x,'id'):null;
+        if(rid&&!seen.has(rid)){seen.add(rid);add(image(rid),{raw:1});}
+      });
+    };
+    walk(p);
+    return segs;
+  }
+  /* 把同格式的片段合併後轉成工作台寫法 */
+  function render(segs){
+    const merged=[];
+    segs.forEach(s=>{
+      const l=merged[merged.length-1];
+      if(l&&!s.raw&&!l.raw&&!!l.u===!!s.u&&!!l.red===!!s.red&&!!l.sup===!!s.sup&&!!l.sub===!!s.sub)l.t+=s.t;else merged.push(Object.assign({},s));
+    });
+    let o='';
+    for(let i=0;i<merged.length;i++){
+      const s=merged[i];
+      if((s.sup||s.sub)&&s.t.trim()){
+        const m=/(?:\\\{|\\\}|[A-Za-z0-9α-ω)\]|])+$/.exec(o);
+        const body=omText(s.t.trim().replace(/\\([{}$])/g,'$1'));
+        let base=m?m[0]:'';
+        if(base){const k=/(?:[A-Za-zα-ω]|\d+|[)\]|])$/.exec(base);base=k?k[0]:base;o=o.slice(0,o.length-base.length);}
+        const piece=(s.sup?'^':'_')+'{'+body+'}';
+        if(!base&&o.endsWith('$')&&!o.endsWith('\\$'))o=o.slice(0,-1)+piece+'$';
+        else o+='$'+(base?omText(base):'{}')+piece+'$';
+        continue;
+      }
+      if(s.u){
+        if(!s.t.replace(/[\s\u3000_＿]/g,'')){if(s.t.length)o+=' \\blank ';continue;}
+        if(s.red){o+='\u0003'+s.t.replace(/^[\s\u3000]+|[\s\u3000]+$/g,'')+'\u0004';continue;}
+        /* 相鄰的底線（中間夾方程式）併在一起 */
+        let t=s.t;
+        while(merged[i+1]&&merged[i+1].u&&!merged[i+1].sup&&!merged[i+1].sub&&!merged[i+1].red){t+=merged[++i].t;}
+        o+=t.trim()?'\\uline{'+t+'}':' \\blank ';continue;
+      }
+      o+=s.t;
+    }
+    return o.replace(/\$\$(?!\$)(?=[^$])/g,m=>m);
+  }
+  const body=dxKid(doc.documentElement,'body');
+  const block=el=>{
+    for(const c of el.children){
+      const n=c.localName;
+      if(n==='p'){
+        const num=label(dxKid(c,'pPr'));
+        render(paragraph(c)).split('\n').forEach((t,i)=>lines.push({t,num:i?null:num}));
+      }else if(n==='tbl'){st.table++;dxKids(c,'tr').forEach(tr=>dxKids(tr,'tc').forEach(block));}
+      else if(n==='sdt'){const k=dxKid(c,'sdtContent');if(k)block(k);}
+      else if(n==='AlternateContent'){const k=dxKid(c,'Choice')||dxKid(c,'Fallback');if(k)block(k);}
+      else if(n==='customXml'||n==='ins'||n==='moveTo')block(c);
+    }
+  };
+  block(body);
+  return {lines,images,st};
+}
+
+/* ---- 一行行文字 → 大題與題目 ---- */
+const DX_META=/^【\s*(?:難易度|難度|出處|來源|章節|單元|題型|題號|編號|知識點|認知向度|分類|關鍵字|命中率|答對率|鑑別度|課本頁次)[^】]*】/;
+const DX_MARK=/【\s*(答案|解答|標準答案|參考答案|Ans|詳解|解析|詳解與解析|解題|說明|解)\s*】\s*[:：]?|(?:(?<![A-Za-z])(?:Ans|ANS|ans)|(?<![解作回])答案|正確答案|詳解|解析)\s*[:：]|^[\s\u3000]*(解答|解|答)\s*[:：]/g;
+const dxHalf=s=>s.replace(/[０-９Ａ-Ｚａ-ｚ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/（/g,'(').replace(/）/g,')').replace(/．/g,'.');
+/* 把數學式遮起來（長度不變），找標記時才不會找到數學式裡面 */
+const dxMask=s=>s.replace(/\$\$[\s\S]*?\$\$|(?<!\\)\$(?:\\.|[^$\\])*\$/g,m=>'¤'.repeat(m.length));
+function dxHeader(line,num){
+  let t=line.replace(/\\blank|\\uline\{|[{}\u0003\u0004]/g,'').trim();
+  let m=/^(?:[一二三四五六七八九十]+\s*[、．.,，]|第\s*[一二三四五六七八九十]+\s*(?:部分|大題)\s*[:：、]?|[壹貳參肆伍陸]\s*[、．.]|[【〔\[])\s*(.*)$/.exec(t);
+  const numbered=!!m||(num&&/ideograph|taiwanese|chinese/i.test(num.fmt));
+  const rest=(m?m[1]:t).replace(/^[】〕\]]/,'');
+  const head=rest.split(/[(（：:】〕\]。，,]/)[0].trim();
+  if(!(numbered||(head.length<=8&&/[題部]/.test(head)))||head.length>14)return null;
+  if(!/^(?:[^題]{0,6})(?:單選|單一選擇|多選|多重選擇|複選|選擇|選填|填充|填空|混合|題組|計算|證明|非選擇)[題與及、或]*(?:計算|證明|作圖)?題?[部分區]*$/.test(head))return null;
+  const type=texTypeOf(head);if(!type)return null;
+  const plain=dxHalf(rest);
+  const pm=plain.match(/每題\s*\$?(\d+(?:\.\d+)?)\$?\s*分/),tm=plain.match(/(?:共|占|佔)\s*\$?(\d+(?:\.\d+)?)\$?\s*分/);
+  return {type,name:head,pts:pm?pm[1]:'',total:tm?tm[1]:''};
+}
+/* 題號：回傳 {n, ans, rest, letter}；ans 是寫在題號前括號裡的答案 */
+function dxStart(line,num,secType){
+  const s=dxHalf(line).replace(/[\u0003\u0004]/g,'');
+  const cut=(re)=>{const m=re.exec(s);if(!m)return null;let used=m[0].length,i=0,k=0;while(k<used&&i<line.length){if(line[i]!=='\u0003'&&line[i]!=='\u0004')k++;i++;}return {m,rest:line.slice(i)};};
+  let r;
+  if((r=cut(/^[\s\u3000]*\(([\s\u3000]*(?:[A-Ja-j1-9][\s\u3000,、]*){0,10}(?:\([A-Ja-j1-9]\))*)\)[\s\u3000]*(\d{1,3})\s*[.、](?!\d)/)))return {n:+r.m[2],ans:r.m[1],rest:r.rest,paren:true};
+  if((r=cut(/^[\s\u3000]*((?:\([1-9A-E]\))+)[\s\u3000]*(\d{1,3})\s*[.、](?!\d)/)))return {n:+r.m[2],ans:r.m[1],rest:r.rest};
+  if((r=cut(/^[\s\u3000]*(?:【?\s*題目?\s*】|第\s*(?=\d))?[\s\u3000]*(\d{1,3})\s*(?:[.、](?!\d)|題\s*[:：.]?)/)))return {n:+r.m[1],rest:r.rest};
+  if(secType==='fill'&&(r=cut(/^[\s\u3000]*([A-Z])\s*[.、](?![A-Za-z]\.)/)))return {n:r.m[1].charCodeAt(0)-64,rest:r.rest,letter:true};
+  if(num&&num.lvl===0){
+    const x=dxHalf(num.text);
+    if(/^\d{1,3}\s*[.、)]?$|^第\s*\d+\s*題/.test(x))return {n:num.n,rest:line};
+    if(secType==='fill'&&/^[A-Z]\s*[.、)]?$/.test(x))return {n:num.n,rest:line,letter:true};
+  }
+  return null;
+}
+function dxSplitOptions(stem,isChoice){
+  const mask=dxHalf(dxMask(stem));
+  const tries=[
+    {re:/\((\d)\)/g,seq:i=>String(i+1)},
+    {re:/\(([A-J])\)/g,seq:i=>String.fromCharCode(65+i)},
+  ];
+  if(isChoice)tries.push({re:/(?<![A-Za-z0-9])([A-J])\s*[.、](?![A-Za-z]\.)/g,seq:i=>String.fromCharCode(65+i)},{re:/([①-⑨])/g,seq:i=>String.fromCharCode(0x2460+i)});
+  let best=null;
+  for(const t of tries){
+    const all=[...mask.matchAll(t.re)];
+    /* 從最後一組「第一個標號」往後找連續的標號：題幹裡引用的 (1) 才不會被當成選項 */
+    for(let a=all.length-1;a>=0;a--){
+      if(all[a][1]!==t.seq(0))continue;
+      const picked=[all[a]];
+      for(let k=a+1;k<all.length;k++)if(all[k][1]===t.seq(picked.length))picked.push(all[k]);
+      if(picked.length>=(isChoice?2:4)&&(!best||picked.length>best.length))best=picked;
+    }
+    if(best)break;
+  }
+  if(!best)return null;
+  const opts=best.map((m,i)=>stem.slice(m.index+m[0].length,i+1<best.length?best[i+1].index:stem.length));
+  return {stem:stem.slice(0,best[0].index),opts};
+}
+function dxChoiceAns(a,n){
+  const t=dxHalf(String(a)).replace(/[$\u0003\u0004\u3000]|\\text\s*|\\quad/g,'').replace(/[{}]/g,'').trim().replace(/[。.]$/,'');
+  if(!t)return '';
+  if(!/^[\s(),，、;；A-Ja-j1-9①-⑨]*$/.test(t))return null;
+  const r=[];for(const c of t){let v=0;if(/[1-9]/.test(c))v=+c;else if(/[A-Ja-j]/.test(c))v=c.toUpperCase().charCodeAt(0)-64;else if(/[①-⑨]/.test(c))v=c.charCodeAt(0)-0x245F;if(v&&!r.includes(v))r.push(v);}
+  if(n&&r.some(v=>v>n))return null;
+  return r.sort((x,y)=>x-y).join(',');
+}
+const dxClean=s=>s.replace(/[\u0003\u0004]/g,'').replace(/([\^_]\{[^{}$]*\})\$((?:[=+\-<>≤≥]-?[0-9A-Za-z]+)+)(?![A-Za-z0-9$\\])/g,'$1$2$$').split('\n').map(x=>x.replace(/^[\s\u3000]+|[\s\u3000]+$/g,'').replace(/\u3000{2,}/g,'\u3000')).filter(x=>x!=='').join('\n');
+function dxTakeImgs(s){const ids=[];const t=s.replace(/\u0001([^\u0002]*)\u0002/g,(m,id)=>{ids.push(id);return '';});return {t,ids};}
+function docxParse(ent){
+  const {lines,images,st}=docxLines(ent);
+  const warns=[];
+  const secs=[];let sec=null,cur=null,mode='stem',key=false,keySec=null,found=0;
+  const newSec=h=>{sec={type:h.type,name:h.name,pts:h.pts,total:h.total,raw:[]};secs.push(sec);cur=null;};
+  const lastN=()=>sec&&sec.raw.length?sec.raw[sec.raw.length-1].n:0;
+  const put=(q,field,text,fresh)=>{q[field]+=(q[field]&&(fresh||text)?'\n':'')+text;};
+  /* 「解答」「詳解」單獨一行：後面接大題標題或第 1 題，才是卷末另附的答案 */
+  const nextRestarts=i=>{for(let k=i+1;k<lines.length;k++){const x=lines[k];if(!x.t.trim())continue;if(dxHeader(x.t,x.num))return true;const q=dxStart(x.t,x.num,sec&&sec.type);return !!q&&q.n===1&&found>1;}return false;};
+  for(let li=0;li<lines.length;li++){
+    const ln=lines[li];
+    let t=ln.t.replace(/[ \t]+$/,'');
+    const bare=t.replace(/[\s\u3000【】\[\]\u0003\u0004:：]/g,'');
+    if(/^(?:本?試卷|試題)(?:結束|完)$|^—*(?:全卷完|試題結束)—*$/.test(bare))continue;
+    /* 卷末另外附的答案／詳解 */
+    if(found&&/^(?:參考)?(?:答案|解答|詳解|解析|簡答)(?:卷|區|與解析|與詳解)?$/.test(bare)&&(/參考|卷|簡答/.test(bare)||(!/【/.test(t)&&nextRestarts(li)))){key=true;keySec=null;cur=null;continue;}
+    const hd=dxHeader(t,ln.num);
+    if(hd){
+      if(key){keySec=secs.find(s=>s.type===hd.type)||null;cur=null;continue;}
+      newSec(hd);continue;
+    }
+    if(DX_META.test(t.trim())){t=t.trim().replace(DX_META,'').trim();if(!t||!/【/.test(t))continue;}
+    const qs=dxStart(t,ln.num,key?(keySec&&keySec.type):(sec&&sec.type));
+    if(key){
+      if(qs){
+        const pool=keySec?[keySec]:secs;let target=null;
+        for(const s of pool){target=s.raw.find(q=>q.n===qs.n&&!q.keyed);if(target)break;}
+        cur=target;if(cur){cur.keyed=true;mode='ans';if(qs.ans)put(cur,'ans',qs.ans);t=qs.rest;}else continue;
+      }
+      if(!cur)continue;
+    }else if(qs){
+      /* 詳解或答案裡的條列「1.」不算新題：新題要接得上題號 */
+      const n=qs.n,prev=lastN();
+      const auto=ln.num&&ln.num.lvl===0&&qs.rest===ln.t;
+      const strong=qs.paren||qs.ans!=null||auto;
+      /* 解答裡接著上一個條列號、或本卷題目都把答案寫在題號前時，沒有括號的編號屬於解答內容 */
+      const inList=cur&&mode!=='stem'&&!strong&&((n===1&&prev!==0)||n===cur.list+1||sec.raw.some(q=>q.paren));
+      const isNew=!cur||strong||(!inList&&(mode==='stem'||n===prev+1));
+      if(!isNew&&cur&&mode!=='stem'&&(n===1||n===cur.list+1))cur.list=n;
+      if(isNew){
+        if(!sec)newSec({type:'unclassified',name:'',pts:'',total:''});
+        cur={n,stem:'',ans:qs.ans!=null?qs.ans:'',sol:'',paren:qs.ans!=null,list:-1};sec.raw.push(cur);found++;mode='stem';
+        t=qs.rest;
+      }
+    }
+    if(!cur){
+      if(sec&&sec.type==='mixed'&&t.trim())sec.pre=(sec.pre?sec.pre+'\n':'')+t;
+      continue;
+    }
+    /* 依「答案／詳解」標記切開這一行 */
+    const mask=dxMask(t);DX_MARK.lastIndex=0;
+    let m,pos=0,first=true;
+    while((m=DX_MARK.exec(mask))){
+      const word=(m[1]||m[2]||m[0]).replace(/[\s\u3000:：【】]/g,'');
+      const before=t.slice(pos,m.index);
+      if(before.trim())put(cur,mode,before);
+      mode=/^(?:答案|解答|標準答案|參考答案|正確答案|答|Ans|ANS|ans)$/.test(word)?'ans':'sol';
+      pos=m.index+m[0].length;first=false;
+    }
+    const tail=t.slice(pos);
+    if(tail.trim())put(cur,mode,tail);
+  }
+  /* 整理成各題型 */
+  const out=[];const loose={};
+  const KIND_SEC={single:'單選題',multi:'多選題',fill:'填充題',calc:'計算證明題',open:'未分類（請手動整理）'};
+  let noAns=0,noOpt=0,noBlank=0,extraImg=0;
+  secs.forEach(s=>{
+    const ps={type:s.type,name:s.name,pts:s.type==='mixed'?'':s.pts,qs:[]};
+    if(s.type==='mixed'&&s.pre){const p=dxTakeImgs(s.pre);const g=dxClean(p.t);if(g||p.ids.length)ps.qs.push({kind:'group',stem:g,opts:[],ans:'',pts:'',sol:'',imgs:p.ids,optImgs:[]});}
+    s.raw.forEach(r=>{
+      let stem=r.stem,ans=r.ans.trim(),sol=r.sol,pts='';
+      const red=[];
+      stem=stem.replace(/\u0003([\s\S]*?)\u0004/g,(m,a)=>{red.push(a);return ' \\blank ';});
+      const pm=dxHalf(stem).match(/^[\s\u3000]*\((\d+(?:\.\d+)?)\s*分\)/);
+      if(pm){pts=pm[1];stem=stem.replace(/^[\s\u3000]*[（(]\s*[\d０-９.．]+\s*分\s*[）)]/,'');}
+      const isChoice=s.type==='single'||s.type==='multi';
+      let o=null,kind=null;
+      if(isChoice||s.type==='mixed'||s.type==='custom'||s.type==='unclassified')o=dxSplitOptions(stem,isChoice);
+      if(o){
+        stem=o.stem;
+        /* 答案欄：第一行是選項代號，其餘併入詳解 */
+        const al=ans.split('\n');
+        let a=dxChoiceAns(al[0]||'',o.opts.length);
+        if(a===null){const mm=/^\s*((?:[（(]\s*[A-Ja-j1-9]\s*[）)]|[A-J])(?:[\s,，、]*(?:[（(]\s*[A-Ja-j1-9]\s*[）)]|[A-J](?![a-z])))*)/.exec(al[0]);if(mm){a=dxChoiceAns(mm[1],o.opts.length)||'';al[0]=al[0].slice(mm[0].length).replace(/^[。.\s\u3000]+/,'');}else a='';}
+        else al.shift();
+        const rest=al.join('\n').trim();if(rest)sol=rest+(sol?'\n'+sol:'');
+        ans=a;
+        kind=s.type==='single'||s.type==='multi'?s.type:(a.includes(',')?'multi':'single');
+      }else{
+        if(isChoice){noOpt++;stem=r.stem.replace(/\u0003|\u0004/g,'');kind=s.type;o={opts:[]};}
+        else{
+          stem=stem.replace(/[_＿]{2,}/g,' \\blank ').replace(/(?:\\blank\s*){2,}/g,'\\blank ');
+          if(s.type==='fill')stem=stem.replace(/[（(][\s\u3000]{2,}[）)]/g,' \\blank ');
+          const hasBlank=/\\blank/.test(stem);
+          kind=s.type==='calc'?'calc':s.type==='fill'||hasBlank?'fill':s.type==='mixed'||s.type==='custom'?'open':'calc';
+          if(kind==='fill'){
+            if(!ans&&red.length)ans=red.join('；');
+            const al=ans.split('\n');
+            if(al[0]&&al[0].length<=80){const rest=al.slice(1).join('\n').trim();if(rest)sol=rest+(sol?'\n'+sol:'');ans=dxAnsTex(al[0]);}
+            else if(ans){sol=ans+(sol?'\n'+sol:'');ans='';}
+            if(!hasBlank){noBlank++;stem=stem.replace(/[\s\u3000]*$/,'')+' \\blank ';}
+          }else{
+            if(kind==='calc'||kind==='open'){stem=stem.replace(/\\blank/g,'＿＿');if(ans)sol='答：'+ans+(sol?'\n'+sol:'');ans='';}
+          }
+        }
+      }
+      if(isChoice||kind==='single'||kind==='multi'){if(!ans)noAns++;}else if(kind==='fill'&&!ans)noAns++;
+      /* 圖片：題幹第一張當附圖，選項裡的當選項附圖 */
+      const a=dxTakeImgs(stem),b=dxTakeImgs(sol);
+      const opts=o?o.opts.map(x=>dxTakeImgs(x)):[];
+      const q={kind,stem:dxClean(a.t),opts:opts.map(x=>dxClean(x.t).replace(/[\n\u3000]+$/,'').replace(/\n/g,' ').replace(/[;；]$/,'')),ans,pts,sol:dxClean(b.t),imgs:a.ids,optImgs:opts.map(x=>x.ids[0]||null)};
+      extraImg+=Math.max(0,a.ids.length-1)+b.ids.length+opts.reduce((n,x)=>n+Math.max(0,x.ids.length-1),0);
+      q.moreImgs=a.ids.slice(1).concat(b.ids,...opts.map(x=>x.ids.slice(1)));
+      if(s.type==='unclassified'){
+        const k=kind==='open'?'calc':kind;
+        if(!loose[k]){loose[k]={type:k,name:KIND_SEC[k],pts:'',qs:[]};out.push(loose[k]);}
+        loose[k].qs.push(q);
+      }else ps.qs.push(q);
+    });
+    if(ps.pts===''&&s.type!=='mixed'&&s.total){const c=ps.qs.filter(q=>q.kind!=='group').length;if(c&&+s.total%c===0)ps.pts=String(+s.total/c);}
+    if(s.type!=='unclassified'&&ps.qs.length)out.push(ps);
+  });
+  if(secs.some(s=>s.type==='unclassified'))warns.push('部分題目前面沒有「單選題／多選題／填充題」之類的大題標題，題型是依內容猜的，請確認。');
+  if(st.eqObj)warns.push('有 '+st.eqObj+' 個 MathType／舊版方程式物件目前讀不到，原位置標了「【公式（請重打）】」。');
+  if(st.eqField)warns.push('有 '+st.eqField+' 個功能變數（EQ）公式目前讀不到，原位置標了「【公式（請重打）】」。');
+  if(st.badImg)warns.push('有 '+st.badImg+' 張圖的格式（例如 WMF、EMF）瀏覽器讀不到。');
+  if(extraImg)warns.push('有 '+extraImg+' 張圖沒有自動放進題目（每題只放一張附圖，詳解的圖不放），已加進「圖庫」。');
+  if(st.textbox)warns.push('文字方塊裡的文字沒有讀進來，請對照原檔。');
+  if(st.table)warns.push('檔案裡有表格：內容已依儲存格順序讀成一般文字，請對照原檔。');
+  if(st.badMath+st.badSym)warns.push('有 '+(st.badMath+st.badSym)+' 個符號認不出來，請對照原檔。');
+  if(noOpt)warns.push('有 '+noOpt+' 題選擇題沒有分出選項。');
+  if(noBlank)warns.push('有 '+noBlank+' 題填充題找不到空格，已在題目最後補一格，請確認位置。');
+  if(noAns)warns.push('有 '+noAns+' 題沒有讀到答案，答案欄留空。');
+  return {sections:out,warns,images};
+}
+/* 填充題答案：解答欄用的是不加 $ 的寫法 */
+function dxAnsTex(a){
+  let t=a.replace(/\u0001[^\u0002]*\u0002|[\u0003\u0004]/g,'').trim().replace(/。$/,'').trim();
+  if(!/[\u3400-\u9fff]/.test(t.replace(/\\text\{[^{}]*\}/g,'')))t=t.replace(/\$+/g,'');
+  return t.replace(/\\(?:left|right)\b\s*/g,'').replace(/-\s*\\d?frac\{\s*(\d+)\s*\}\{\s*(\d+)\s*\}/g,'\\dfrac{-$1}{$2}').trim();
+}
+async function docxImport(file){
+  const parsed=docxParse(await docxUnzip(await file.arrayBuffer()));
+  openTexImport(parsed,[file.name],'匯入 Word');
 }
 
 twoClick($('#btnNew'),()=>{blankState();
