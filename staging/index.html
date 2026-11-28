@@ -320,6 +320,19 @@ textarea.mm-target{min-height:104px;overflow-y:hidden}
 .pv-sec[data-ps]:hover{background:rgba(0,0,0,.04)}
 .wtag{position:fixed;z-index:34;pointer-events:none;max-width:min(480px,90vw);padding:4px 13px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:color-mix(in srgb,var(--tl,#C5D3F0) var(--lift2,0%),var(--tc,var(--t-333344)));background:color-mix(in srgb,var(--tt,var(--b-e9edf5)) 80%,transparent);border:1px solid color-mix(in srgb,var(--tc,var(--l-333344)) 35%,transparent);box-shadow:0 1px 8px rgba(0,0,0,.08);backdrop-filter:blur(2px)}
 .pvq.g{margin-bottom:.2em}
+#sampleDlg{position:fixed;inset:0;background:rgba(24,30,46,.7);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px}
+.sm-box{background:var(--b-ffffff);border-radius:12px;max-width:940px;width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.sm-head{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line)}.sm-title{font-weight:700;font-size:16px}.sm-head .btn{flex:none}
+.sm-body{overflow:auto;padding:6px 20px 18px}.sm-body h3{font-size:14px;margin:14px 0 2px}
+.sm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,400px),1fr));gap:12px;margin-top:8px}
+.sm-card{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px}.sm-card>.btn{align-self:flex-start;margin-top:auto}
+.sm-thumbs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;background:var(--b-e9ecf2);border-radius:8px;padding:8px}
+.sm-th{border:0;background:none;padding:0;cursor:zoom-in;display:flex;flex-direction:column;gap:3px;font:inherit;font-size:12px;color:var(--muted);text-align:center}
+.sm-th img{width:100%;height:auto;display:block;background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.25)}.sm-th:hover img,.sm-th:focus-visible img{outline:2px solid var(--accent)}
+.sm-noimg{display:flex;align-items:center;justify-content:center;aspect-ratio:520/736;border:1px dashed var(--line);padding:4px}
+.sm-zoom{position:fixed;inset:0;background:rgba(24,30,46,.94);display:flex;flex-direction:column;padding:12px;gap:10px}
+.sm-zoom .bar{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}.sm-zoom .cap{color:#fff;font-size:14px;margin-right:8px}
+.sm-zoom .pic{flex:1;min-height:0;overflow:auto;text-align:center}.sm-zoom .pic img{width:min(100%,640px);height:auto;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.5)}
 .pvq.clr,.pv-sec,.pv-pb,.pv-calc{clear:both}
 .paper.gsat{font-family:'Times New Roman','Noto Serif TC','Songti TC','PMingLiU',serif}
 .gs-cover{text-align:center;line-height:1.5}.gs-cover .t1{font-size:1.5em;margin-top:.6em}.gs-cover .t2{font-size:1.9em}
@@ -767,7 +780,7 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.8';
-const APP_BUILD='2026-11-28 16:43';
+const APP_BUILD='2026-11-28 17:55';
 const APP_LOG=[
   {v:'1.8',items:[
     '新增匯入 Word 考卷（.docx，試用）：上方「匯入 Word／PDF／LaTeX」可把題目、選項、答案、詳解讀進各題型；Word 內建方程式會轉成數學式，PNG／JPG 圖片會放進圖庫。MathType／舊版方程式也能轉換（含線上增益集插入、看起來像圖片的公式）；填充題每格後面寫「Ans: 答案」會逐格帶入答案欄。選「取代目前考卷」匯入時，會一併清掉圖庫原本的圖表（可取消勾選保留）。舊版 .doc 請先另存成 .docx。匯入後請逐題核對。',
@@ -775,7 +788,7 @@ const APP_LOG=[
     '中文和數學式緊貼時，輸出的考卷會自動空一格（題目、選項、詳解；預覽、列印、編譯 PDF、.tex 都一樣），原本打的字不會被改動。不需要可到「⚙ 設定」的「題目文字自動處理」關掉。',
     '中文輸入法提醒：在解答、配分、數學式編輯器等該打英文數字的地方打出注音或中文時，欄位旁會提示切換輸入法（不會擋住輸入）。電腦的切換設定寫在使用手冊。',
     '新增學測模擬考版型（A4）：封面與作答注意事項、左右頁交替的頁首頁尾、部分標題與「說明」框、卷末參考公式。分「傳統圈號」（原本的數學卡編號）與「大考中心新式」（13-1 選填格）兩種。',
-    '「載入範例」改成選單：段考範例、兩種學測模擬考的空白版型與 115 學測數學A 全卷範例（範例答案不是大考中心公布的，使用前請核對）。',
+    '「載入範例」改成選單，附各頁縮圖、可放大看：段考範例、兩種學測模擬考的空白版型與 115 學測數學A 全卷範例（範例答案不是大考中心公布的，使用前請核對）。',
     '修正：題目的數學式外面打 \\$、\\{ 這類符號時，預覽和輸出會出錯。',
   ]},
   {v:'1.7',items:[
@@ -1712,27 +1725,59 @@ function gsatState(full,classic){
   {const q=newQ('open');q.stem=R`試求平行六面體的體積，並求平行六面體上（含邊界）距點 $A$ 的最長距離。（非選擇題，8 分）`;q.pts='8';q.space='90';q.sol=R`三個外積所成的行列式值等於體積的平方，其值為 $100$，故體積為 $10$。
 再由 $(\overrightarrow{AP}\times \overrightarrow{AB})\times (\overrightarrow{AB}\times \overrightarrow{AD})$ 等三式可得 $\overrightarrow{AB}=\pm (-1,1,-2)$、$\overrightarrow{AD}=\pm (-2,-3,1)$、$\overrightarrow{AP}=\pm (-4,-4,2)$（三者同號）。比較各頂點與 $A$ 的距離，最長者為 $|\overrightarrow{AD}+\overrightarrow{AP}|=|(-6,-7,3)|=\sqrt{94}$。`;s4.qs.push(q);}
 }
+/* 載入範例的清單：之後加新版型，在這裡加一筆，縮圖放 thumbs/<key>-1.jpg、-2.jpg…（用網頁列印的版面截圖） */
+const SAMPLE_GROUPS=[
+  {name:'段考',items:[
+    {key:'school',name:'段考範例',desc:'三列版型，多選、填充、混合題。',pages:['第 1 頁','第 2 頁'],run:()=>sampleState()}]},
+  {name:'學測模擬考・傳統圈號（數學卡）',desc:'一般學校的數學卡用這個：選填題用 A、B、C 編題，圓圈列號接在選擇題後面。',items:[
+    {key:'gscblank',name:'空白版型（傳統圈號）',desc:'封面作答注意事項、各大題架構、卷末參考公式，題目自己填。',pages:['封面','參考公式'],run:()=>gsatState(false,true)},
+    {key:'gsc115',name:'115 學測數學A 全卷（傳統圈號）',desc:'20 題完整示範，改用數學卡的編號。答案是整理範例時算出的，使用前請核對。',pages:['封面','單選題','選填題'],run:()=>gsatState(true,true)}]},
+  {name:'學測模擬考・大考中心新式',desc:'題號全卷連續，選填格是 13-1、13-2，需配合大考中心式的答題卷。',items:[
+    {key:'gsblank',name:'空白版型（大考中心新式）',desc:'封面作答注意事項、各大題架構、卷末參考公式，題目自己填。',pages:['封面','參考公式'],run:()=>gsatState(false)},
+    {key:'gs115',name:'115 學測數學A 全卷（大考中心新式）',desc:'照原卷樣式的完整示範。答案是整理範例時算出的，非大考中心公布，使用前請核對。',pages:['封面','單選題','選填題'],run:()=>gsatState(true)}]}
+];
+const THUMB_VER=1;   // 縮圖換新時加 1
+const thumbSrc=(key,i)=>`thumbs/${key}-${i+1}.jpg?v=${THUMB_VER}`;
 function openSampleDlg(){
   if($('#sampleDlg'))return;
-  const ov=h('div',{id:'sampleDlg',role:'dialog','aria-modal':'true','aria-label':'載入範例',style:'position:fixed;inset:0;background:rgba(24,30,46,.7);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px'});
-  const close=()=>{ov.remove();document.removeEventListener('keydown',onKey);};
-  const onKey=e=>{if(e.key==='Escape')close();};document.addEventListener('keydown',onKey);
+  const back=document.activeElement;
+  const ov=h('div',{id:'sampleDlg',role:'dialog','aria-modal':'true','aria-label':'載入範例'});
+  let zoom=null;   // 放大看的畫面：{el,go}
+  const closeZoom=()=>{if(!zoom)return;const f=zoom.from;zoom.el.remove();zoom=null;if(f)f.focus();};
+  const close=()=>{ov.remove();document.removeEventListener('keydown',onKey);if(back&&back.focus)back.focus();};
+  const onKey=e=>{
+    if(e.key==='Escape'){if(zoom)closeZoom();else close();}
+    else if(zoom&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();zoom.go(e.key==='ArrowLeft'?-1:1);}
+  };
+  document.addEventListener('keydown',onKey);
   ov.addEventListener('mousedown',e=>{if(e.target===ov)close();});
-  const item=(k,name,desc,fn)=>h('button',{type:'button',class:'btn','data-sample':k,style:'display:block;width:100%;text-align:left;margin-top:8px;padding:10px 14px;white-space:normal',onclick:()=>{close();fn();settingsBuilt=false;rerender();flashMsg('已載入'+name+'。');}},h('b',{},name),h('div',{class:'hint'},desc));
-  ov.append(h('div',{style:'background:var(--b-ffffff);border-radius:12px;max-width:520px;width:100%;max-height:88vh;overflow:auto;padding:16px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)'},
-    h('div',{style:'font-weight:700;font-size:16px'},'載入範例'),
-    h('div',{class:'hint',style:'color:var(--danger)'},'目前考卷的內容會被取代；需要保留請先存成考卷檔。'),
-    item('school','段考範例','三列版型，多選、填充、混合題。',sampleState),
-    h('div',{style:'font-weight:700;margin-top:14px'},'學測模擬考・傳統圈號（數學卡）'),
-    h('div',{class:'hint'},'一般學校的數學卡用這個：選填題用 A、B、C 編題，圓圈列號接在選擇題後面。'),
-    item('gscblank','空白版型（傳統圈號）','封面作答注意事項、各大題架構、卷末參考公式，題目自己填。',()=>gsatState(false,true)),
-    item('gsc115','115 學測數學A 全卷（傳統圈號）','20 題完整示範，改用數學卡的編號。答案是整理範例時算出的，使用前請核對。',()=>gsatState(true,true)),
-    h('div',{style:'font-weight:700;margin-top:14px'},'學測模擬考・大考中心新式'),
-    h('div',{class:'hint'},'題號全卷連續，選填格是 13-1、13-2，需配合大考中心式的答題卷。'),
-    item('gsblank','空白版型（大考中心新式）','封面作答注意事項、各大題架構、卷末參考公式，題目自己填。',()=>gsatState(false)),
-    item('gs115','115 學測數學A 全卷（大考中心新式）','照原卷樣式的完整示範。答案是整理範例時算出的，非大考中心公布，使用前請核對。',()=>gsatState(true)),
-    h('div',{style:'text-align:right;margin-top:12px'},h('button',{type:'button',class:'btn',onclick:close},'取消'))));
-  document.body.append(ov);
+  const load=it=>{close();it.run();settingsBuilt=false;rerender();flashMsg('已載入'+it.name+'。');};
+  const noImg=img=>img.addEventListener('error',()=>{img.replaceWith(h('span',{class:'sm-noimg'},'縮圖載不到（需要連網）'));});
+  function openZoom(it,at,from){
+    closeZoom();
+    let i=at;
+    const img=h('img',{alt:''}),cap=h('div',{class:'cap','aria-live':'polite'});
+    const show=()=>{img.src=thumbSrc(it.key,i);img.alt=it.name+'：'+it.pages[i];cap.textContent=`${it.name}　${it.pages[i]}（${i+1} / ${it.pages.length}）`;};
+    const go=d=>{i=(i+d+it.pages.length)%it.pages.length;show();};
+    const nav=(label,d,name)=>h('button',{type:'button',class:'btn','aria-label':name,onclick:()=>go(d)},label);
+    const shut=h('button',{type:'button',class:'btn','data-zoomclose':'1',onclick:closeZoom},'關閉');
+    const el=h('div',{class:'sm-zoom'},h('div',{class:'bar'},cap,nav('‹ 上一頁',-1,'上一頁'),nav('下一頁 ›',1,'下一頁'),h('button',{type:'button',class:'btn primary',onclick:()=>load(it)},'載入這份'),shut),h('div',{class:'pic'},img));
+    el.addEventListener('mousedown',e=>{if(e.target===el||e.target.className==='pic')closeZoom();});
+    show();ov.append(el);zoom={el,go,from};shut.focus();
+  }
+  const card=it=>h('div',{class:'sm-card'},
+    h('div',{class:'sm-thumbs'},...it.pages.map((p,i)=>{
+      const img=h('img',{src:thumbSrc(it.key,i),alt:'',loading:'lazy',width:520,height:736});noImg(img);
+      const b=h('button',{type:'button',class:'sm-th',title:'放大看：'+p,'aria-label':it.name+'：放大看'+p},img,h('span',{},p));
+      b.addEventListener('click',()=>openZoom(it,i,b));return b;
+    })),
+    h('b',{},it.name),h('div',{class:'hint'},it.desc),
+    h('button',{type:'button',class:'btn primary small','data-sample':it.key,onclick:()=>load(it)},'載入這份'));
+  const shut=h('button',{type:'button',class:'btn',onclick:close},'取消');
+  ov.append(h('div',{class:'sm-box'},
+    h('div',{class:'sm-head'},h('div',{},h('div',{class:'sm-title'},'載入範例'),h('div',{class:'hint'},'點縮圖可以放大看。按「載入這份」會取代目前考卷的內容；需要保留請先存成考卷檔。')),shut),
+    h('div',{class:'sm-body'},...SAMPLE_GROUPS.map(g=>h('section',{},h('h3',{},g.name),g.desc?h('div',{class:'hint'},g.desc):'',h('div',{class:'sm-grid'},...g.items.map(card)))))));
+  document.body.append(ov);shut.focus();
 }
 /* ================= 版面計算（題號、答案卡格子、配分） ================= */
 const SLOT_CH='0123456789-−±';
