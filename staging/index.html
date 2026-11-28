@@ -515,12 +515,17 @@ body.fx-open{overflow:hidden}
 .fx-low{flex:1;min-height:0;display:flex;flex-direction:column}
 .fx-types,.fx-nums{display:flex;align-items:center;gap:6px;padding:7px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
 .fx-types{flex-wrap:wrap}
-.fx-tg{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;padding:3px;border:1.5px solid transparent;border-radius:999px}
+.fx-tg{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap;padding:3px;border:2px solid transparent;border-radius:999px}
+.fx-tg.multi{border-color:var(--line)}
 .fx-tg.cur{border-color:var(--tc);background:var(--tt)}
 .fx-tg>span{font-size:13.5px;font-weight:700;padding:0 4px 0 8px;color:color-mix(in srgb,var(--tl,#C5D3F0) var(--lift2,0%),var(--tc))}
-.fx-type{font:inherit;font-size:14.5px;font-weight:700;border:0;border-radius:999px;padding:6px 18px;background:var(--tc);color:#fff;cursor:pointer}
-.fx-tg>span+.fx-type,.fx-tg>.fx-type~.fx-type{font-size:13px;padding:4px 12px}
-.fx-type:hover{filter:brightness(1.16)}
+.fx-tg>.fx-here{font-size:11.5px;color:#fff;background:var(--tc);border-radius:999px;padding:1px 8px;margin-left:3px}
+/* 只有「目前這一題」所在大題、同一種題型的按鈕是實色，其他都是白底框線 */
+.fx-type{font:inherit;font-size:14.5px;font-weight:700;border:1.5px solid var(--tc);border-radius:999px;padding:5px 16px;background:var(--panel);color:color-mix(in srgb,var(--tl,#C5D3F0) var(--lift2,0%),var(--tc));cursor:pointer}
+.fx-tg.multi>.fx-type{font-size:13px;padding:3px 11px}
+.fx-type:hover{background:var(--tt)}
+.fx-type[aria-current="true"]{background:var(--tc);color:#fff}
+.fx-type[aria-current="true"]:hover{filter:brightness(1.16)}
 .fx-nums{flex:none;padding-top:5px;padding-bottom:5px}.fx-nums[hidden]{display:none}
 .fx-pills{flex:1;min-width:0;display:flex;align-items:center;gap:6px;overflow-x:auto;padding:1px}
 .fx-num{flex:none;font:inherit;font-size:13px;min-width:32px;border:1.5px solid var(--tc);border-radius:8px;padding:2px 8px;background:var(--panel);color:color-mix(in srgb,var(--tl,#C5D3F0) var(--lift2,0%),var(--tc));cursor:pointer}
@@ -542,7 +547,7 @@ body.fx-open{overflow:hidden}
 body.fx-open .cfgwin,body.fx-open .wd-btn{z-index:38}
 @media (min-width:1100px){body.fx-open:has(.mm:not([hidden])) .fx-low{padding-right:392px}}
 @media (max-width:600px){.fx-ov{padding:0;padding-bottom:var(--stagebar,0px)}.fx{border-radius:0}.fx-h .hint{display:none}.fx-types,.fx-nums,.fx-h{padding-left:8px;padding-right:8px}.fx-edit{padding-left:8px;padding-right:8px}}
-@media (max-height:700px){.fx-ov{padding-top:4px}.fx-h{padding-top:3px;padding-bottom:3px}.fx-types,.fx-nums{padding-top:3px;padding-bottom:3px}.fx-type{padding:3px 14px;font-size:13.5px}.fx-edit{padding-top:6px}.fx-edit .q-b{padding-top:8px;gap:8px}.fx-edit .q-b>.f textarea,.fx-edit .q-b>.f textarea+.rtv{min-height:96px}.fx-split{height:8px}}
+@media (max-height:700px){.fx-ov{padding-top:4px}.fx-h{padding-top:3px;padding-bottom:3px}.fx-types,.fx-nums{padding-top:3px;padding-bottom:3px}.fx-type{padding:2px 13px;font-size:13.5px}.fx-edit{padding-top:6px}.fx-edit .q-b{padding-top:8px;gap:8px}.fx-edit .q-b>.f textarea,.fx-edit .q-b>.f textarea+.rtv{min-height:96px}.fx-split{height:8px}}
 @media print{.fx-ov{display:none}}
 </style>
 </head>
@@ -737,10 +742,11 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.7';
-const APP_BUILD='2026-11-28 11:41';
+const APP_BUILD='2026-11-28 12:00';
 const APP_LOG=[
   {v:'1.7',items:[
     '新增「專注出題」（上方「列印 / 存檔」旁）：浮出大視窗，上面即時顯示目前這一題的排版，下面按題型按鈕新增下一題，用大畫面輸入；題目卡功能和左側相同。中間的分隔線可上下拖曳。',
+    '專注出題：題型列只有目前所在的題型以實色標示；回到工作台時，左右兩邊都定位到剛才那一題。',
   ]},
   {v:'1.6',items:[
     '新增深色模式：上方「使用手冊」旁的太陽／月亮／螢幕圖示可選淺色、深色、跟隨系統（預設跟隨系統）。考卷預覽與列印維持白紙黑字；數學式編輯器沒另外選過時跟著工作台。',
@@ -7060,8 +7066,9 @@ var FX=(()=>{
     const comp=compute(),f=find(cur);
     const kids=S.sections.map(s=>{
       const kinds=TYPE_INFO[s.type].kinds,sc=comp.secs[s.id],name=`${sc?sc.no+'. ':''}${noBox(s.name)}`,one=kinds.length===1;
-      return h('span',{class:'fx-tg'+(f&&f.s===s?' cur':''),style:tcStyle(s.type)},one?null:h('span',{},name),
-        ...kinds.map(k=>h('button',{class:'fx-type',type:'button','data-fxadd':s.id+':'+k,title:`在「${name}」新增一題${kn(k)}`,onclick:()=>add(s.id,k)},'＋ '+(one?name:kn(k)))));
+      const here=!!f&&f.s===s;
+      return h('span',{class:'fx-tg'+(here?' cur':'')+(one?'':' multi'),style:tcStyle(s.type)},here?h('span',{class:'fx-here'},'目前'):null,one?null:h('span',{},name),
+        ...kinds.map(k=>h('button',{class:'fx-type',type:'button','data-fxadd':s.id+':'+k,'aria-current':here&&f.q.kind===k?'true':'false',title:`在「${name}」新增一題${kn(k)}`,onclick:()=>add(s.id,k)},'＋ '+(one?name:kn(k)))));
     });
     types.replaceChildren(h('span',{class:'hint'},'新增下一題：'),...kids,
       h('button',{class:'btn small',type:'button',onclick:()=>toggleCfg('type')},'本試卷題型'));
@@ -7155,8 +7162,40 @@ var FX=(()=>{
     X.on=false;seq++;ov.remove();ov=null;document.body.classList.remove('fx-open');
     closeCfg();rerender();if(removed)changed();
     window.scrollTo(0,lastY);
-    if(back!=null)goQ(back);else{lastFocusQ=null;updateFloat();}
+    if(back!=null)reveal(back);else{lastFocusQ=null;updateFloat();}
   };
+  /* 回到工作台：左邊題目卡與右邊預覽都定位到同一題。右邊要等整份考卷排完版、左邊欄位高度也會再變，
+     所以持續對位到排版完成後約 1 秒；老師自己捲動或操作就停手。 */
+  function reveal(id){
+    const f=find(id);if(!f)return;
+    if(f.s.collapsed||f.q.collapsed){f.s.collapsed=false;f.q.collapsed=false;rerender();}
+    const main=$('#outMain'),t0=performance.now();let stop=false,done=0,flashed=false;
+    const ab=()=>{stop=true;},evs=['wheel','touchstart','keydown','mousedown'];
+    evs.forEach(v=>window.addEventListener(v,ab,{passive:true,capture:true}));
+    mjQ.then(()=>{done=performance.now();});
+    const tick=()=>{
+      const now=performance.now(),card=document.querySelector(`#sections [data-qid="${id}"]`);
+      if(stop||FX.on||!card||now-t0>10000||(done&&now-done>1000&&now-t0>1200)){evs.forEach(v=>window.removeEventListener(v,ab,{capture:true}));return;}
+      lastFocusQ=id;userScrolled=false;markProg();navLock=Date.now()+1500;
+      if(!flashed){flashed=true;card.classList.add('flash');}
+      const nh=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--navh'))||0;
+      const d=card.getBoundingClientRect().top-Math.max(TOPH()+nh+46,innerHeight*0.18);
+      if(Math.abs(d)>1)window.scrollTo(0,window.scrollY+d);
+      if(outTab==='preview'){
+        const els=main.querySelectorAll(`.paper [data-pq="${id}"]`);
+        if(els.length){
+          lastPvQ=id;
+          main.querySelectorAll('.pcur').forEach(e=>e.classList.remove('pcur'));
+          els.forEach(e=>{if(e.matches('.pvq,.pvcalc'))e.classList.add('pcur');});
+          const r=els[0].getBoundingClientRect(),m=main.getBoundingClientRect();
+          const d2=r.top-m.top-Math.max(8,Math.min(m.height*0.3,(m.height-r.height)/2));
+          if(Math.abs(d2)>1)main.scrollTop+=d2;
+        }
+      }
+      setTimeout(tick,60);
+    };
+    tick();
+  }
   let rt=0;addEventListener('resize',()=>{if(!X.on)return;clearTimeout(rt);rt=setTimeout(X.preview,250);});
   /* 擷取階段判斷：沒有其他視窗開著、游標也不在欄位裡，Esc 才關掉專注出題 */
   document.addEventListener('keydown',e=>{
