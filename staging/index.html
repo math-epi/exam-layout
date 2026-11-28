@@ -755,10 +755,10 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.8';
-const APP_BUILD='2026-11-28 15:55';
+const APP_BUILD='2026-11-28 16:00';
 const APP_LOG=[
   {v:'1.8',items:[
-    '新增匯入 Word 考卷（.docx，試用）：上方「匯入 Word／PDF／LaTeX」可把題目、選項、答案、詳解讀進各題型；Word 內建方程式會轉成數學式，PNG／JPG 圖片會放進圖庫。MathType／舊版方程式也能轉換（含線上增益集插入、看起來像圖片的公式）；填充題每格後面寫「Ans: 答案」會逐格帶入答案欄。舊版 .doc 請先另存成 .docx。匯入後請逐題核對。',
+    '新增匯入 Word 考卷（.docx，試用）：上方「匯入 Word／PDF／LaTeX」可把題目、選項、答案、詳解讀進各題型；Word 內建方程式會轉成數學式，PNG／JPG 圖片會放進圖庫。MathType／舊版方程式也能轉換（含線上增益集插入、看起來像圖片的公式）；填充題每格後面寫「Ans: 答案」會逐格帶入答案欄。選「取代目前考卷」匯入時，會一併清掉圖庫原本的圖表（可取消勾選保留）。舊版 .doc 請先另存成 .docx。匯入後請逐題核對。',
     '新增匯入 PDF（借用自己的 AI）：選 PDF 後依視窗步驟複製指令，把 PDF 交給 Claude、ChatGPT、Gemini 等 AI，再把回覆貼回來讀入各題型。需要 AI 帳號和可用額度。',
     '中文和數學式緊貼時，輸出的考卷會自動空一格（題目、選項、詳解；預覽、列印、編譯 PDF、.tex 都一樣），原本打的字不會被改動。不需要可到「⚙ 設定」的「題目文字自動處理」關掉。',
     '中文輸入法提醒：在解答、配分、數學式編輯器等該打英文數字的地方打出注音或中文時，欄位旁會提示切換輸入法（不會擋住輸入）。電腦的切換設定寫在使用手冊。',
@@ -5646,9 +5646,13 @@ function openTexImport(parsed,fileNames,title,onDone){
   const rep=h('input',{type:'radio',name:'texMode',value:'replace',checked:!hasQs}),app=h('input',{type:'radio',name:'texMode',value:'append',checked:hasQs});
   const bOk=h('button',{class:'btn primary',type:'button'},'匯入'),bNo=h('button',{class:'btn',type:'button'},'取消');
   const cbAns=h('input',{type:'checkbox',checked:true}),cbSol=h('input',{type:'checkbox',checked:true});
+  /* 取代題目時，原本圖庫裡的圖表一起清掉（可取消勾選保留） */
+  const nOld=S.figs.length,cbFig=h('input',{type:'checkbox',checked:true,disabled:!rep.checked});
+  [rep,app].forEach(r=>r.addEventListener('change',()=>{cbFig.disabled=!rep.checked;}));
   bNo.addEventListener('click',close);
   bOk.addEventListener('click',async()=>{
     bOk.disabled=true;
+    if(rep.checked&&cbFig.checked){S.figs=[];S.sections=secs;}
     if(!cbSol.checked)secs.forEach(s=>s.qs.forEach(q=>{if(q._imp)q._imp.more=[];}));
     await importFigs(secs,parsed.images);
     if(!cbAns.checked)secs.forEach(s=>s.qs.forEach(q=>{q.ans='';}));
@@ -5670,6 +5674,7 @@ function openTexImport(parsed,fileNames,title,onDone){
     warns,
     h('div',{style:'margin-top:12px;display:flex;flex-direction:column;gap:6px'},
       h('label',{class:'chk'},rep,'取代目前考卷的所有題目'),
+      nOld?h('label',{class:'chk',style:'margin-left:24px'},cbFig,'同時清掉圖庫裡原本的圖和表格（'+nOld+' 個）'):null,
       h('label',{class:'chk'},app,'附加在目前考卷後面'),
       h('label',{class:'chk',style:'margin-top:6px'},cbAns,'一併匯入答案（取消勾選＝答案留空，之後自己填）'),
       h('label',{class:'chk'},cbSol,'一併匯入詳解（放進每題的「詳解」欄）')),
