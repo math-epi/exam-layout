@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>第三方元件聲明 — 考卷排版工作台</title>
+<style>
+body{margin:0;font:15px/1.7 -apple-system,"PingFang TC","Microsoft JhengHei","Noto Sans TC",sans-serif;background:#F4F6FA;color:#1F2937}
+header{background:#1E407C;color:#fff;padding:12px 18px}header h1{font-size:17px;margin:0}
+main{max-width:1000px;margin:16px auto;padding:0 14px}
+.card{background:#fff;border:1px solid #D7DDE8;border-radius:10px;padding:12px 18px;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;vertical-align:top;padding:8px;border-bottom:1px solid #E3E8F0;overflow-wrap:anywhere}th{background:#EDF1F8}
+a{color:#1E407C}code{background:#EDF1F8;border-radius:4px;padding:0 4px;font-size:12.5px}
+footer{text-align:right;color:#6B7690;font-size:12px;padding:0 14px 20px;max-width:1000px;margin:auto}
+@media(max-width:700px){thead{display:none}tr,td{display:block}tr{border-bottom:2px solid #D7DDE8;padding:6px 0}td{border:0;padding:2px 0}td::before{content:attr(data-h)"：";color:#6B7690}}
+</style>
+</head>
+<body>
+<header><h1>第三方元件聲明</h1></header>
+<main>
+<div class="card">考卷排版工作台使用下列第三方元件。這些元件的著作權屬於原作者，依各自的授權條款使用；工作台的使用聲明不限制這些授權給您的權利。<br>
+<a href="./">← 回到考卷排版工作台</a></div>
+<div class="card"><table><thead><tr><th>用途</th><th>元件</th><th>授權</th><th>來源</th></tr></thead><tbody><tr><td data-h="用途">瀏覽器內編譯引擎</td><td data-h="元件">TeXlyre-BusyTeX 1.4.1（<code>wasm/lib</code>、<code>wasm/busytex</code>）</td><td data-h="授權"><a href="licenses/AGPL-3.0.txt">AGPL-3.0-or-later</a></td><td data-h="來源"><a href="https://github.com/TeXlyre/texlyre-busytex" target="_blank" rel="noopener">程式庫</a>、<a href="https://github.com/TeXlyre/texlyre-busytex-build" target="_blank" rel="noopener">引擎建置原始碼</a>、<a href="https://github.com/TeXlyre/texlyre-busytex/releases/tag/assets-v1.4.1" target="_blank" rel="noopener">本站使用的發布版本</a></td></tr><tr><td data-h="用途">引擎的基礎</td><td data-h="元件">BusyTeX</td><td data-h="授權"><a href="licenses/MIT-BusyTeX.txt">MIT</a></td><td data-h="來源"><a href="https://github.com/busytex/busytex" target="_blank" rel="noopener">原始碼</a></td></tr><tr><td data-h="用途">TeX 程式（含在引擎內）</td><td data-h="元件">TeX Live 的 XeTeX、xdvipdfmx、pdfTeX 等</td><td data-h="授權">各依其授權：多為 <a href="licenses/GPL-2.0.txt">GPL-2.0-or-later</a>，XeTeX 為 MIT 類授權</td><td data-h="來源"><a href="https://github.com/TeX-Live/texlive-source" target="_blank" rel="noopener">原始碼</a></td></tr><tr><td data-h="用途">TeX 套件資料包</td><td data-h="元件">TeX Live 套件（<code>texlive-slim</code>；本站挑選部分套件重新打包）</td><td data-h="授權">各套件各自授權，多為 <a href="licenses/LPPL-1.3c.txt">LPPL</a></td><td data-h="來源"><a href="https://tug.org/texlive/copying.html" target="_blank" rel="noopener">TeX Live 授權說明</a>、<a href="https://ctan.org/" target="_blank" rel="noopener">CTAN</a></td></tr><tr><td data-h="用途">中文排版套件</td><td data-h="元件">xeCJK、ctexhook、xunicode-addon（<code>wasm/files</code>）</td><td data-h="授權"><a href="licenses/LPPL-1.3c.txt">LPPL-1.3c 以後版本</a></td><td data-h="來源"><a href="https://ctan.org/pkg/xecjk" target="_blank" rel="noopener">xeCJK</a>、<a href="https://ctan.org/pkg/ctex" target="_blank" rel="noopener">ctex</a></td></tr><tr><td data-h="用途">中文字型</td><td data-h="元件">Noto Sans CJK TC、Noto Serif CJK TC（本站取繁體中文字面並縮減字集）</td><td data-h="授權"><a href="licenses/OFL-1.1.txt">SIL OFL 1.1</a></td><td data-h="來源"><a href="https://github.com/notofonts/noto-cjk" target="_blank" rel="noopener">原始字型</a></td></tr><tr><td data-h="用途">數學字型</td><td data-h="元件">STIX Two Math（本站轉換檔案格式）</td><td data-h="授權"><a href="licenses/OFL-1.1.txt">SIL OFL 1.1</a></td><td data-h="來源"><a href="https://github.com/stipub/stixfonts" target="_blank" rel="noopener">原始字型</a></td></tr><tr><td data-h="用途">畫面上的數學式</td><td data-h="元件">MathJax 4.1.3 與其 STIX2 字型（由 jsDelivr 載入）</td><td data-h="授權"><a href="licenses/Apache-2.0.txt">Apache-2.0</a></td><td data-h="來源"><a href="https://github.com/mathjax/MathJax" target="_blank" rel="noopener">原始碼</a></td></tr><tr><td data-h="用途">數學式視覺輸入</td><td data-h="元件">MathLive 0.111.4，含所附字型（由 jsDelivr 載入）</td><td data-h="授權"><a href="licenses/MIT-MathLive.txt">MIT</a></td><td data-h="來源"><a href="https://github.com/arnog/mathlive" target="_blank" rel="noopener">原始碼</a></td></tr><tr><td data-h="用途">PDF 與畫面擷取</td><td data-h="元件">jsPDF 2.5.1（由 cdnjs 載入）</td><td data-h="授權"><a href="licenses/MIT-jsPDF.txt">MIT</a></td><td data-h="來源"><a href="https://github.com/parallax/jsPDF" target="_blank" rel="noopener">原始碼</a></td></tr><tr><td data-h="用途">PDF 與畫面擷取</td><td data-h="元件">html2canvas 1.4.1（由 cdnjs 載入）</td><td data-h="授權"><a href="licenses/MIT-html2canvas.txt">MIT</a></td><td data-h="來源"><a href="https://github.com/niklasvh/html2canvas" target="_blank" rel="noopener">原始碼</a></td></tr><tr><td data-h="用途">網頁字型</td><td data-h="元件">Noto Sans TC、Noto Serif TC（由 Google Fonts 載入）</td><td data-h="授權"><a href="licenses/OFL-1.1.txt">SIL OFL 1.1</a></td><td data-h="來源"><a href="https://fonts.google.com/noto" target="_blank" rel="noopener">Google Fonts</a></td></tr></tbody></table></div>
+<div class="card"><b>瀏覽器內編譯頁（<code>wasm/compile.html</code>）</b><br>本頁直接使用 AGPL 授權的 TeXlyre-BusyTeX，因此本頁程式依 <a href="licenses/AGPL-3.0.txt">AGPL-3.0-or-later</a> 提供。本站實際使用的檔案與本頁原始碼：<a href="https://github.com/math-epi/exam-layout" target="_blank" rel="noopener">github.com/math-epi/exam-layout</a>。</div>
+<div class="card">上述元件依「現狀」提供，不附任何擔保；詳細條款以各授權全文為準。</div>
+</main>
+<footer>© 2026 math.epi（本頁所列第三方元件除外）</footer>
+</body>
+</html>
