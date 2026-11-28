@@ -755,10 +755,10 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.8';
-const APP_BUILD='2026-11-28 15:00';
+const APP_BUILD='2026-11-28 15:05';
 const APP_LOG=[
   {v:'1.8',items:[
-    '新增匯入 Word 考卷（.docx，試用）：上方「匯入 Word／LaTeX」可把題目、選項、答案、詳解讀進各題型；Word 內建方程式會轉成數學式，PNG／JPG 圖片會放進圖庫。MathType 公式目前讀不到，匯入後請逐題核對。',
+    '新增匯入 Word 考卷（.docx，試用）：上方「匯入 Word／LaTeX」可把題目、選項、答案、詳解讀進各題型；Word 內建方程式會轉成數學式，PNG／JPG 圖片會放進圖庫。MathType／舊版方程式也能轉換；舊版 .doc 請先另存成 .docx。匯入後請逐題核對。',
     '中文和數學式緊貼時，輸出的考卷會自動空一格（題目、選項、詳解；預覽、列印、編譯 PDF、.tex 都一樣），原本打的字不會被改動。不需要可到「⚙ 設定」的「題目文字自動處理」關掉。',
     '中文輸入法提醒：在解答、配分、數學式編輯器等該打英文數字的地方打出注音或中文時，欄位旁會提示切換輸入法（不會擋住輸入）。電腦的切換設定寫在使用手冊。',
     '修正：題目的數學式外面打 \\$、\\{ 這類符號時，預覽和輸出會出錯。',
@@ -5703,7 +5703,7 @@ async function docxUnzip(buf){
     const method=dv.getUint16(p+10,true),csize=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);
     const name=new TextDecoder().decode(u8.subarray(p+46,p+46+nl));
     p+=46+nl+el+cl;
-    if(!/^word\/(document\.xml|numbering\.xml|styles\.xml|_rels\/document\.xml\.rels|media\/)/.test(name))continue;
+    if(!/^word\/(document\.xml|numbering\.xml|styles\.xml|_rels\/document\.xml\.rels|media\/|embeddings\/)/.test(name))continue;
     const lnl=dv.getUint16(lo+26,true),lel=dv.getUint16(lo+28,true);
     const data=u8.subarray(lo+30+lnl+lel,lo+30+lnl+lel+csize);
     if(method===0)out[name]=data;
@@ -5757,7 +5757,14 @@ function omml(el,st){
   switch(el.localName){
     case 'r':{
       const rp=dxKids(el,'rPr').find(x=>/math/i.test(x.namespaceURI||''));
-      const t=dxKids(el).map(c=>c.localName==='t'?c.textContent:c.localName==='sym'?docxSym(c,st):'').join('');
+      let t='',field='';
+      for(const c of el.children){
+        if(c.localName==='fldChar'){const r=dxFieldChar(c,st);if(r)field+=r.m!==undefined?r.m:'\\text{'+r.t+'}';}
+        else if(c.localName==='instrText')dxInstr(st,c.textContent);
+        else if(c.localName==='t'){const f=st.f[st.f.length-1];if(f&&!f.sep)f.i+=c.textContent;else if(dxShown(st))t+=c.textContent;}
+        else if(c.localName==='sym'&&dxShown(st))t+=docxSym(c,st);
+      }
+      if(field)return field+(t?omText(t):'');
       if(rp&&dxOn(rp,'nor')){return /[\\{}$]/.test(t)?omText(t):'\\text{'+t+'}';}
       const sty=rp?dxVal(rp,'sty'):null,scr=rp?dxVal(rp,'scr'):null;
       let s=omText(t);
@@ -5851,6 +5858,281 @@ function docxSym(el,st){
   st.badSym++;return '□';
 }
 
+/* ---- MathType／舊版方程式編輯器（OLE 物件裡的 MTEF 3、5 版）→ LaTeX ---- */
+function cfbStream(u8,want){
+  const dv=new DataView(u8.buffer,u8.byteOffset,u8.byteLength);
+  if(u8.length<512||dv.getUint32(0,true)!==0xE011CFD0)return null;
+  const ss=1<<dv.getUint16(30,true),mss=1<<dv.getUint16(32,true),u32=p=>dv.getUint32(p,true);
+  const off=n=>(n+1)*ss,END=0xFFFFFFFA;
+  const fatSecs=[];for(let i=0;i<109;i++){const s=u32(76+i*4);if(s<END)fatSecs.push(s);}
+  for(let d=u32(68),g=0;d<END&&g<1000;g++){for(let i=0;i<ss/4-1;i++){const s=u32(off(d)+i*4);if(s<END)fatSecs.push(s);}d=u32(off(d)+ss-4);}
+  const fat=[];fatSecs.forEach(s=>{for(let i=0;i<ss/4;i++)fat.push(u32(off(s)+i*4));});
+  const chain=(start,table)=>{const r=[];for(let s=start;s<END&&r.length<=table.length;s=table[s])r.push(s);return r;};
+  const join=(parts,size)=>{const o=new Uint8Array(size);let p=0;for(const x of parts){if(p>=size)break;o.set(x.subarray(0,Math.min(x.length,size-p)),p);p+=x.length;}return o;};
+  const read=(start,size)=>join(chain(start,fat).map(s=>u8.subarray(off(s),off(s)+ss)),size);
+  const dirB=chain(u32(48),fat);const dirs=[];
+  for(const s of dirB)for(let p=off(s);p<off(s)+ss&&p+128<=u8.length;p+=128){
+    const n=dv.getUint16(p+64,true);if(!n)continue;
+    let name='';for(let i=0;i<n/2-1;i++)name+=String.fromCharCode(dv.getUint16(p+i*2,true));
+    dirs.push({name,type:u8[p+66],start:u32(p+116),size:u32(p+120)});
+  }
+  const e=dirs.find(d=>d.name===want&&d.type===2);if(!e||e.size>1e6)return null;
+  if(e.size>=u32(56))return read(e.start,e.size);
+  const root=dirs.find(d=>d.type===5),mini=read(root.start,root.size),mfat=[];
+  chain(u32(60),fat).forEach(s=>{for(let i=0;i<ss/4;i++)mfat.push(u32(off(s)+i*4));});
+  return join(chain(e.start,mfat).map(s=>mini.subarray(s*mss,(s+1)*mss)),e.size);
+}
+/* 解析成樹：{k:'line'|'char'|'tmpl'|'pile'|'matrix', ...} */
+function mtefTree(d){
+  let p=0;const ver=d[0];if(ver!==3&&ver!==5)throw new Error('mtef '+ver);
+  const u8=()=>{if(p>=d.length)throw new Error('eof');return d[p++];};
+  const u16=()=>{const a=u8();return a|(u8()<<8);};
+  const uint=()=>{const a=u8();return a===255?u16():a;};
+  const str=()=>{while(u8()!==0);};
+  p=5;if(ver===5){str();u8();}
+  const nudge=()=>{const a=u8(),b=u8();if(a===128&&b===128)p+=4;};
+  const ruler=()=>{const n=u8();p+=n*3;};
+  const dims=n=>{let hi=true,cur=0;const nib=()=>{if(hi){cur=u8();hi=false;return cur>>4;}hi=true;return cur&15;};for(let i=0;i<n;i++){nib();let g=0;while(nib()!==15&&g++<20);}};
+  let depth=0;
+  const list=()=>{
+    const out=[];if(++depth>60)throw new Error('deep');
+    for(;;){
+      if(p>=d.length)break;
+      const tag=u8();
+      let type=tag,opt=0;
+      if(ver===3){type=tag&15;opt=tag>>4;}
+      if(type===0)break;
+      if(type>=1&&type<=6&&ver===5)opt=u8();
+      const moved=()=>{if(opt&8)nudge();};
+      if(type===1){
+        moved();
+        if(opt&4)p+=2;
+        if(opt&2){if(ver===5){if(u8()!==7)p--;ruler();}else{if((u8()&15)!==7)p--;ruler();}}
+        out.push({k:'line',c:(opt&1)?null:list()});
+      }else if(type===2){
+        moved();
+        const c={k:'char',face:u8()-128,code:0,emb:[]};
+        if(ver===5){
+          if(!(opt&0x20))c.code=u16();
+          if(opt&0x04){const b=u8();if(opt&0x20)c.code=b;}
+          if(opt&0x10){const b=u16();if(opt&0x20)c.code=b;}
+          if(opt&0x02)c.func=true;
+          if(opt&0x01)c.emb=list().filter(x=>x.k==='embell').map(x=>x.t);
+        }else{
+          c.code=u16();
+          if(opt&2)c.emb=list().filter(x=>x.k==='embell').map(x=>x.t);
+        }
+        out.push(c);
+      }else if(type===3){
+        moved();
+        const sel=u8();let v=u8();
+        if(ver===5&&(v&0x80))v=(v&0x7F)|(u8()<<7);
+        u8();
+        out.push({k:'tmpl',sel,v,c:list()});
+      }else if(type===4){
+        moved();const h=u8();u8();
+        if(opt&2){if(u8()!==7&&ver===5)p--;ruler();}
+        out.push({k:'pile',h,c:list()});
+      }else if(type===5){
+        moved();u8();u8();u8();const rows=u8(),cols=u8();
+        p+=Math.ceil((rows+1)/4)+Math.ceil((cols+1)/4);
+        out.push({k:'matrix',rows,cols,c:list()});
+      }else if(type===6){moved();out.push({k:'embell',t:u8()});}
+      else if(type===7)ruler();
+      else if(type===9){const a=u8();if(a===101)p+=2;else if(a===100)p+=3;else p+=1;}
+      else if(type>=10&&type<=14){}
+      else if(ver===5&&type===8){uint();u8();}
+      else if(ver===3&&type===8){u8();u8();str();}
+      else if(type===15)uint();
+      else if(type===16){const o=u8();p+=(o&1)?8:6;if(o&4)str();}
+      else if(type===17){uint();str();}
+      else if(type===18){u8();dims(u8());dims(u8());const n=u8();for(let i=0;i<n;i++)if(u8())u8();}
+      else if(type===19)str();
+      else if(type>=100){p+=uint();}
+      else throw new Error('rec '+type);
+    }
+    depth--;return out;
+  };
+  return list();
+}
+function mtefLatex(tree,ver,st){
+  const OPS={0x2211:'\\sum',0x220F:'\\prod',0x222B:'\\int',0x222C:'\\iint',0x222D:'\\iiint',0x222E:'\\oint',0x22C3:'\\bigcup',0x22C2:'\\bigcap',0x222A:'\\bigcup',0x2229:'\\bigcap',0x2210:'\\coprod'};
+  const slotsOf=t=>t.c.filter(x=>x.k==='line'||x.k==='pile');
+  const seq=items=>{
+    let o='',text='',fn='';
+    const flush=()=>{
+      if(text){o+='\\text{'+text+'}';text='';}
+      if(fn){const n=fn;o+=OM_FUNC.test(n)?'\\'+n+' ':/^[A-Za-z]{2,}$/.test(n)?'\\mathrm{'+n+'}':omText(n);fn='';}
+    };
+    for(const x of items||[]){
+      if(x.k==='char'){
+        const code=x.code,ch=String.fromCharCode(code);
+        if(code>=0xEB00&&code<=0xF8FF){          /* MathType 自訂區：空白與裝飾 */
+          flush();const sp={0xEB01:'',0xEF02:'\\,',0xEF03:'\\:',0xEF04:'\\;',0xEF05:'\\quad ',0xEF06:'\\qquad ',0xEF00:'',0xEF01:'',0xEF08:'\\,'}[code];
+          if(sp!==undefined)o+=sp;else st.badMath++;continue;
+        }
+        const cjk=/[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\u3001\u3002\uff0c\uff1a\uff1b\uff1f\uff01]/.test(ch);
+        if(!x.emb.length&&(cjk||(x.face===1&&/[A-Za-z ]/.test(ch)))){if(fn)flush();text+=ch;continue;}
+        if(!x.emb.length&&x.face===2&&/[A-Za-z]/.test(ch)){if(text||(x.func&&fn))flush();fn+=ch;continue;}
+        flush();
+        let s=code===0x2032?"'":code===0x2033?"''":code===0x2218?'\\circ ':omText(ch,true);
+        if(x.face===7&&/^[A-Za-z]$/.test(ch))s='\\mathbf{'+ch+'}';
+        for(const e of x.emb){
+          s=s.trim();
+          if(e===2)s='\\dot{'+s+'}';else if(e===3)s='\\ddot{'+s+'}';else if(e===4)s='\\dddot{'+s+'}';
+          else if(e===5)s+="'";else if(e===6)s+="''";else if(e===18)s+="'''";else if(e===7)s='\\backprime '+s;
+          else if(e===8)s='\\tilde{'+s+'}';else if(e===9)s='\\hat{'+s+'}';else if(e===10)s='\\not '+s;
+          else if(e===11||e===14)s='\\vv{'+s+'}';else if(e===12||e===15)s='\\overleftarrow{'+s+'}';else if(e===13)s='\\overleftrightarrow{'+s+'}';
+          else if(e===16)s='\\cancel{'+s+'}';else if(e===17)s='\\overline{'+s+'}';else if(e===19)s='\\overset{\\frown}{'+s+'}';else st.badMath++;
+        }
+        o+=s;continue;
+      }
+      flush();
+      if(x.k==='line')o+=seq(x.c);
+      else if(x.k==='tmpl'){
+        const part=tmpl(x);
+        if(part.script!==undefined){
+          /* 上下標接在前一個字後面；前面沒有東西就補 {} */
+          if(!o.trim()||/[=+\-(,{&]\s*$/.test(o))o+='{}';
+          o=o.replace(/\s+$/,'')+part.script;
+        }else o+=part.s;
+      }else if(x.k==='pile')o+=pile(x);
+      else if(x.k==='matrix')o+=matrix(x,'matrix');
+    }
+    flush();return o;
+  };
+  const line=l=>!l?'':l.k==='pile'?pile(l):seq(l.c).trim();
+  const rowsOf=x=>x.c.filter(y=>y.k==='line'||y.k==='pile').map(line);
+  const pile=x=>{const r=rowsOf(x);return r.length<2?(r[0]||''):'\\begin{'+(x.h===1?'aligned}':'gathered}')+(x.h===1?r.map(s=>'&'+s):r).join(' \\\\ ')+'\\end{'+(x.h===1?'aligned}':'gathered}');};
+  const matrix=(m,env)=>{const c=rowsOf(m),r=[];for(let i=0;i<m.rows;i++)r.push(c.slice(i*m.cols,(i+1)*m.cols).join(' & '));return '\\begin{'+env+'}'+r.join(' \\\\ ')+'\\end{'+env+'}';};
+  /* 大括號左側、右側沒有：聯立式／分段定義 */
+  const casesBody=l=>{
+    if(!l)return null;
+    const items=l.k==='pile'?[l]:(l.c||[]).filter(y=>y.k!=='char'||y.code<0xEB00);
+    if(items.length!==1)return null;
+    const x=items[0];
+    if(x.k==='pile'&&rowsOf(x).length>1)return rowsOf(x).join(' \\\\ ');
+    if(x.k==='matrix'){const c=rowsOf(x),r=[];for(let i=0;i<x.rows;i++)r.push(c.slice(i*x.cols,(i+1)*x.cols).join(' & '));return r.join(' \\\\ ');}
+    return null;
+  };
+  const fence=(L,R,body,l)=>{
+    if(l){
+      const only=l.k==='pile'?[l]:(l.c||[]);
+      if(only.length===1&&only[0].k==='matrix'){const env=L==='('&&R===')'?'pmatrix':L==='['&&R===']'?'bmatrix':L==='|'&&R==='|'?'vmatrix':null;if(env)return matrix(only[0],env);}
+      if(L==='\\{'&&R==='.'){const c=casesBody(l);if(c!==null)return '\\begin{cases}'+c+'\\end{cases}';}
+    }
+    const tall=/\\(?:dfrac|sum|int|prod|begin|genfrac)/.test(body);
+    if(!tall&&L!=='.'&&R!=='.')return L+(/[A-Za-z]$/.test(L)?' ':'')+body+R;
+    return '\\left'+L+' '+body+' \\right'+R;
+  };
+  const tmpl=t=>{
+    const sl=slotsOf(t),a=line(sl[0]),b=line(sl[1]),c=line(sl[2]),v=t.v;
+    const op=t.c.filter(y=>y.k==='char').pop();
+    let sel=t.sel;
+    if(ver===3){
+      /* 3 版的樣板編號不同，換成 5 版的編號 */
+      if(sel===15){const x=sl.map(line);
+        if(v===0)return {script:'^{'+(x[1]||x[0])+'}'};
+        if(v===1)return {script:'_{'+(x[0]||x[1])+'}'};
+        return {script:'_{'+x[0]+'}^{'+x[1]+'}'};}
+      const map={0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7,13:10,14:11,16:12,17:13,18:14,19:14,20:14};
+      if(map[sel]===undefined){const o=op&&OPS[op.code];if(o)return {s:o+(b?'_{'+b+'}':'')+(c?'^{'+c+'}':'')+' '+a};st.badMath++;return {s:a+b+c};}
+      sel=map[sel];
+    }
+    const F=[['\\langle','\\rangle'],['(',')'],['\\{','\\}'],['[',']'],['|','|'],['\\|','\\|'],['\\lfloor','\\rfloor'],['\\lceil','\\rceil']];
+    if(sel<=7){const L=(v&3)===0||(v&1)?F[sel][0]:'.',R=(v&3)===0||(v&2)?F[sel][1]:'.';return {s:fence(L,R,a,sl[0])};}
+    if(sel===8)return {s:fence('[',']',a,sl[0])};
+    if(sel===9){const m=['(',')','[',']'];return {s:fence(m[v&15]||'(',m[(v>>4)&15]||')',a,sl[0])};}
+    if(sel===10)return {s:'\\sqrt'+(b?'['+b+']':'')+'{'+a+'}'};
+    if(sel===11)return {s:(v&2)?'{'+a+'}/{'+b+'}':'\\dfrac{'+a+'}{'+b+'}'};
+    if(sel===12)return {s:'\\underline{'+a+'}'};
+    if(sel===13)return {s:'\\overline{'+a+'}'};
+    if(sel===14){const ar=op&&op.code===0x2190?'\\xleftarrow':'\\xrightarrow';return {s:ar+(b?'['+b+']':'')+'{'+a+'}'};}
+    if(sel>=15&&sel<=22){
+      const o=(op&&OPS[op.code])||{15:'\\int',16:'\\sum',17:'\\prod',18:'\\coprod',19:'\\bigcup',20:'\\bigcap',21:'\\int',22:'\\sum'}[sel];
+      return {s:o+(b?'_{'+b+'}':'')+(c?'^{'+c+'}':'')+' '+a};
+    }
+    if(sel===23){
+      const m=a.replace(/^\\mathrm\{([a-z]+)\}$/,'$1');const base=OM_FUNC.test(m)?'\\'+m:a;
+      return {s:/^\\(?:lim|max|min|sup|inf)\b/.test(base)?base+(b?'_{'+b+'}':'')+(c?'^{'+c+'}':'')+' ':(c?'\\overset{'+c+'}{':'{')+(b?'\\underset{'+b+'}{'+base+'}':base)+'}'};
+    }
+    if(sel===24){const top=!(v&1)?false:true;return {s:(top?'\\overbrace{':'\\underbrace{')+a+'}'+(b?(top?'^{':'_{')+b+'}':'')};}
+    if(sel===27||sel===28||sel===29){
+      const sub=a,sup=b;
+      return {script:(sub?'_{'+sub+'}':'')+(sup?'^{'+sup+'}':'')||'{}'};
+    }
+    if(sel===31)return {s:((v&1)&&!(v&2)?'\\overleftarrow{':(v&1)&&(v&2)?'\\overleftrightarrow{':'\\vv{')+a+'}'};
+    if(sel===32)return {s:'\\widetilde{'+a+'}'};
+    if(sel===33)return {s:'\\widehat{'+a+'}'};
+    if(sel===34)return {s:'\\overset{\\frown}{'+a+'}'};
+    if(sel===36)return {s:'\\cancel{'+a+'}'};
+    if(sel===37)return {s:'\\boxed{'+a+'}'};
+    st.badMath++;return {s:a+b+c};
+  };
+  /* 最外層多行 → 各行分開 */
+  const top=tree.filter(x=>x.k==='line'||x.k==='pile'||x.k==='char'||x.k==='tmpl'||x.k==='matrix');
+  return seq(top).trim();
+}
+/* 傳入 oleObject.bin 的內容；不是方程式回傳 null，解析失敗回傳 false */
+function mathTypeTex(bin,st){
+  let d=null;try{d=cfbStream(bin,'Equation Native');}catch(e){}
+  if(!d||d.length<34)return null;
+  try{
+    const hdr=d[0]|(d[1]<<8),m=d.subarray(hdr);
+    return mtefLatex(mtefTree(m),m[0],st);
+  }catch(e){return false;}
+}
+/* ---- 功能變數：EQ 公式；答案卡圈圈格子 eq \o\ac(○,n) 記成 \u0005 ---- */
+function eqArgs(t,i){   // t[i]==='('
+  const out=[];let d=0,cur='';
+  for(;i<t.length;i++){
+    const c=t[i];
+    if(c==='\\'){cur+=c+(t[i+1]||'');i++;continue;}
+    if(c==='('){if(d++===0)continue;}
+    else if(c===')'){if(--d===0){out.push(cur);return {a:out,end:i+1};}}
+    else if((c===','||c===';')&&d===1){out.push(cur);cur='';continue;}
+    cur+=c;
+  }
+  return null;
+}
+function eqTex(t){
+  let o='',i=0;
+  while(i<t.length){
+    const m=/^((?:\\[a-z]+(?:[ ]?\\[a-z]+)*(?:\\[a-z]+)?))[ ]*(?=\()/i.exec(t.slice(i));
+    if(m){
+      const r=eqArgs(t,i+m[0].length);if(!r)return null;
+      const sw=m[1].replace(/\s/g,'').toLowerCase(),a=r.a.map(x=>eqTex(x.trim()));
+      if(a.some(x=>x===null))return null;
+      if(sw.startsWith('\\o')&&/[○◯〇]/.test(r.a[0]||''))o+='\u0005';
+      else if(sw==='\\f'&&a.length===2)o+='\\dfrac{'+a[0]+'}{'+a[1]+'}';
+      else if(sw==='\\r')o+=a.length===2?'\\sqrt'+(a[0]?'['+a[0]+']':'')+'{'+a[1]+'}':'\\sqrt{'+a[0]+'}';
+      else if(/^\\x\\to$/.test(sw))o+='\\overline{'+a[0]+'}';
+      else return null;
+      i=r.end;continue;
+    }
+    if(t[i]==='\\')return null;
+    o+=omText(t[i],true);i++;
+  }
+  return o;
+}
+function dxFieldChar(el,st){
+  const t=dxAttr(el,'fldCharType');
+  if(t==='begin')st.f.push({i:'',sep:false});
+  else if(t==='separate'){if(st.f.length)st.f[st.f.length-1].sep=true;}
+  else if(t==='end'){
+    const f=st.f.pop();
+    if(f&&/^\s*eq\b/i.test(f.i)){
+      const r=eqTex(f.i.replace(/^\s*eq\b/i,'').trim());
+      if(r===null){st.eqField++;return {t:'【公式（請重打）】'};}
+      return {m:r.trim()};
+    }
+  }
+  return null;
+}
+/* 目前的文字要不要顯示：功能變數的指令部分、EQ 的結果部分不顯示 */
+const dxShown=st=>!st.f.some(f=>!f.sep||/^\s*eq\b/i.test(f.i));
+const dxInstr=(st,t)=>{const f=st.f[st.f.length-1];if(f&&!f.sep)f.i+=t;};
+
 /* ---- 段落 → 一行行文字 ---- */
 function docxNumbering(xml,styleXml){
   const abs={},nums={},styles={};
@@ -5895,7 +6177,7 @@ function docxLines(ent){
   const rels={};const rx=xml('word/_rels/document.xml.rels');
   if(rx)dxKids(rx.documentElement).forEach(r=>{rels[r.getAttribute('Id')]=r.getAttribute('Target');});
   const label=docxNumbering(xml('word/numbering.xml'),xml('word/styles.xml'));
-  const st={eqObj:0,eqField:0,badImg:0,badMath:0,badSym:0,table:0,textbox:0};
+  const st={f:[],mt:0,eqObj:0,eqField:0,badImg:0,badMath:0,badSym:0,table:0,textbox:0};
   const images={},lines=[];
   function image(rid){
     const target=rels[rid];if(!target)return '';
@@ -5909,7 +6191,6 @@ function docxLines(ent){
   function paragraph(p){
     const segs=[];   // {t, u, red, sup, sub, raw}
     const add=(t,o)=>segs.push(Object.assign({t},o||{}));
-    let field=0,instr='',fieldHasEq=false;
     const walk=el=>{
       for(const c of el.children){
         const n=c.localName;
@@ -5921,7 +6202,11 @@ function docxLines(ent){
         if(n==='r'){run(c);continue;}
         if(n==='AlternateContent'){const k=dxKid(c,'Choice')||dxKid(c,'Fallback');if(k)walk(k);continue;}
         if(n==='del'||n==='moveFrom'||n==='pPr')continue;
-        if(n==='fldSimple'){if(/^\s*eq\b/i.test(dxAttr(c,'instr')||'')){st.eqField++;add('【公式（請重打）】',{raw:1});}else walk(c);continue;}
+        if(n==='fldSimple'){
+          const ins=dxAttr(c,'instr')||'';
+          if(/^\s*eq\b/i.test(ins)){const r=eqTex(ins.replace(/^\s*eq\b/i,'').trim());if(r===null){st.eqField++;add('【公式（請重打）】',{raw:1});}else add('$'+r.trim()+'$',{raw:1});}else walk(c);
+          continue;
+        }
         walk(c);
       }
     };
@@ -5932,25 +6217,21 @@ function docxLines(ent){
       const fmt={u:!!u&&dxAttr(u,'val')!=='none',red:/^(FF0000|C00000|EE0000|FF[0-3][0-9A-F]{3})$/.test(color),sup:va==='superscript',sub:va==='subscript'};
       const inner=el=>{for(const c of el.children){
         const n=c.localName;
-        if(n==='t'){if(!field)add(dxEsc(c.textContent),fmt);}
+        if(n==='t'){if(dxShown(st))add(dxEsc(c.textContent),fmt);}
         else if(n==='tab')add('\u3000',fmt);
         else if(n==='br'||n==='cr'){if(dxAttr(c,'type')!=='page')add('\n',{raw:1});}
         else if(n==='noBreakHyphen')add('-',fmt);
         else if(n==='sym')add(docxSym(c,st),fmt);
-        else if(n==='fldChar'){
-          const t=dxAttr(c,'fldCharType');
-          if(t==='begin'){field++;instr='';}
-          else if(t==='separate'||t==='end'){
-            if(/^\s*eq\b/i.test(instr)){st.eqField++;add('【公式（請重打）】',{raw:1});fieldHasEq=true;instr='';}
-            if(t==='separate'&&!fieldHasEq)field=Math.max(0,field-1);
-            else if(t==='end'){if(field>0)field--;fieldHasEq=false;}
-          }
-        }
-        else if(n==='instrText')instr+=c.textContent;
+        else if(n==='fldChar'){const r=dxFieldChar(c,st);if(r)add(r.m!==undefined?'$'+r.m+'$':r.t,{raw:1});}
+        else if(n==='instrText')dxInstr(st,c.textContent);
         else if(n==='object'){
-          const ole=c.getElementsByTagName('*');let isEq=false;
-          for(const x of ole)if(x.localName==='OLEObject'&&/equation|mathtype/i.test(x.getAttribute('ProgID')||''))isEq=true;
-          if(isEq){st.eqObj++;add('【公式（請重打）】',{raw:1});}else walk2(c);
+          let ole=null;
+          for(const x of c.getElementsByTagName('*'))if(x.localName==='OLEObject')ole=x;
+          const target=ole&&rels[dxAttr(ole,'id')],bin=target&&ent['word/'+target.replace(/^\/?(?:word\/)?/,'')];
+          const tex=bin?mathTypeTex(bin,st):null;
+          if(typeof tex==='string'){st.mt++;if(tex)add('$'+tex+'$',{raw:1});}
+          else if(tex===false||(ole&&/equation|mathtype/i.test(dxAttr(ole,'ProgID')||''))){st.eqObj++;add('【公式（請重打）】',{raw:1});}
+          else walk2(c);
         }
         else if(n==='drawing'||n==='pict')walk2(c);
         else if(n==='AlternateContent'){const k=dxKid(c,'Choice')||dxKid(c,'Fallback');if(k)inner(k);}
@@ -5984,7 +6265,7 @@ function docxLines(ent){
         const m=/(?:\\\{|\\\}|[A-Za-z0-9α-ω)\]|])+$/.exec(o);
         const body=omText(s.t.trim().replace(/\\([{}$])/g,'$1'));
         let base=m?m[0]:'';
-        if(base){const k=/(?:[A-Za-zα-ω]|\d+|[)\]|])$/.exec(base);base=k?k[0]:base;o=o.slice(0,o.length-base.length);}
+        if(base){const k=/(?:(?<![A-Za-z])(?:log|sin|cos|tan|ln)|(?:log|sin|cos|tan|ln)$|[A-Za-zα-ω]|\d+|[)\]|])$/.exec(base);base=k?k[0]:base;o=o.slice(0,o.length-base.length);}
         const piece=(s.sup?'^':'_')+'{'+body+'}';
         if(!base&&o.endsWith('$')&&!o.endsWith('\\$'))o=o.slice(0,-1)+piece+'$';
         else o+='$'+(base?omText(base):'{}')+piece+'$';
@@ -5998,9 +6279,11 @@ function docxLines(ent){
         while(merged[i+1]&&merged[i+1].u&&!merged[i+1].sup&&!merged[i+1].sub&&!merged[i+1].red){t+=merged[++i].t;}
         o+=t.trim()?'\\uline{'+t+'}':' \\blank ';continue;
       }
-      o+=s.t;
+      /* 相鄰的兩個數學式併成一個，避免變成 $$ */
+      if(s.t.startsWith('$')&&!s.t.startsWith('$$')&&/[^\\$]\$$/.test(o))o=o.slice(0,-1)+' '+s.t.slice(1);
+      else o+=s.t;
     }
-    return o.replace(/\$\$(?!\$)(?=[^$])/g,m=>m);
+    return o;
   }
   const body=dxKid(doc.documentElement,'body');
   const block=el=>{
@@ -6009,7 +6292,10 @@ function docxLines(ent){
       if(n==='p'){
         const num=label(dxKid(c,'pPr'));
         render(paragraph(c)).split('\n').forEach((t,i)=>lines.push({t,num:i?null:num}));
-      }else if(n==='tbl'){st.table++;dxKids(c,'tr').forEach(tr=>dxKids(tr,'tc').forEach(block));}
+      }else if(n==='tbl'){
+        const all=Array.from(c.getElementsByTagName('*')).filter(x=>x.localName==='t').map(x=>x.textContent).join('').replace(/\s/g,'');
+        if(/命題範圍/.test(all)&&/班級|座號|P\.\d|共\d頁/.test(all))continue;   // 版頭表格不讀
+        st.table++;dxKids(c,'tr').forEach(tr=>dxKids(tr,'tc').forEach(block));}
       else if(n==='sdt'){const k=dxKid(c,'sdtContent');if(k)block(k);}
       else if(n==='AlternateContent'){const k=dxKid(c,'Choice')||dxKid(c,'Fallback');if(k)block(k);}
       else if(n==='customXml'||n==='ins'||n==='moveTo')block(c);
@@ -6021,21 +6307,21 @@ function docxLines(ent){
 
 /* ---- 一行行文字 → 大題與題目 ---- */
 const DX_META=/^【\s*(?:難易度|難度|出處|來源|章節|單元|題型|題號|編號|知識點|認知向度|分類|關鍵字|命中率|答對率|鑑別度|課本頁次)[^】]*】/;
-const DX_MARK=/【\s*(答案|解答|標準答案|參考答案|Ans|詳解|解析|詳解與解析|解題|說明|解)\s*】\s*[:：]?|(?:(?<![A-Za-z])(?:Ans|ANS|ans)|(?<![解作回])答案|正確答案|詳解|解析)\s*[:：]|^[\s\u3000]*(解答|解|答)\s*[:：]/g;
+const DX_MARK=/【\s*(答案|解答|標準答案|參考答案|Ans|詳解|解析|詳解與解析|解題|說明|解)\s*】\s*[:：]?|(?:(?<![A-Za-z])(?:Ans|ANS|ans)|(?<![解作回])答案|正確答案|詳解|解析)\s*[:：]|^[\s\u3000]*(解答|解|答)\s*[:：]|^[\s\u3000]*(解答|解析|詳解)(?=[\s\u3000¤\u0001\d(（\-−－]|$)/g;
 const dxHalf=s=>s.replace(/[０-９Ａ-Ｚａ-ｚ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/（/g,'(').replace(/）/g,')').replace(/．/g,'.');
 /* 把數學式遮起來（長度不變），找標記時才不會找到數學式裡面 */
 const dxMask=s=>s.replace(/\$\$[\s\S]*?\$\$|(?<!\\)\$(?:\\.|[^$\\])*\$/g,m=>'¤'.repeat(m.length));
 function dxHeader(line,num){
   let t=line.replace(/\\blank|\\uline\{|[{}\u0003\u0004]/g,'').trim();
-  let m=/^(?:[一二三四五六七八九十]+\s*[、．.,，]|第\s*[一二三四五六七八九十]+\s*(?:部分|大題)\s*[:：、]?|[壹貳參肆伍陸]\s*[、．.]|[【〔\[])\s*(.*)$/.exec(t);
+  let m=/^(?:[一二三四五六七八九十]+\s*[、．.,，]|第\s*[一二三四五六七八九十壹貳參肆伍]+\s*(?:部分|大題)\s*[:：、]?|[壹貳參肆伍陸]\s*[、．.]|[【〔\[])\s*(.*)$/.exec(t);
   const numbered=!!m||(num&&/ideograph|taiwanese|chinese/i.test(num.fmt));
   const rest=(m?m[1]:t).replace(/^[】〕\]]/,'');
   const head=rest.split(/[(（：:】〕\]。，,]/)[0].trim();
   if(!(numbered||(head.length<=8&&/[題部]/.test(head)))||head.length>14)return null;
-  if(!/^(?:[^題]{0,6})(?:單選|單一選擇|多選|多重選擇|複選|選擇|選填|填充|填空|混合|題組|計算|證明|非選擇)[題與及、或]*(?:計算|證明|作圖)?題?[部分區]*$/.test(head))return null;
+  if(!/^(?:[^題]{0,6})(?:單選|單一選擇|多選|多重選擇|複選|選擇|選填|填充|填空|混合|題組|計算|證明|非選擇)(?:[題與及、或和]|單選|多選|選擇|填充|非選擇|計算|證明|作圖)*[部分區]*$/.test(head))return null;
   const type=texTypeOf(head);if(!type)return null;
   const plain=dxHalf(rest);
-  const pm=plain.match(/每題\s*\$?(\d+(?:\.\d+)?)\$?\s*分/),tm=plain.match(/(?:共|占|佔)\s*\$?(\d+(?:\.\d+)?)\$?\s*分/);
+  const pm=plain.match(/每[題格]\s*\$?(\d+(?:\.\d+)?)\$?\s*分/),tm=plain.match(/(?:共|占|佔)\s*\$?(\d+(?:\.\d+)?)\$?\s*分/);
   return {type,name:head,pts:pm?pm[1]:'',total:tm?tm[1]:''};
 }
 /* 題號：回傳 {n, ans, rest, letter}；ans 是寫在題號前括號裡的答案 */
@@ -6085,7 +6371,7 @@ function dxChoiceAns(a,n){
   if(n&&r.some(v=>v>n))return null;
   return r.sort((x,y)=>x-y).join(',');
 }
-const dxClean=s=>s.replace(/[\u0003\u0004]/g,'').replace(/([\^_]\{[^{}$]*\})\$((?:[=+\-<>≤≥]-?[0-9A-Za-z]+)+)(?![A-Za-z0-9$\\])/g,'$1$2$$').split('\n').map(x=>x.replace(/^[\s\u3000]+|[\s\u3000]+$/g,'').replace(/\u3000{2,}/g,'\u3000')).filter(x=>x!=='').join('\n');
+const dxClean=s=>s.replace(/[\u0003\u0004]/g,'').replace(/\^\{\{\}\^\{((?:[^{}]|\{[^{}]*\})*)\}\}/g,'^{$1}').replace(/\$([^$\n]+)\$[ \t]*\$\{\}(?=[\^_])/g,(m,a)=>'$'+a.replace(/\s+$/,'')).replace(/([A-Za-z0-9)])[ \t]*\$\{\}(?=[\^_])/g,(m,a)=>'$'+a).replace(/([\^_]\{[^{}$]*\})\$((?:[=+\-<>≤≥]-?[0-9A-Za-z]+)+)(?![A-Za-z0-9$\\])/g,'$1$2$$').split('\n').map(x=>x.replace(/^[\s\u3000]+|[\s\u3000]+$/g,'').replace(/\u3000{2,}/g,'\u3000')).filter(x=>x!=='').join('\n');
 function dxTakeImgs(s){const ids=[];const t=s.replace(/\u0001([^\u0002]*)\u0002/g,(m,id)=>{ids.push(id);return '';});return {t,ids};}
 function docxParse(ent){
   const {lines,images,st}=docxLines(ent);
@@ -6096,6 +6382,24 @@ function docxParse(ent){
   const put=(q,field,text,fresh)=>{q[field]+=(q[field]&&(fresh||text)?'\n':'')+text;};
   /* 「解答」「詳解」單獨一行：後面接大題標題或第 1 題，才是卷末另附的答案 */
   const nextRestarts=i=>{for(let k=i+1;k<lines.length;k++){const x=lines[k];if(!x.t.trim())continue;if(dxHeader(x.t,x.num))return true;const q=dxStart(x.t,x.num,sec&&sec.type);return !!q&&q.n===1&&found>1;}return false;};
+  const KEYRE=/(?<![\dA-Za-z.(（\\])(?:(\d{1,2})\s*[.．、](?=\s*[(（A-J¤\u4e00-\u9fff]|\s*$)|([A-Z])(?:\s*[.．、](?![A-Za-z]\.)|(?=\d{3,})))/g;
+  const keyParts=t=>{const m=[...dxMask(t).matchAll(KEYRE)];if(!m.length||dxMask(t).slice(0,m[0].index).replace(/[\s\u3000]/g,''))return null;
+    return m.map((x,i)=>({n:x[1]?+x[1]:x[2].charCodeAt(0)-64,text:t.slice(x.index+x[0].length,i+1<m.length?m[i+1].index:t.length).trim()}));};
+  const looksKey=i=>{for(let k=i+1;k<lines.length;k++){const x=lines[k];if(!x.t.trim())continue;
+      if(x.num&&/^[A-Z]\.?$/.test(x.num.text))return x.t.replace(/\$[^$]*\$/g,'').trim().length<8;
+      const parts=keyParts(x.t);return !!parts&&parts.length>1&&parts.every(q=>q.text&&q.text.replace(/\$[^$]*\$/g,'').length<14);}
+    return false;};
+  const solo=s=>{if((s.type==='mixed'||s.type==='calc')&&!s.raw.length&&s.pre){s.raw.push({n:1,stem:s.pre,ans:'',sol:'',list:-1});s.pre='';found++;}};
+  for(let i=lines.length-1;i>=0;i--){
+    const l=lines[i];
+    if(/\n[\s\u3000]*(?:解答|答案|詳解|解析|Ans)/.test(l.t)){const p=l.t.split(/\n(?=[\s\u3000]*(?:解答|答案|詳解|解析|Ans))/);lines.splice(i,1,...p.map((t,k)=>({t,num:k?null:l.num})));}
+  }
+  for(const l of lines){
+    const m=/^((?:[\s\u3000]*(?:\u0001[^\u0002]*\u0002|【圖（[^】]*）】))+)(?=[\s\u3000]*[（(][\s\u3000]*[）)][\s\u3000]*\d{1,3}\s*[.、．])(.*)$/s.exec(l.t);
+    if(m)l.t=m[2]+m[1];
+    /* 「(1)」是 Word 自動編號、後面接 (2)(3)… 時，把 (1) 補回文字裡 */
+    if(l.num&&/^[（(]\s*[1A]\s*[）)]$/.test(l.num.text)&&/[（(]\s*[2B]\s*[）)]/.test(l.t))l.t=l.num.text+l.t;
+  }
   for(let li=0;li<lines.length;li++){
     const ln=lines[li];
     let t=ln.t.replace(/[ \t]+$/,'');
@@ -6103,21 +6407,40 @@ function docxParse(ent){
     if(/^(?:本?試卷|試題)(?:結束|完)$|^—*(?:全卷完|試題結束)—*$/.test(bare))continue;
     /* 卷末另外附的答案／詳解 */
     if(found&&/^(?:參考)?(?:答案|解答|詳解|解析|簡答)(?:卷|區|與解析|與詳解)?$/.test(bare)&&(/參考|卷|簡答/.test(bare)||(!/【/.test(t)&&nextRestarts(li)))){key=true;keySec=null;cur=null;continue;}
+    if(/^[\s\u3000]*【\s*素養題組?\s*】[\s\u3000]*$/.test(t))continue;
     const hd=dxHeader(t,ln.num);
     if(hd){
-      if(key){keySec=secs.find(s=>s.type===hd.type)||null;cur=null;continue;}
+      if(!key&&secs.some(s=>s.type===hd.type&&s.raw.length)&&looksKey(li))key=true;
+      if(key){keySec=secs.find(s=>s.type===hd.type)||null;cur=null;if(keySec)solo(keySec);continue;}
+      if(sec)solo(sec);
       newSec(hd);continue;
     }
+    if(key&&/^[\s\u3000]*[一二三四五六]\s*[、．.][^$]{0,6}(?:題|部分)[\s\u3000]*$/.test(t)){keySec=secs.find(s=>s.type===(/選填|填|選題/.test(t)?'fill':/混合|非選/.test(t)?'mixed':'calc'))||null;cur=null;continue;}
+    t=t.replace(/[\[［]\s*[A-Z]{1,4}\d[A-Z0-9]*(?:-[A-Z0-9]+){2,}\s*[\]］]/g,'');
+    /* 題庫的出處標籤、班級座號提醒 */
+    {const t0=t;t=t.replace(/【[^】$]*(?:自命題|龍騰|翰林|南一|三民|泰宇|全華|指考|學測|分科|段考|期中考|期末考|模考|模擬|競試|講義|補充|素養題)[^】]*】[,，、]?/g,'');if(t!==t0&&!t.replace(/[\s\u3000]/g,''))continue;}
+    if(/班級.{0,4}座號.{0,4}姓名.{0,12}(?:務必|扣分|請記得|！)|請記得.{0,6}班級/.test(t))continue;
     if(DX_META.test(t.trim())){t=t.trim().replace(DX_META,'').trim();if(!t||!/【/.test(t))continue;}
-    const qs=dxStart(t,ln.num,key?(keySec&&keySec.type):(sec&&sec.type));
     if(key){
-      if(qs){
-        const pool=keySec?[keySec]:secs;let target=null;
-        for(const s of pool){target=s.raw.find(q=>q.n===qs.n&&!q.keyed);if(target)break;}
-        cur=target;if(cur){cur.keyed=true;mode='ans';if(qs.ans)put(cur,'ans',qs.ans);t=qs.rest;}else continue;
+      const pool=keySec?[keySec]:secs;
+      const find=n=>{for(const s of pool){const q=s.raw.find(q=>q.n===n&&!q.keyed);if(q)return q;}return null;};
+      let parts=ln.num&&ln.num.lvl===0&&/^(?:\d+|[A-Z])[.、]?$/.test(ln.num.text)?[{n:ln.num.n,text:t.trim()}]:keyParts(t);
+      /* 詳解裡的條列號對不到題目時，當成內文 */
+      if(parts&&parts.some(x=>find(x.n))){
+        for(const x of parts){const q=find(x.n);if(!q){if(cur)put(cur,mode,x.text);continue;}
+          cur=q;q.keyed=true;mode='ans';
+          const k=dxMask(x.text).search(/【?(?:詳解|解析)/);
+          if(x.text)put(q,'ans',k<0?x.text:x.text.slice(0,k));
+          if(k>=0){mode='sol';put(q,'sol',x.text.slice(k).replace(/^【?(?:詳解|解析)】?[:：]?/,''));}}
+        continue;
       }
+      if(!cur&&keySec&&keySec.raw.length===1&&t.trim()){cur=keySec.raw[0];mode='sol';}
       if(!cur)continue;
-    }else if(qs){
+    }else{
+    const qs=dxStart(t,ln.num,sec&&sec.type);
+    /* 填充題大題下、第一題之前的作答說明（常用自動編號） */
+    if(qs&&sec&&sec.type==='fill'&&!sec.raw.length&&!/\blank|\u0005|_{2,}|＿{2,}/.test(t)&&/每[題格].{0,14}(?:給|得)\s*\d|答案(?:請)?(?:畫|劃)記|不倒扣/.test(t))continue;
+    if(qs){
       /* 詳解或答案裡的條列「1.」不算新題：新題要接得上題號 */
       const n=qs.n,prev=lastN();
       const auto=ln.num&&ln.num.lvl===0&&qs.rest===ln.t;
@@ -6128,19 +6451,21 @@ function docxParse(ent){
       if(!isNew&&cur&&mode!=='stem'&&(n===1||n===cur.list+1))cur.list=n;
       if(isNew){
         if(!sec)newSec({type:'unclassified',name:'',pts:'',total:''});
-        cur={n,stem:'',ans:qs.ans!=null?qs.ans:'',sol:'',paren:qs.ans!=null,list:-1};sec.raw.push(cur);found++;mode='stem';
+        cur={n,stem:'',ans:qs.ans!=null?qs.ans:'',sol:'',paren:qs.ans!=null,list:-1,lead:sec.lead||''};sec.lead='';sec.raw.push(cur);found++;mode='stem';
         t=qs.rest;
       }
     }
+    }
     if(!cur){
-      if(sec&&sec.type==='mixed'&&t.trim())sec.pre=(sec.pre?sec.pre+'\n':'')+t;
+      if(sec&&(sec.type==='mixed'||sec.type==='calc')&&t.trim())sec.pre=(sec.pre?sec.pre+'\n':'')+t;
       continue;
     }
+    if(!key&&sec&&sec.type==='mixed'&&mode==='stem'&&/^[\s\u3000]*(?:\\uline\{)?承上/.test(t)){sec.lead=t;continue;}
     /* 依「答案／詳解」標記切開這一行 */
     const mask=dxMask(t);DX_MARK.lastIndex=0;
     let m,pos=0,first=true;
     while((m=DX_MARK.exec(mask))){
-      const word=(m[1]||m[2]||m[0]).replace(/[\s\u3000:：【】]/g,'');
+      const word=(m[1]||m[2]||m[3]||m[0]).replace(/[\s\u3000:：【】]/g,'');
       const before=t.slice(pos,m.index);
       if(before.trim())put(cur,mode,before);
       mode=/^(?:答案|解答|標準答案|參考答案|正確答案|答|Ans|ANS|ans)$/.test(word)?'ans':'sol';
@@ -6149,22 +6474,40 @@ function docxParse(ent){
     const tail=t.slice(pos);
     if(tail.trim())put(cur,mode,tail);
   }
+  secs.forEach(solo);
   /* 整理成各題型 */
   const out=[];const loose={};
   const KIND_SEC={single:'單選題',multi:'多選題',fill:'填充題',calc:'計算證明題',open:'未分類（請手動整理）'};
   let noAns=0,noOpt=0,noBlank=0,extraImg=0;
   secs.forEach(s=>{
-    const ps={type:s.type,name:s.name,pts:s.type==='mixed'?'':s.pts,qs:[]};
-    if(s.type==='mixed'&&s.pre){const p=dxTakeImgs(s.pre);const g=dxClean(p.t);if(g||p.ids.length)ps.qs.push({kind:'group',stem:g,opts:[],ans:'',pts:'',sol:'',imgs:p.ids,optImgs:[]});}
+    const ps={type:s.type,name:s.name,pts:s.type==='mixed'||!+s.pts?'':s.pts,qs:[]};
+    if(s.type==='mixed'&&s.pre&&s.raw.length){const p=dxTakeImgs(s.pre);const g=dxClean(p.t);if(g||p.ids.length)ps.qs.push({kind:'group',stem:g,opts:[],ans:'',pts:'',sol:'',imgs:p.ids,optImgs:[]});}
     s.raw.forEach(r=>{
       let stem=r.stem,ans=r.ans.trim(),sol=r.sol,pts='';
+      /* 開頭的作答括號（含答案卡題號圈圈）拿掉 */
+      stem=dxBlanks(stem.replace(/^[\s\u3000]*[（(](?:[\s\u3000$]|\u0005)*[）)][\s\u3000]*/,''));
+      sol=dxBlanks(sol);ans=dxBlanks(ans);
+      /* 答案裡的圖移到詳解，不佔掉答案那一行 */
+      {const im=dxTakeImgs(ans);if(im.ids.length){ans=im.t.trim();sol+=(sol?'\n':'')+im.ids.map(id=>'\u0001'+id+'\u0002').join('');}}
+      /* 「Ans：x＝□π」是作答格式，留在題目裡 */
+      if(ans.includes('\\blank')){const al=ans.split('\n'),has=x=>x.includes('\\blank');
+        stem=stem.replace(/[\s\u3000]*(?:\\blank[\s\u3000]*)?$/,'')+'\nAns：'+al.filter(has).join('\n');ans=al.filter(x=>!has(x)).join('\n').trim();
+        const only=dxTakeImgs(sol),line=only.t.trim();if(!ans&&line&&!line.includes('\n')){ans=line;sol=only.ids.map(id=>'\u0001'+id+'\u0002').join('');}}
+      if(r.lead)stem=dxBlanks(r.lead)+'\n'+stem;
       const red=[];
       stem=stem.replace(/\u0003([\s\S]*?)\u0004/g,(m,a)=>{red.push(a);return ' \\blank ';});
       const pm=dxHalf(stem).match(/^[\s\u3000]*\((\d+(?:\.\d+)?)\s*分\)/);
       if(pm){pts=pm[1];stem=stem.replace(/^[\s\u3000]*[（(]\s*[\d０-９.．]+\s*分\s*[）)]/,'');}
       const isChoice=s.type==='single'||s.type==='multi';
+      const original=stem;
       let o=null,kind=null;
+      if(isChoice)stem=stem.replace(/\$([^$]+)\$/g,(m,x)=>{const re=/(?:\s{2,}|\\quad\s*|\u3000\s*)\(\s*([1-5])\s*\)(?=\s)/g;if((x.match(re)||[]).length<2)return m;return ('$'+x.replace(re,'$$ ($1) $$')+'$').replace(/\$\s*\$/g,'');});
       if(isChoice||s.type==='mixed'||s.type==='custom'||s.type==='unclassified')o=dxSplitOptions(stem,isChoice);
+      /* 混合題裡最後一個選項後面又接「(2) …」小題：拆成下一題 */
+      let tailQ=null;
+      if(o&&s.type==='mixed'){const x=o.opts[o.opts.length-1],k=/[\s\u3000]*[（(]\s*[2-9]\s*[）)](?=[\s\u3000]*[\u4e00-\u9fff])/.exec(x);if(k){tailQ=x.slice(k.index).trim();o.opts[o.opts.length-1]=x.slice(0,k.index);}}
+      let tailAns='';
+      if(tailQ){const al=ans.split('\n'),mm=/^\s*[（(]\s*1\s*[）)](.*?)[（(]\s*2\s*[）)](.*)$/.exec(al[0]||'');if(mm){al[0]=mm[1].replace(/^[\s\u3000$]+|[\s\u3000$;；,，]+$/g,'');tailAns=mm[2].trim();ans=al.join('\n');}}
       if(o){
         stem=o.stem;
         /* 答案欄：第一行是選項代號，其餘併入詳解 */
@@ -6176,16 +6519,23 @@ function docxParse(ent){
         ans=a;
         kind=s.type==='single'||s.type==='multi'?s.type:(a.includes(',')?'multi':'single');
       }else{
-        if(isChoice){noOpt++;stem=r.stem.replace(/\u0003|\u0004/g,'');kind=s.type;o={opts:[]};}
+        if(isChoice){noOpt++;stem=original;kind=s.type;o={opts:[]};}
         else{
           stem=stem.replace(/[_＿]{2,}/g,' \\blank ').replace(/(?:\\blank\s*){2,}/g,'\\blank ');
           if(s.type==='fill')stem=stem.replace(/[（(][\s\u3000]{2,}[）)]/g,' \\blank ');
+          /* 題庫常把答案寫在題目裡的【 】中 */
+          if(s.type==='fill'){const got=[];stem=stem.replace(/【\s*([^【】\u4e00-\u9fff]*(?:或[^【】\u4e00-\u9fff]*)?)\s*】/g,(m,a)=>{if(!a.trim())return ' \\blank ';got.push(a.trim());return ' \\blank ';});if(!ans&&got.length)ans=got.map(dxAnsTex).join('；');}
           const hasBlank=/\\blank/.test(stem);
           kind=s.type==='calc'?'calc':s.type==='fill'||hasBlank?'fill':s.type==='mixed'||s.type==='custom'?'open':'calc';
           if(kind==='fill'){
             if(!ans&&red.length)ans=red.join('；');
-            const al=ans.split('\n');
-            if(al[0]&&al[0].length<=80){const rest=al.slice(1).join('\n').trim();if(rest)sol=rest+(sol?'\n'+sol:'');ans=dxAnsTex(al[0]);}
+            let al=ans.split('\n').filter(x=>x.trim());
+            /* (1)…(2)… 分成多個答案，用分號隔開 */
+            const nb=blankCount(stem);
+            if(nb>1){const one=al.slice(0,al.length>=nb&&al.slice(0,nb).every(x=>/^\s*[(（]\s*[1-9１-９]\s*[)）]/.test(x))?nb:1);
+              let parts=one.length===nb?one:one[0]?one[0].split(/(?=(?<![A-Za-z}])[(（]\s*[1-9１-９]\s*[)）])/).filter(x=>x.trim()):[];
+              if(parts.length===nb&&parts.every(x=>/^\s*[(（]\s*[1-9１-９]\s*[)）]/.test(x))){al=[parts.map(x=>dxAnsTex(x.replace(/^\s*[(（]\s*[1-9１-９]\s*[)）]/,'').replace(/[;；,，。]\s*$/,''))).join('；')].concat(al.slice(one.length));}}
+            if(al[0]&&al[0].length<=120){const rest=al.slice(1).join('\n').trim();if(rest)sol=rest+(sol?'\n'+sol:'');ans=dxAnsTex(al[0]);}
             else if(ans){sol=ans+(sol?'\n'+sol:'');ans='';}
             if(!hasBlank){noBlank++;stem=stem.replace(/[\s\u3000]*$/,'')+' \\blank ';}
           }else{
@@ -6197,20 +6547,23 @@ function docxParse(ent){
       /* 圖片：題幹第一張當附圖，選項裡的當選項附圖 */
       const a=dxTakeImgs(stem),b=dxTakeImgs(sol);
       const opts=o?o.opts.map(x=>dxTakeImgs(x)):[];
-      const q={kind,stem:dxClean(a.t),opts:opts.map(x=>dxClean(x.t).replace(/[\n\u3000]+$/,'').replace(/\n/g,' ').replace(/[;；]$/,'')),ans,pts,sol:dxClean(b.t),imgs:a.ids,optImgs:opts.map(x=>x.ids[0]||null)};
+      const q={kind,stem:dxClean(a.t),opts:opts.map(x=>dxClean(x.t).replace(/[\n\u3000]+$/,'').replace(/\n/g,' ').replace(/[;；]$/,'').replace(/(\$|\d|個)[\s\u3000]*。$/,'$1')),ans,pts,sol:dxClean(b.t),imgs:a.ids,optImgs:opts.map(x=>x.ids[0]||null)};
       extraImg+=Math.max(0,a.ids.length-1)+b.ids.length+opts.reduce((n,x)=>n+Math.max(0,x.ids.length-1),0);
       q.moreImgs=a.ids.slice(1).concat(b.ids,...opts.map(x=>x.ids.slice(1)));
+      let q2=null;
+      if(tailQ){const c=dxTakeImgs(tailQ);q2={kind:'open',stem:dxClean(c.t),opts:[],ans:'',pts:'',sol:tailAns?'答：'+dxClean(tailAns):'',imgs:c.ids,optImgs:[],moreImgs:c.ids.slice(1)};}
       if(s.type==='unclassified'){
         const k=kind==='open'?'calc':kind;
         if(!loose[k]){loose[k]={type:k,name:KIND_SEC[k],pts:'',qs:[]};out.push(loose[k]);}
         loose[k].qs.push(q);
-      }else ps.qs.push(q);
+      }else{ps.qs.push(q);if(q2)ps.qs.push(q2);}
     });
-    if(ps.pts===''&&s.type!=='mixed'&&s.total){const c=ps.qs.filter(q=>q.kind!=='group').length;if(c&&+s.total%c===0)ps.pts=String(+s.total/c);}
+    if(ps.pts===''&&s.type!=='mixed'&&s.total){const c=ps.qs.filter(q=>q.kind!=='group').length;if(c&&+s.total&&+s.total%c===0)ps.pts=String(+s.total/c);}
     if(s.type!=='unclassified'&&ps.qs.length)out.push(ps);
   });
   if(secs.some(s=>s.type==='unclassified'))warns.push('部分題目前面沒有「單選題／多選題／填充題」之類的大題標題，題型是依內容猜的，請確認。');
-  if(st.eqObj)warns.push('有 '+st.eqObj+' 個 MathType／舊版方程式物件目前讀不到，原位置標了「【公式（請重打）】」。');
+  if(st.mt)warns.unshift('讀到 '+st.mt+' 個 MathType／舊版方程式，已轉成數學式，請對照原檔核對。');
+  if(st.eqObj)warns.push('有 '+st.eqObj+' 個方程式物件轉換失敗，原位置標了「【公式（請重打）】」。');
   if(st.eqField)warns.push('有 '+st.eqField+' 個功能變數（EQ）公式目前讀不到，原位置標了「【公式（請重打）】」。');
   if(st.badImg)warns.push('有 '+st.badImg+' 張圖的格式（例如 WMF、EMF）瀏覽器讀不到。');
   if(extraImg)warns.push('有 '+extraImg+' 張圖沒有自動放進題目（每題只放一張附圖，詳解的圖不放），已加進「圖庫」。');
@@ -6222,9 +6575,23 @@ function docxParse(ent){
   if(noAns)warns.push('有 '+noAns+' 題沒有讀到答案，答案欄留空。');
   return {sections:out,warns,images};
 }
+/* 答案卡圈圈格子：同一個空格裡的多個圈（含分數、根號、座標）合成一個 \blank */
+function dxBlanks(s){
+  if(!s.includes('\u0005'))return s;
+  const M='\u0005',join=x=>{let p;do{p=x;x=x
+    .replace(/\\d?frac\{[\s\u0005+\-]*\u0005[\s\u0005+\-]*\}\{[\s\u0005+\-]*\u0005[\s\u0005+\-]*\}/g,M)
+    .replace(/\\sqrt\{\s*\u0005\s*\}/g,M)
+    .replace(/\u0005(?:[\s\u3000]|\\[,;:]|\\quad)*\u0005/g,M)
+    .replace(/\u0005(?:[\s\u3000]|\\[,;:])*(?:[,，、]|\\text\{[，、]\})(?:[\s\u3000]|\\[,;:])*\u0005/g,M)
+    .replace(/(?:\\left)?[(（]\s*\u0005\s*(?:\\right)?[)）]/g,M)
+    .replace(/\u0005(?:[\s\u3000]*\\sqrt\{\u0005\})/g,M);}while(x!==p);return x;};
+  s=s.replace(/\$\$?([^$]*\u0005[^$]*)\$\$?/g,(m,x)=>{x=join(x).trim();return x===M?M:'$'+x+'$';});
+  return join(s).replace(/\u0005/g,' \\blank ').replace(/ {2,}/g,' ');
+}
 /* 填充題答案：解答欄用的是不加 $ 的寫法 */
 function dxAnsTex(a){
   let t=a.replace(/\u0001[^\u0002]*\u0002|[\u0003\u0004]/g,'').trim().replace(/。$/,'').trim();
+  t=t.replace(/^(\$[^$]*\$|[−\-]?\s*[\d.]+)\s*(?:元|分貝|筆|公尺|公分|人|個|位|倍|年|弳|平方單位)$/,'$1').replace(/[−－]\s*/g,'-');
   if(!/[\u3400-\u9fff]/.test(t.replace(/\\text\{[^{}]*\}/g,'')))t=t.replace(/\$+/g,'');
   return t.replace(/\\(?:left|right)\b\s*/g,'').replace(/-\s*\\d?frac\{\s*(\d+)\s*\}\{\s*(\d+)\s*\}/g,'\\dfrac{-$1}{$2}').trim();
 }
