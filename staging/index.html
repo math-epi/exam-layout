@@ -755,10 +755,10 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.8';
-const APP_BUILD='2026-11-28 15:30';
+const APP_BUILD='2026-11-28 15:55';
 const APP_LOG=[
   {v:'1.8',items:[
-    '新增匯入 Word 考卷（.docx，試用）：上方「匯入 Word／PDF／LaTeX」可把題目、選項、答案、詳解讀進各題型；Word 內建方程式會轉成數學式，PNG／JPG 圖片會放進圖庫。MathType／舊版方程式也能轉換；舊版 .doc 請先另存成 .docx。匯入後請逐題核對。',
+    '新增匯入 Word 考卷（.docx，試用）：上方「匯入 Word／PDF／LaTeX」可把題目、選項、答案、詳解讀進各題型；Word 內建方程式會轉成數學式，PNG／JPG 圖片會放進圖庫。MathType／舊版方程式也能轉換（含線上增益集插入、看起來像圖片的公式）；填充題每格後面寫「Ans: 答案」會逐格帶入答案欄。舊版 .doc 請先另存成 .docx。匯入後請逐題核對。',
     '新增匯入 PDF（借用自己的 AI）：選 PDF 後依視窗步驟複製指令，把 PDF 交給 Claude、ChatGPT、Gemini 等 AI，再把回覆貼回來讀入各題型。需要 AI 帳號和可用額度。',
     '中文和數學式緊貼時，輸出的考卷會自動空一格（題目、選項、詳解；預覽、列印、編譯 PDF、.tex 都一樣），原本打的字不會被改動。不需要可到「⚙ 設定」的「題目文字自動處理」關掉。',
     '中文輸入法提醒：在解答、配分、數學式編輯器等該打英文數字的地方打出注音或中文時，欄位旁會提示切換輸入法（不會擋住輸入）。電腦的切換設定寫在使用手冊。',
@@ -5974,8 +5974,55 @@ function omml(el,st){
 function omMatrix(m,st,env){
   return '\\begin{'+env+'}'+dxKids(m,'mr').map(r=>dxKids(r,'e').map(x=>omml(x,st).trim()).join(' & ')).join(' \\\\ ')+'\\end{'+env+'}';
 }
+/* MathType 線上增益集插入的公式：Word 裡是圖片，原始 MathML 藏在圖片的替代文字裡 */
+function mmlSource(descr){
+  let t=(descr||'').trim();
+  if(t[0]==='{'){try{t=String(JSON.parse(t).mathml||'');}catch(e){return '';}}
+  return /^<(?:\w+:)?math[\s>]/.test(t)?t:'';
+}
+function mmlTex(el){
+  const kids=Array.from(el.children),tag=el.localName,all=()=>kids.map(mmlTex).join('');
+  const a=i=>kids[i]?mmlTex(kids[i]).trim():'';
+  const txt=el.textContent.replace(/[\u2061-\u2064\u200b]/g,'');
+  switch(tag){
+    case 'mi':{const v=txt.trim();if(OM_FUNC.test(v))return '\\'+v+' ';const t=omText(v);return v.length>1&&/^[A-Za-z]+$/.test(v)?'\\mathrm{'+v+'}':el.getAttribute('mathvariant')==='normal'&&/^[A-Za-z]$/.test(v)?'\\mathrm{'+t+'}':t;}
+    case 'mn':return omText(txt.trim());
+    case 'mo':return /^[\s\u00a0]*$/.test(txt)?'\\ ':omText(txt.trim());
+    case 'mtext':{const v=txt.replace(/\u00a0/g,' ');if(!v.trim())return '\\ ';return /^[\x20-\x7e]+$/.test(v)?'\\text{'+v.replace(/[\\{}$&#%_^~]/g,'')+'}':omText(v);}
+    case 'mfrac':return '\\dfrac{'+a(0)+'}{'+a(1)+'}';
+    case 'msqrt':return '\\sqrt{'+all().trim()+'}';
+    case 'mroot':return '\\sqrt['+a(1)+']{'+a(0)+'}';
+    case 'msup':return a(0)+'^{'+a(1)+'}';
+    case 'msub':return a(0)+'_{'+a(1)+'}';
+    case 'msubsup':return a(0)+'_{'+a(1)+'}^{'+a(2)+'}';
+    case 'mover':{const m=(kids[1]&&kids[1].textContent||'').trim(),b=a(0);
+      if(/^[¯‾―_]$/.test(m))return '\\overline{'+b+'}';if(/^[→⇀⟶]$/.test(m))return '\\overrightarrow{'+b+'}';if(/^[⌢⏜∩]$/.test(m))return '\\overset{\\frown}{'+b+'}';if(m==='^'||m==='ˆ')return '\\hat{'+b+'}';return '\\overset{'+a(1)+'}{'+b+'}';}
+    case 'munder':case 'munderover':{const b=a(0);if(/^\\(?:sum|prod|int|lim|max|min|bigcup|bigcap)\b/.test(b))return b+'\\limits_{'+a(1)+'}'+(tag==='munderover'?'^{'+a(2)+'}':'')+' ';return tag==='munder'?'\\underset{'+a(1)+'}{'+b+'}':'\\overset{'+a(2)+'}{\\underset{'+a(1)+'}{'+b+'}}';}
+    case 'mfenced':{const o=el.hasAttribute('open')?el.getAttribute('open'):'(',c=el.hasAttribute('close')?el.getAttribute('close'):')',d=x=>x==='{'?'\\{':x==='}'?'\\}':x?omText(x):'.';return '\\left'+d(o)+' '+kids.map(mmlTex).join(',')+'\\right'+d(c)+' ';}
+    case 'mtable':return '\\begin{matrix}'+kids.map(r=>Array.from(r.children).map(c=>mmlTex(c).trim()).join(' & ')).join(' \\\\ ')+'\\end{matrix}';
+    case 'mspace':return '\\ ';
+    case 'semantics':return a(0);
+    case 'annotation':case 'annotation-xml':return '';
+    default:return all();
+  }
+}
+/* 回傳工作台寫法；開頭結尾的文字（例如「Ans:」）放在數學式外面 */
+function mmlLine(src){
+  const d=new DOMParser().parseFromString(src,'application/xml');
+  if(d.getElementsByTagName('parsererror').length)return null;
+  let list=[d.documentElement];
+  while(list.length===1&&/^(?:math|mstyle|mrow|semantics|mpadded)$/.test(list[0].localName))list=Array.from(list[0].children).filter(c=>!/^annotation/.test(c.localName));
+  const blank=x=>/^(?:mtext|mo|mspace)$/.test(x.localName)&&!x.textContent.replace(/[\s\u00a0]/g,'');
+  const word=x=>x.localName==='mtext'&&/[A-Za-z\u3400-\u9fff]{2,}|[:：]/.test(x.textContent);
+  const plain=x=>x.textContent.replace(/\u00a0/g,' ').replace(/\$/g,'\\$');
+  let pre='',post='';
+  while(list.length&&(word(list[0])||blank(list[0])))pre+=plain(list.shift());
+  while(list.length&&(word(list[list.length-1])||blank(list[list.length-1])))post=plain(list.pop())+post;
+  const m=list.map(mmlTex).join('').replace(/ {2,}/g,' ').trim();
+  return pre+(m?'$'+m+'$':'')+post;
+}
 /* 「插入符號」用 Symbol 字型打的字 */
-const DX_SYMBOL={0x70:'π',0x71:'θ',0x61:'α',0x62:'β',0x67:'γ',0x64:'δ',0x44:'Δ',0x6C:'λ',0x6D:'μ',0x73:'σ',0x53:'Σ',0x77:'ω',0x66:'φ',0xA3:'≤',0xB3:'≥',0xB9:'≠',0xB4:'×',0xB8:'÷',0xB1:'±',0xD7:'⋅',0xA5:'∞',0xCE:'∈',0xCF:'∉',0xC7:'∩',0xC8:'∪',0xCC:'⊂',0xCD:'⊆',0xC6:'∅',0xAE:'→',0xDE:'⇒',0xDB:'⇔',0xD0:'∠',0x5E:'⊥',0xBB:'≈',0xBA:'≡',0xB0:'°',0x2D:'−',0xD6:'√',0xE5:'∑',0x5C:'∴'};
+const DX_SYMBOL={0xA2:"'",0x70:'π',0x71:'θ',0x61:'α',0x62:'β',0x67:'γ',0x64:'δ',0x44:'Δ',0x6C:'λ',0x6D:'μ',0x73:'σ',0x53:'Σ',0x77:'ω',0x66:'φ',0xA3:'≤',0xB3:'≥',0xB9:'≠',0xB4:'×',0xB8:'÷',0xB1:'±',0xD7:'⋅',0xA5:'∞',0xCE:'∈',0xCF:'∉',0xC7:'∩',0xC8:'∪',0xCC:'⊂',0xCD:'⊆',0xC6:'∅',0xAE:'→',0xDE:'⇒',0xDB:'⇔',0xD0:'∠',0x5E:'⊥',0xBB:'≈',0xBA:'≡',0xB0:'°',0x2D:'−',0xD6:'√',0xE5:'∑',0x5C:'∴'};
 function docxSym(el,st){
   const font=dxAttr(el,'font')||'',code=parseInt(dxAttr(el,'char')||'0',16)&0xFF;
   if(/symbol/i.test(font)&&DX_SYMBOL[code])return DX_SYMBOL[code];
@@ -6365,11 +6412,17 @@ function docxLines(ent){
     };
     const walk2=el=>{
       const all=Array.from(el.getElementsByTagName('*'));
-      if(all.some(x=>x.localName==='txbxContent'))st.textbox++;
+      if(all.some(x=>x.localName==='txbxContent'&&x.textContent.trim()))st.textbox++;
       const seen=new Set();
       all.forEach(x=>{
         const rid=x.localName==='blip'?dxAttr(x,'embed'):x.localName==='imagedata'?dxAttr(x,'id'):null;
-        if(rid&&!seen.has(rid)){seen.add(rid);add(image(rid),{raw:1});}
+        if(rid&&!seen.has(rid)){
+          seen.add(rid);
+          let box=x;while(box&&box!==el&&!/^(?:inline|anchor)$/.test(box.localName))box=box.parentElement;
+          const pr=box&&dxKid(box,'docPr'),src=pr?mmlSource(pr.getAttribute('descr')):'';
+          const t=src?mmlLine(src):null;
+          if(t!==null){st.mt++;add(t,{raw:1});}else add(image(rid),{raw:1});
+        }
       });
     };
     walk(p);
@@ -6543,6 +6596,7 @@ function docxParse(ent){
     t=t.replace(/[\[［]\s*[A-Z]{1,4}\d[A-Z0-9]*(?:-[A-Z0-9]+){2,}\s*[\]］]/g,'');
     /* 題庫的出處標籤、班級座號提醒 */
     {const t0=t;t=t.replace(/【[^】$]*(?:自命題|龍騰|翰林|南一|三民|泰宇|全華|指考|學測|分科|段考|期中考|期末考|模考|模擬|競試|講義|補充|素養題)[^】]*】[,，、]?/g,'');if(t!==t0&&!t.replace(/[\s\u3000]/g,''))continue;}
+    if(/^[\s\u3000]*(?:祝|預祝)[^$]{0,20}(?:順利|快樂|愉快|高分|成功)[\s\u3000！!。～~]*$/.test(t))continue;
     if(/班級.{0,4}座號.{0,4}姓名.{0,12}(?:務必|扣分|請記得|！)|請記得.{0,6}班級/.test(t))continue;
     if(DX_META.test(t.trim())){t=t.trim().replace(DX_META,'').trim();if(!t||!/【/.test(t))continue;}
     if(key){
@@ -6585,6 +6639,21 @@ function docxParse(ent){
       continue;
     }
     if(!key&&sec&&sec.type==='mixed'&&mode==='stem'&&/^[\s\u3000]*(?:\\uline\{)?承上/.test(t)){sec.lead=t;continue;}
+    /* 填充題每個空格後面直接寫「Ans: 答案」（一題可有好幾組）：答案抽出來，其餘留在題目 */
+    if(!key&&sec&&sec.type==='fill'){
+      const hasGap=x=>/\u0005|\\blank|_{2,}|＿{2,}/.test(x);
+      if(cur.inline&&mode==='stem'&&t.replace(/\u0001[^\u0002]*\u0002|[\s\u3000]/g,'')&&!hasGap(t)&&!/^[\s\u3000]*[（(]\s*[1-9１-９]\s*[）)]/.test(t))mode='sol';
+      if(mode==='stem'){
+        let last=0,keep='';
+        for(const m of [...t.matchAll(/[\s\u3000]*(?<![A-Za-z])(?:Ans|ANS|ans)\s*[:：]\s*\$([^$\u0005]+)\$[。.]?/g)]){
+          const before=t.slice(last,m.index),after=t.slice(m.index+m[0].length);
+          const tailOk=!after.replace(/\u0001[^\u0002]*\u0002|[\s\u3000。.；;，,]/g,'')||/^[\s\u3000]*[（(]\s*[1-9１-９]\s*[）)]/.test(after)||hasGap(after);
+          if(!tailOk||!(hasGap(cur.stem)||hasGap(t.slice(0,m.index))))continue;
+          keep+=before;last=m.index+m[0].length;(cur.inline=cur.inline||[]).push(m[1].trim());
+        }
+        if(last){t=keep+t.slice(last);if(!t.trim())continue;}
+      }
+    }
     /* 依「答案／詳解」標記切開這一行 */
     const mask=dxMask(t);DX_MARK.lastIndex=0;
     let m,pos=0,first=true;
@@ -6606,8 +6675,15 @@ function docxParse(ent){
   secs.forEach(s=>{
     const ps={type:s.type,name:s.name,pts:s.type==='mixed'||!+s.pts?'':s.pts,qs:[]};
     if(s.type==='mixed'&&s.pre&&s.raw.length){const p=dxTakeImgs(s.pre);const g=dxClean(p.t);if(g||p.ids.length)ps.qs.push({kind:'group',stem:g,opts:[],ans:'',pts:'',sol:'',imgs:p.ids,optImgs:[]});}
+    /* 浮在旁邊的附圖常掛在上一題最後一個段落：上一題沒提到圖、下一題說「附圖」又沒圖時，移給下一題 */
+    s.raw.forEach((r,k)=>{
+      const nx=s.raw[k+1];if(!nx||/圖/.test(r.stem)||!/附圖|如圖|[右下左]圖/.test(nx.stem)||nx.stem.includes('\u0001')||nx.stem.includes('【圖'))return;
+      const m=/\n[\s\u3000]*(\u0001[^\u0002]*\u0002)[\s\u3000]*$/.exec(r.stem);
+      if(m){r.stem=r.stem.slice(0,m.index);nx.stem+='\n'+m[1];}
+    });
     s.raw.forEach(r=>{
       let stem=r.stem,ans=r.ans.trim(),sol=r.sol,pts='';
+      if(r.inline){if(!ans)ans=r.inline.join('；');else sol=r.inline.join('；')+(sol?'\n'+sol:'');}
       /* 開頭的作答括號（含答案卡題號圈圈）拿掉 */
       stem=dxBlanks(stem.replace(/^[\s\u3000]*[（(](?:[\s\u3000$]|\u0005)*[）)][\s\u3000]*/,''));
       sol=dxBlanks(sol);ans=dxBlanks(ans);
