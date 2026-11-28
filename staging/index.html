@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>考卷排版工作台</title>
-<meta name="theme-color" content="#1E407C"><link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#1E407C"><link rel="apple-touch-icon" href="icon-192.png?v=2">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
 <script>try{localStorage.removeItem('MathJax-Menu-Settings');}catch(e){}   // 清掉以前在英文右鍵選單改過的顯示設定（放大、換排版方式等）
@@ -496,6 +496,14 @@ input.sw:checked+.swstate::after{content:'開'}
 @media(min-width:981px) and (max-width:1479px){.top{column-gap:7px;padding-left:14px;padding-right:14px}.top .btn.small{padding-left:9px;padding-right:9px}}
 /* 版型縮圖與自訂版頭預覽是紙面，深色時也維持白紙黑字 */
 @media screen{html.dark .mini,html.dark .hdedit .stage,html.dark .paper.tplthumb{background:#fff;color:#1A2233}}
+/* ===== 有新版本提示 ===== */
+.upd-bar{white-space:nowrap;position:fixed;left:50%;bottom:calc(var(--stagebar,0px) + 14px);transform:translateX(-50%);z-index:41;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 20px);padding:6px 8px 6px 16px;border:1.5px solid var(--accent);border-radius:999px;background:var(--panel);color:var(--ink);box-shadow:0 6px 22px rgba(0,0,0,.28);font-size:14px;font-weight:700}
+.upd-bar button{font:inherit;cursor:pointer;border-radius:999px;white-space:nowrap}
+.upd-bar.fail{white-space:normal;border-radius:14px;width:max-content}
+.upd-go{border:0;background:var(--accent);color:var(--accent-ink);padding:4px 14px}
+.upd-x{border:0;background:transparent;color:var(--muted);padding:4px 8px}
+@media (max-width:760px){.upd-bar{bottom:calc(var(--stagebar,0px) + 132px);border-radius:14px;font-size:13px}}
+@media print{.upd-bar{display:none}}
 /* ===== 專注出題：浮在主畫面上方，上面看目前這一題的排版，下面選題型、輸入 ===== */
 body.fx-open{overflow:hidden}
 .fx-ov{position:fixed;inset:0;z-index:37;background:rgba(24,30,46,.62);display:flex;padding:10px;padding-bottom:calc(10px + var(--stagebar,0px))}
@@ -744,13 +752,15 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.7';
-const APP_BUILD='2026-11-28 12:40';
+const APP_BUILD='2026-11-28 12:55';
 const APP_LOG=[
   {v:'1.7',items:[
     '新增「專注出題」（上方「列印 / 存檔」旁）：浮出大視窗，上面即時顯示目前這一題的排版，下面按題型按鈕新增下一題，用大畫面輸入；題目卡功能和左側相同。中間的分隔線可上下拖曳。',
     '專注出題：題型列只有目前所在的題型以實色標示；回到工作台時，左右兩邊都定位到剛才那一題。',
     '專注出題：上方預覽的題目改放在區塊中間，下方輸入區預設加大。',
     '數學式編輯器（視覺輸入）：上標、下標打完按 → 或空白鍵才回到原位置，例如打 y^2a+1 就是 y 的 2a+1 次方。習慣「打一個數字自動跳出」的老師，可以勾輸入框下方的「數字次方自動跳出」。',
+    '工作台開著時如果網站有新版本，畫面下方會出現「有新版本」，按「按這裡更新」才會重新整理，考卷內容會保留。',
+    '安裝到電腦的圖示改為可以跟著更新：用 Chrome 安裝的，若應用程式選單出現檢查更新的項目，按同意即可換成目前的圖示。',
   ]},
   {v:'1.6',items:[
     '新增深色模式：上方「使用手冊」旁的太陽／月亮／螢幕圖示可選淺色、深色、跟隨系統（預設跟隨系統）。考卷預覽與列印維持白紙黑字；數學式編輯器沒另外選過時跟著工作台。',
@@ -1461,7 +1471,7 @@ function markExported(){
   try{localStorage.setItem(LS_EXP,String(lastExport));localStorage.setItem(LS_CHG,String(lastChange));}catch(e){}
   updateSaveStatus();
 }
-window.addEventListener('beforeunload',e=>{if(isDirty()&&!window.__figHanded){e.preventDefault();e.returnValue='';return '';}});
+window.addEventListener('beforeunload',e=>{if(isDirty()&&!window.__figHanded&&!window.__updating){e.preventDefault();e.returnValue='';return '';}});
 let saveT=0;
 function save(){
   if(booted){lastChange=Date.now();updateSaveStatus();}
@@ -5668,6 +5678,46 @@ $('#btnPrint').onclick=openSave;
       h('div',{style:'text-align:right;margin-top:10px'},bc)));
     document.body.append(ov);
   }
+})();
+/* ===== 有新版本：開著的工作台偶爾看一下網站上的版本，比較新才在上方提示；由老師按了才重新整理 ===== */
+const UPD=(function(){
+  const X={check:async()=>{},off:true};
+  if(!OFFLINE||!/^https?:$/.test(location.protocol))return X;
+  X.off=false;
+  let last=0,later='',bar=null;
+  const hide=()=>{if(bar){bar.remove();bar=null;}};
+  function reload(msg){
+    if(FX.on)FX.close();
+    /* 等自動暫存寫完（打字後 0.3 秒）；寫不進瀏覽器就不重新整理。
+       這裡不另外寫入，免得蓋掉另一個分頁剛打的內容。 */
+    setTimeout(()=>{
+      if(!autoOk){bar.classList.add('fail');msg.textContent='瀏覽器存不了目前的內容。請先按「列印 / 存檔」→「存成考卷檔」，再按 ⌘R 或 F5 重新整理。';return;}
+      window.__updating=true;location.reload();
+    },700);
+  }
+  function show(ver,build){
+    hide();
+    const msg=h('span',{},`有新版本 v${ver}`);
+    bar=h('div',{id:'updBar',class:'upd-bar',role:'status'},msg,
+      h('button',{type:'button',class:'upd-go',onclick:()=>reload(msg)},'按這裡更新'),
+      h('button',{type:'button',class:'upd-x',title:'這次先不更新','aria-label':'這次先不更新',onclick:()=>{later=build;hide();}},'✕'));
+    document.body.append(bar);
+  }
+  X.check=async force=>{
+    if(!force&&(Date.now()-last<10*60000||!navigator.onLine))return;
+    last=Date.now();
+    try{
+      const r=await fetch(location.pathname,{cache:'no-cache'});if(!r.ok)return;
+      const t=await r.text();
+      const b=/\nconst APP_BUILD='([\d: -]+)';/.exec(t),v=/\nconst APP_VER='([\d.]+)';/.exec(t);
+      if(b&&v&&b[1]>APP_BUILD&&b[1]!==later)show(v[1],b[1]);
+    }catch(e){}
+  };
+  setTimeout(X.check,20000);
+  setInterval(()=>{if(!document.hidden)X.check();},30*60000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)X.check();});
+  window.addEventListener('focus',()=>X.check());
+  return X;
 })();
 $('#btnImport').onclick=()=>$('#fileImport').click();
 $('#fileImport').onchange=e=>{if(e.target.files[0])importProject(e.target.files[0]);e.target.value='';};
