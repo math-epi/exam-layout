@@ -504,6 +504,9 @@ input.sw:checked+.swstate::after{content:'開'}
 .upd-x{border:0;background:transparent;color:var(--muted);padding:4px 8px}
 @media (max-width:760px){.upd-bar{bottom:calc(var(--stagebar,0px) + 132px);border-radius:14px;font-size:13px}}
 @media print{.upd-bar{display:none}}
+/* ===== 中文輸入法提醒 ===== */
+.ime-tip{position:fixed;z-index:9998;pointer-events:none;display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;max-width:min(460px,calc(100vw - 16px));padding:6px 12px;border-radius:10px;background:var(--st-warnbg);color:var(--st-warnfg);border:1.5px solid currentColor;box-shadow:0 6px 18px rgba(0,0,0,.25);font-size:13px;line-height:1.5}
+@media print{.ime-tip{display:none}}
 /* ===== 專注出題：浮在主畫面上方，上面看目前這一題的排版，下面選題型、輸入 ===== */
 body.fx-open{overflow:hidden}
 .fx-ov{position:fixed;inset:0;z-index:37;background:rgba(24,30,46,.62);display:flex;padding:10px;padding-bottom:calc(10px + var(--stagebar,0px))}
@@ -752,10 +755,11 @@ const OFFLINE=true;
 /* ===== 版號：每次推上測試站都要改 APP_BUILD（只有測試版顯示時間）。
    每發布一次正式版，版號加 0.1：發布後第一次改功能時改 APP_VER，並在 APP_LOG 最前面加一筆 ===== */
 const APP_VER='1.8';
-const APP_BUILD='2026-11-28 13:40';
+const APP_BUILD='2026-11-28 14:00';
 const APP_LOG=[
   {v:'1.8',items:[
     '中文和數學式緊貼時，輸出的考卷會自動空一格（題目、選項、詳解；預覽、列印、編譯 PDF、.tex 都一樣），原本打的字不會被改動。不需要可到「⚙ 設定」的「題目文字自動處理」關掉。',
+    '中文輸入法提醒：在解答、配分、數學式編輯器等該打英文數字的地方打出注音或中文時，欄位旁會提示切換輸入法（不會擋住輸入）。電腦的切換設定寫在使用手冊。',
     '修正：題目的數學式外面打 \\$、\\{ 這類符號時，預覽和輸出會出錯。',
   ]},
   {v:'1.7',items:[
@@ -2972,7 +2976,7 @@ function buildSettings(){
       field('填空題的大題名稱',bindInput(C,'fillName',{id:'cfg_fillName',type:'select',options:[['填充題','填充題'],['選填題','選填題']],after:()=>{S.sections.forEach(s=>{if(s.type==='fill'&&(s.name==='填充題'||s.name==='選填題'))s.name=C.fillName;});rerender(true);}}),'填空題型的名稱（「本試卷題型」的勾選項與浮動按鈕也會一起改）；已加入的填空題型區塊會一起改名。'),
       field('選填題：算式中間的減號（如 2x−4 的 −）是否佔答案卡一格',bindInput(C,'minusSlot',{id:'cfg_minusSlot',type:'select',options:[['false','預設不佔格'],['true','預設佔一格']],after:()=>{C.minusSlot=($('#cfg_minusSlot').value==='true');changed();rerender();}}),'佔格時會自動在減號格前面補一個 +（2x−4 印成 2x＋□□）。每一題也可以在題目裡單獨改。數字前面的負號一律佔格。')),
     sgroup('全卷滿分檢查',
-      field('全卷滿分（選填）',bindInput(C,'expectedTotal',{id:'cfg_expectedTotal',placeholder:'例如 100'}),'配分合計不等於這個數字時，上方會提醒。')));
+      field('全卷滿分（選填）',(()=>{const i=bindInput(C,'expectedTotal',{id:'cfg_expectedTotal',placeholder:'例如 100'});i.dataset.ascii='math';return i;})(),'配分合計不等於這個數字時，上方會提醒。')));
   $('#setOut').replaceChildren(
     sgroup('輸出版本與樣式',
       field('預設輸出的版本',(()=>{const sel=h('select',{id:'cfg_showAnswers'},VERS.map(([v,n])=>h('option',{value:v},n)));sel.value=verOf();sel.addEventListener('change',()=>{setVer(sel.value);pvVer=null;renderOut();save();});return sel;})(),'列印／存檔時預設用這一版（那裡還可以另選）。右邊預覽上方的版本鈕只切換畫面，不會改這一項。學生版：只有題目；簡答版：加紅字答案（選擇題選項、Ans:）；詳解版：簡答版再加上每題的詳解。'),
@@ -3343,6 +3347,7 @@ function qCard(s,q){
     };
     drawOpts();b.append(box);
     const ans=bindInput(q,'ans',{type:'text',mono:true,after:changed,placeholder:q.kind==='multi'?'例如 2,3,5':'例如 3'});
+    ans.dataset.ascii='ans';
     ansIn=ans;ans.dataset.warn='ans';
     b.append(h('div',{class:'grid2'},field('解答（正確選項）',ans,q.kind==='multi'?'填選項編號，多個用逗號隔開；一般卡可填 B,D。':'填選項編號。'),
       field('這題配分（留空＝用大題的）',ptsInput(q))));
@@ -3354,6 +3359,7 @@ function qCard(s,q){
   }
   if(q.kind==='fill'){
     const ans=bindInput(q,'ans',{type:'text',mono:true,mm:true,after:()=>{updateSlotInfo();changed();},placeholder:'例如 (3,2)、-56/7、\\sqrt{27}'});
+    ans.dataset.ascii='ans';
     ans.dataset.nobox='1';
     ans.dataset.nodollar='1';
     ans.dataset.warn='ans';
@@ -3612,7 +3618,7 @@ function warnItem(text,go,before){
   return h('span',{role:'button',tabindex:0,class:'warngo',title:'點一下前往修改',onmousedown:e=>e.preventDefault(),onclick:e=>{e.stopPropagation();jump();},onkeydown:e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();jump();}}},text,h('span',{class:'warngo-a'},'前往 →'));
 }
 let warnRun=0;
-function ptsInput(q){const e=bindInput(q,'pts',{type:'text',after:changed});e.dataset.warn='pts';return e;}
+function ptsInput(q){const e=bindInput(q,'pts',{type:'text',after:changed});e.dataset.warn='pts';e.dataset.ascii='math';return e;}
 function goWarn(go){
   const run=++warnRun;
   const flash=el=>{el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),1500);};
@@ -3710,12 +3716,12 @@ function renderTypePicker(){
         list.length>1?h('div',{class:'hint',style:'margin-bottom:2px'},`第 ${k+1} 個${typeLabel(t)}區塊`):null,
         h('div',{class:'grid3'},
           field('題型名稱',bindInput(sec,'name',{type:'text',after:changed})),
-          field('每題配分',bindInput(sec,'pts',{id:'cfg_secpts_'+sec.id,type:'text',placeholder:'各題不同可留空',after:()=>{changed();updPartialUI();}})),
+          field('每題配分',(()=>{const i=bindInput(sec,'pts',{id:'cfg_secpts_'+sec.id,type:'text',placeholder:'各題不同可留空',after:()=>{changed();updPartialUI();}});i.dataset.ascii='math';return i;})()),
           field('說明（標題括號內）',desc))));
     });
     if(list.length){wrap.style.cssText=tcStyle(t);wrap.prepend(h('div',{class:'cfgdetail-t'},typeLabel(t)));}
     if(t==='multi'&&list.length>0){
-      const C=S.cfg,mk=k=>{const i=bindInput(C,k,{type:'text',after:()=>{changed();updPartialUI();}});i.inputMode='decimal';return i;};
+      const C=S.cfg,mk=k=>{const i=bindInput(C,k,{type:'text',after:()=>{changed();updPartialUI();}});i.inputMode='decimal';i.dataset.ascii='math';return i;};
       const i1=mk('multiP1'),i2=mk('multiP2'),i3=mk('multiP3');
       const sentence=h('div',{class:'slotinfo',style:'margin:0 0 6px 22px'});
       updPartialUI=()=>{
@@ -5738,6 +5744,50 @@ const UPD=(function(){
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)X.check();});
   window.addEventListener('focus',()=>X.check());
   return X;
+})();
+/* ===== 中文輸入法提醒：在只該打英文、數字的地方打出注音或中文時，欄位旁提示。網頁不能替電腦切換輸入法，
+   所以只提醒、不擋輸入。範圍：解答、配分、數學式編輯器、原始碼裡的 $…$ 之內（\text{…} 裡本來就要打中文，不提醒）。 ===== */
+(function initImeHint(){
+  const ZH=/[\u3000-\u303F\u3100-\u312F\u31A0-\u31BF\u3400-\u9FFF\uF900-\uFAFF\uFF00-\uFFEFˊˇˋ˙]/;
+  let tip=null,host=null,timer=0;
+  const hide=()=>{clearTimeout(timer);if(tip){tip.remove();tip=null;host=null;}};
+  const inText=(v,pos)=>{const re=/\\(?:text[a-z]*|mbox|hbox)\s*\{/g;let m;while((m=re.exec(v))&&m.index<pos){let d=1,k=re.lastIndex;for(;k<v.length&&d;k++){if(v[k]==='\\'){k++;continue;}if(v[k]==='{')d++;else if(v[k]==='}')d--;}if(pos>=re.lastIndex&&(d||pos<k))return true;}return false;};
+  /* 回傳 '' 不提醒；'ans' 是解答欄（有時本來就要打中文）；'math' 其他只該打英數的地方 */
+  function kind(target){
+    if(!target)return '';
+    if(target.id==='mmVis')return target.mode==='text'?'':'math';
+    const t=target._rteTa||target;
+    if(t.dataset&&t.dataset.ascii)return t.dataset.ascii;
+    if(t.id==='mmDraft')return inText(t.value,t.selectionStart)?'':'math';
+    if(target===t&&isTarget(t)&&inMathAt(t.value,t.selectionStart)&&!inText(t.value,t.selectionStart))return 'math';
+    return '';
+  }
+  function show(el,k){
+    clearTimeout(timer);timer=setTimeout(hide,6000);
+    if(tip&&host===el)return;
+    hide();host=el;
+    const how=IS_MAC?'按 Control＋空白鍵，或「中／英」鍵切換':'按 Shift 切換';
+    tip=h('div',{id:'imeTip',class:'ime-tip',role:'status'},h('b',{},'目前是中文輸入法'),
+      h('span',{},k==='ans'?`答案是數字或算式的話，請${how}（要填中文可以不用理會）`:`這裡要打英文、數字，請${how}`));
+    document.body.append(tip);place();
+  }
+  /* 放在欄位上方：輸入法的選字窗通常出現在下方 */
+  function place(){
+    if(!tip||!host)return;
+    const r=host.getBoundingClientRect(),w=tip.offsetWidth,hh=tip.offsetHeight;
+    tip.style.left=Math.max(8,Math.min(innerWidth-w-8,r.left))+'px';
+    tip.style.top=Math.max(4,r.top-hh-6>=4?r.top-hh-6:Math.min(innerHeight-hh-8,r.bottom+44))+'px';
+  }
+  const on=e=>{
+    const d=e.data;if(typeof d!=='string'||!d)return;
+    const el=e.target;
+    if(!ZH.test(d)){if(e.type==='input'&&!e.isComposing&&el===host)hide();return;}
+    const k=kind(el);if(k)show(el,k);
+  };
+  document.addEventListener('compositionupdate',on,true);
+  document.addEventListener('input',on,true);
+  document.addEventListener('focusout',e=>{if(e.target===host)hide();},true);
+  window.addEventListener('scroll',place,true);
 })();
 $('#btnImport').onclick=()=>$('#fileImport').click();
 $('#fileImport').onchange=e=>{if(e.target.files[0])importProject(e.target.files[0]);e.target.value='';};
